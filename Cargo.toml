@@ -1,0 +1,22 @@
+[package]
+name = "a_fetch"
+version = "0.0.1"
+authors = ["Asthowen<contact@asthowen.fr>"]
+edition = "2021"
+description = "AFetch is a simple fetch program written in Rust."
+repository = "https://github.com/Asthowen/AFetch"
+readme = "README.md"
+license = "GPL-3.0"
+license-file = "LICENSE"
+keywords = ["fetch", "rust"]
+
+[profile.release]
+codegen-units = 1
+strip = true
+lto = true
+
+[dependencies]
+sysinfo = "0.23"
+colored = "2.0"
+whoami = "1.2"
+clap = "3.1"
