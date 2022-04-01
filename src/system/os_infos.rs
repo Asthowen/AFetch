@@ -1,5 +1,5 @@
+use crate::util::utils::{return_str_from_command, get_file_in_one_line, is_command_exist, check_if_env_exist, execute_command};
 use std::collections::HashMap;
-use crate::util::utils::{return_str_from_command, get_file_in_one_line, is_command_exist};
 use crate::util::os_logos;
 use std::process::Command;
 use std::path::Path;
@@ -87,7 +87,10 @@ impl GetInfos {
             },
             "macos" => (&os_logos_list["macos"]).to_string(),
             "freebsd" => (&os_logos_list["freebsd"]).to_string(),
-            _ => "".to_string()
+            _ => {
+                // TODO - add other OS
+                "".to_string()
+            }
         }
     }
 
@@ -119,7 +122,10 @@ impl GetInfos {
 
                 host
             }
-            _ => "".to_string()
+            _ => {
+                // TODO - add other OS
+                "".to_string()
+            }
         }
     }
     pub fn get_shell(&mut self) -> String {
@@ -161,5 +167,52 @@ impl GetInfos {
             }
         }
         "".to_string()
+    }
+    pub fn get_screens_resolution(&mut self) -> String {
+        match std::env::consts::OS {
+            "linux" => {
+                let mut resolution: String = String::new();
+
+                if is_command_exist("xrandr") && check_if_env_exist("DISPLAY") && check_if_env_exist("WAYLAND_DISPLAY")  {
+                    match std::env::var("REFRESH_RATE").unwrap().as_str() {
+                        "on" => {
+                            resolution = execute_command(r#"xrandr --nograb --current | awk 'match($0,/[0-9]*\.[0-9]*\*/) {printf $1 " @ " substr($0,RSTART,RLENGTH) "Hz, "}'"#);
+                        },
+                        "off" => {
+                            resolution = execute_command(r#"xrandr --nograb --current | awk -F 'connected |\\+|\\(/ connected.*[0-9]+x[0-9]+\+/ && $2 {printf $2 ", "}'"#);
+                        },
+                        _ => {}
+                    }
+                } else if is_command_exist("xwininfo") && check_if_env_exist("DISPLAY") && check_if_env_exist("WAYLAND_DISPLAY") {
+                    let command: String = execute_command("xwininfo -root");
+                    let width = command.split("Width: ").collect::<Vec<&str>>()[1].split("\n").collect::<Vec<&str>>()[0];
+                    let height = command.split("Height: ").collect::<Vec<&str>>()[1].split("\n").collect::<Vec<&str>>()[0];
+                    resolution = format!("{}x{}", width, height);
+                } else if is_command_exist("xdpyinfo") && check_if_env_exist("DISPLAY") && check_if_env_exist("WAYLAND_DISPLAY") {
+                    resolution = execute_command("xdpyinfo | awk '/dimensions:/ {printf $2}'");
+                } else if Path::new("/sys/class/drm").exists() {
+                    let mut temp_resolution: Vec<String> = Vec::new();
+                    for path in std::fs::read_dir("/sys/class/drm/").unwrap() {
+                        if path.as_ref().unwrap().path().is_dir() {
+                            for sub_path in std::fs::read_dir(path.as_ref().unwrap().path().display().to_string()).unwrap() {
+                                if sub_path.as_ref().unwrap().file_name().to_string_lossy().contains("modes")  {
+                                    let first_line: String = std::fs::read_to_string(sub_path.as_ref().unwrap().path().display().to_string().as_str()).unwrap().split("\n").collect::<Vec<&str>>()[0].to_string();
+                                    if first_line != "" {
+                                        temp_resolution.push(first_line);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    resolution = temp_resolution.join(", ");
+                }
+
+                resolution
+            }
+            _ => {
+                // TODO - add other OS
+                "".to_string()
+            }
+        }
     }
 }

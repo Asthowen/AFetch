@@ -45,11 +45,12 @@ impl OutputBuilder {
 
         let mut infos: OutputEntriesGenerator = OutputEntriesGenerator::init(self.disabled_entries.clone());
         infos.add_custom_entry(format!("{}@{}", username, host));
-        infos.add_custom_entry("─".repeat(username.len() + host.len() + 1).to_string());
+        infos.add_custom_entry("\x1b[0m".to_owned() + &"─".repeat(username.len() + host.len() + 1).to_string());
         infos.add_entry("OS", system.name().unwrap());
         infos.add_entry("Host", (&get_infos_obj.get_host()).to_string());
         infos.add_entry("Kernel", system.kernel_version().unwrap());
         infos.add_entry("Uptime", utils::format_time(system.uptime()));
+        infos.add_entry("Resolution", (&get_infos_obj.get_screens_resolution()).to_string());
         infos.add_entry("Shell", (&get_infos_obj.get_shell()).to_string());
         infos.add_entry("Memory", format!("{}/{}", convert_to_readable_unity((system.used_memory() * 1000) as f64), convert_to_readable_unity((system.total_memory() * 1000) as f64)));
         infos.add_entry("CPU", format!("{} - {:.5}%", system.global_processor_info().brand().to_string(), system.global_processor_info().cpu_usage().to_string()));

@@ -7,7 +7,6 @@ description = "AFetch is a simple fetch program written in Rust."
 repository = "https://github.com/Asthowen/AFetch"
 readme = "README.md"
 license = "GPL-3.0"
-license-file = "LICENSE"
 keywords = ["fetch", "rust"]
 
 [profile.release]
@@ -16,6 +15,7 @@ strip = true
 lto = true
 
 [dependencies]
+run_script = "0.9"
 sysinfo = "0.23"
 colored = "2.0"
 whoami = "1.2"
