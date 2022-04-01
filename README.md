@@ -37,8 +37,9 @@ cd AFetch && cargo build --release
 
 Your executable will be in the `target/release/` folder, it is named `a_fetch`.
 
-## Author
-[<img width="45" src="https://avatars3.githubusercontent.com/u/59535754?s=400&u=48aecdd175dd2dd8867ae063f1973b64d298220b&v=4" alt="Asthowen">](https://github.com/Asthowen)
+## Contributors
+[<img width="45" src="https://avatars.githubusercontent.com/u/59535754?v=4" alt="Asthowen">](https://github.com/Asthowen)
+[<img width="45" src="https://avatars.githubusercontent.com/u/63391793?v=4" alt="SquitchYT">](https://github.com/SquitchYT)
 
 ## License
 **[AFetch](https://github.com/Asthowen/AFetch) | [GNU General Public License v3.0](https://github.com/Asthowen/AFetch/blob/main/LICENSE)**
