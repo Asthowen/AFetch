@@ -38,20 +38,21 @@ impl OutputBuilder {
     }
 
     pub fn generate_output(self) -> OutputBuilder {
-        let mut get_infos_obj: GetInfos = GetInfos::init(self.fake_logo.clone());
+        let get_infos_obj: GetInfos = GetInfos::init(self.fake_logo.clone());
         let mut system: System = System::new_all();
         system.refresh_all();
-        let [username, host] = [username().cyan().bold(), hostname().cyan().bold()];
+        let (username, host) = (username().cyan().bold(), hostname().cyan().bold());
 
         let mut infos: OutputEntriesGenerator = OutputEntriesGenerator::init(self.disabled_entries.clone());
         infos.add_custom_entry(format!("{}@{}", username, host));
         infos.add_custom_entry("\x1b[0m".to_owned() + &"─".repeat(username.len() + host.len() + 1).to_string());
         infos.add_entry("OS", system.name().unwrap());
-        infos.add_entry("Host", (&get_infos_obj.get_host()).to_string());
+        infos.add_entry("Host", get_infos_obj.get_host());
         infos.add_entry("Kernel", system.kernel_version().unwrap().replace("\n", ""));
         infos.add_entry("Uptime", utils::format_time(system.uptime()));
-        infos.add_entry("Resolution", (&get_infos_obj.get_screens_resolution()).to_string());
-        infos.add_entry("Shell", (&get_infos_obj.get_shell()).to_string());
+        infos.add_entry("Packages", get_infos_obj.get_packages_number());
+        infos.add_entry("Resolution", get_infos_obj.get_screens_resolution());
+        infos.add_entry("Shell", get_infos_obj.get_shell());
         infos.add_entry("Memory", format!("{}/{}", convert_to_readable_unity((system.used_memory() * 1000) as f64), convert_to_readable_unity((system.total_memory() * 1000) as f64)));
         let mut cpu_name: String = String::new();
         if system.global_processor_info().brand() != "" {

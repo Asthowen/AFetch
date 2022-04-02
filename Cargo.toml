@@ -15,7 +15,6 @@ strip = true
 lto = true
 
 [dependencies]
-run_script = "0.9"
 sysinfo = "0.23"
 colored = "2.0"
 whoami = "1.2"

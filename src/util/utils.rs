@@ -6,10 +6,6 @@ pub fn return_str_from_command(command: &mut std::process::Command) -> String {
     String::from_utf8(command.output().unwrap().stdout).unwrap()
 }
 
-pub fn execute_command(command: &str) -> String {
-    run_script::run_script!(command).unwrap().1
-}
-
 pub fn get_file_in_one_line(file_path: &str) -> String {
     std::fs::read_to_string(file_path).unwrap().replace("\n", "")
 }
