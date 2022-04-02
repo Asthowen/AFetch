@@ -2,6 +2,7 @@ use crate::util::utils::{return_str_from_command, get_file_in_one_line, is_comma
 use crate::util::os_logos;
 use std::process::Command;
 use std::path::Path;
+use clap::error::ContextValue::String;
 
 pub struct GetInfos {fake_logo: String}
 
@@ -43,7 +44,10 @@ impl GetInfos {
         } else if is_command_exist("pveversion") {
             return "Proxmox VE".to_string();
         } else if is_command_exist("lsb_release") {
-            // TODO
+            match get_env("DISTRO_SHORTHAND").as_str() {
+                "on" | "off" => return_str_from_command(Command::new("lsb_release").arg("-si")),
+                _ => return_str_from_command(Command::new("lsb_release").arg("-sd"))
+            }
         } else if std::path::Path::new("/etc/GoboLinuxVersion").exists() {
             return "GoboLinux".to_string();
         } else if std::path::Path::new("/etc/SDE-VERSION").exists() {
@@ -133,11 +137,11 @@ impl GetInfos {
                     shell_version = return_str_from_command(Command::new(shell_path).arg("--version")).split("fish, version ").collect::<Vec<&str>>()[1].replace("\n", "");
                 } else if shell_name == "bash" {
                     shell_version = return_str_from_command(Command::new(shell_path).arg("-c").arg("echo $BASH_VERSION"));
-                } else if vec!["sh", "ash", "dash", "es"].contains(&&*shell_name) {
-                    // TODO
-                } else if shell_name == "osh" {
-                    // TODO
+                } else if shell_name == "sh" {
+                    shell_version = return_str_from_command(Command::new("sh").arg("--version")).split("GNU bash, version ").collect::<Vec<&str>>()[1].split(" ").collect::<Vec<&str>>()[0].to_string();
                 } else if shell_name == "ksh" {
+                    shell_version = return_str_from_command(Command::new("ksh").arg("--version")).split("(AT&T Research) ").collect::<Vec<&str>>()[1].trim().to_string();
+                }  else if shell_name == "osh" {
                     // TODO
                 } else if shell_name == "tcsh" {
                     // TODO
@@ -287,9 +291,8 @@ impl GetInfos {
                     packages_string.push(self.count_lines_in_output(return_str_from_command(Command::new("flatpak").arg("list").arg("-i"))).to_string() + " (spm)");
                 }
                 if is_command_exist("snap") {
-                    packages_string.push(self.count_lines_in_output(return_str_from_command(Command::new("snap").arg("list"))).to_string() + " (spm)");
+                    packages_string.push((self.count_lines_in_output(return_str_from_command(Command::new("snap").arg("list"))) - 1).to_string() + "snap");
                 }
-
 
                 packages_string.join(" ")
             },
@@ -297,6 +300,14 @@ impl GetInfos {
                 // TODO - add other OS
                 "".to_string()
             }
+        }
+    }
+    pub fn get_public_ip(&self) -> String {
+        match minreq::get("http://ipinfo.io/ip").send() {
+            Ok(response) => {
+                response.as_str().unwrap().to_string()
+            }
+            Err(_) => "".to_string()
         }
     }
 }

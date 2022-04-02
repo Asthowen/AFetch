@@ -81,6 +81,8 @@ impl OutputBuilder {
             }
         }
         infos.add_entry("Disks", format!("{}/{}", convert_to_readable_unity(total_disk_used as f64), convert_to_readable_unity(total_disk_total as f64)));
+        infos.add_entry("Public IP", get_infos_obj.get_public_ip());
+
         let infos_vector: Vec<String> = infos.get_entries();
 
         let mut to_print: String = String::new();
