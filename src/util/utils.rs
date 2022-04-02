@@ -64,3 +64,11 @@ pub fn check_if_env_exist(env_var: &str) -> bool {
         Err(_) => false
     }
 }
+
+pub fn get_env(env_var: &str) -> String {
+    return if check_if_env_exist(env_var) {
+        std::env::var(env_var).unwrap()
+    } else {
+        "".to_string()
+    }
+}

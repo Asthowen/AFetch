@@ -1,4 +1,4 @@
-use crate::util::utils::{return_str_from_command, get_file_in_one_line, is_command_exist, check_if_env_exist};
+use crate::util::utils::{return_str_from_command, get_file_in_one_line, is_command_exist, check_if_env_exist, get_env};
 use crate::util::os_logos;
 use std::process::Command;
 use std::path::Path;
@@ -40,8 +40,6 @@ impl GetInfos {
             return "Siduction".to_string();
         } else if std::path::Path::new("/etc/mcst_version").exists() {
             return "OS Elbrus".to_string();
-        } else if std::path::Path::new("/etc/mcst_version").exists() {
-            return "OS Elbrus".to_string();
         } else if is_command_exist("pveversion") {
             return "Proxmox VE".to_string();
         } else if is_command_exist("lsb_release") {
@@ -69,12 +67,17 @@ impl GetInfos {
                 }
             }
         }
-
-        for (os_name, os_logo) in os_logos::logos_list() {
-            if os_name.to_lowercase() == self.get_linux_distribution().to_lowercase().replace(" ","") {
-                return os_logo;
+        if std::env::consts::OS == "linux" {
+            for (os_name, os_logo) in os_logos::logos_list() {
+                if os_name.to_lowercase() == self.get_linux_distribution().to_lowercase().replace(" ","") {
+                    return os_logo;
+                }
             }
+        } else if std::env::consts::OS == "freebsd" {
+            let os_logos_list: std::collections::HashMap<String, String> = os_logos::logos_list();
+            return (&os_logos_list["FreeBSD"]).to_string();
         }
+
         "".to_string()
     }
 
@@ -85,23 +88,21 @@ impl GetInfos {
 
                 if Path::new("/system/app/").exists() && Path::new("/system/priv-app").exists() {
                     host = return_str_from_command(Command::new("getprop").arg("ro.product.brand"));
-                    host += &*return_str_from_command(Command::new("getprop").arg("ro.product.model"));
-                }
-                if Path::new("/sys/devices/virtual/dmi/id/board_vendor").exists() && Path::new("/sys/devices/virtual/dmi/id/board_name").exists() {
-                    host = get_file_in_one_line("/sys/devices/virtual/dmi/id/board_vendor");
-                    host += " ";
-                    host += &*get_file_in_one_line("/sys/devices/virtual/dmi/id/board_name");
-                }
-                if Path::new("/sys/devices/virtual/dmi/id/product_name").exists() && Path::new("/sys/devices/virtual/dmi/id/product_version").exists() {
+                    host += return_str_from_command(Command::new("getprop").arg("ro.product.model")).as_str();
+                } else if Path::new("/sys/devices/virtual/dmi/id/product_name").exists() && Path::new("/sys/devices/virtual/dmi/id/product_version").exists() {
                     host = get_file_in_one_line("/sys/devices/virtual/dmi/id/product_name");
                     host += " ";
-                    host += &*get_file_in_one_line("/sys/devices/virtual/dmi/id/product_version");
-                }
-                if Path::new("/sys/firmware/devicetree/base/model").exists() {
+                    host += get_file_in_one_line("/sys/devices/virtual/dmi/id/product_version").as_str();
+                } else if Path::new("/sys/firmware/devicetree/base/model").exists() {
                     host = get_file_in_one_line("/sys/firmware/devicetree/base/model");
-                }
-                if Path::new("/tmp/sysinfo/model").exists() {
+                } else if Path::new("/tmp/sysinfo/model").exists() {
                     host = get_file_in_one_line("/tmp/sysinfo/model");
+                }
+
+                if (host.contains("System Product Name") || host == "") && Path::new("/sys/devices/virtual/dmi/id/board_vendor").exists() && Path::new("/sys/devices/virtual/dmi/id/board_name").exists() {
+                    host = get_file_in_one_line("/sys/devices/virtual/dmi/id/board_vendor");
+                    host += " ";
+                    host += get_file_in_one_line("/sys/devices/virtual/dmi/id/board_name").as_str();
                 }
 
                 host
@@ -112,42 +113,41 @@ impl GetInfos {
             }
         }
     }
+
     pub fn get_shell(&self) -> String {
         let mut shell_path: String = String::new();
         let mut shell_name: String = String::new();
-        match std::env::var("SHELL") {
-            Ok(var) => {
-                shell_path = String::from(&*var);
-                let shell_name_spliced: Vec<&str> = var.split("/").collect::<Vec<&str>>();
-                shell_name = shell_name_spliced[shell_name_spliced.len() - 1].to_string();
-            },
-            Err(_) => {}
-        }
-        if shell_name != "" {
-            return match std::env::var("SHELL_VERSION") {
-                Ok(shell_version) => format!("{} {}", shell_name, shell_version),
-                _ => {
-                    let mut shell_version: String = String::new();
-                    if shell_name == "fish" {
-                        shell_version = return_str_from_command(Command::new(shell_path).arg("--version")).split("fish, version ").collect::<Vec<&str>>()[1].replace("\n", "");
-                    } else if shell_name == "bash" {
-                        shell_version = return_str_from_command(Command::new(shell_path).arg("-c").arg("echo $BASH_VERSION"));
-                    } else if vec!["sh", "ash", "dash", "es"].contains(&&*shell_name){
-                        // TODO
-                    } else if shell_name == "osh" {
-                        // TODO
-                    } else if shell_name == "ksh" {
-                        // TODO
-                    } else if shell_name == "tcsh" {
-                        // TODO
-                    } else if shell_name == "yash" {
-                        // TODO
-                    } else if shell_name == "nu" {
-                        // TODO
-                    }
 
-                    return if shell_version == "" {shell_name} else {format!("{} {}", shell_name, shell_version)};
+        if check_if_env_exist("SHELL") {
+            shell_path = String::from(get_env("SHELL"));
+            let shell_name_spliced: Vec<&str> = shell_path.split("/").collect::<Vec<&str>>();
+            shell_name = shell_name_spliced[shell_name_spliced.len() - 1].to_string();
+        }
+
+        if shell_name != "" {
+            return if check_if_env_exist("SHELL_VERSION") {
+                format!("{} {}", shell_name, get_env("SHELL_VERSION"))
+            } else {
+                let mut shell_version: String = String::new();
+                if shell_name == "fish" {
+                    shell_version = return_str_from_command(Command::new(shell_path).arg("--version")).split("fish, version ").collect::<Vec<&str>>()[1].replace("\n", "");
+                } else if shell_name == "bash" {
+                    shell_version = return_str_from_command(Command::new(shell_path).arg("-c").arg("echo $BASH_VERSION"));
+                } else if vec!["sh", "ash", "dash", "es"].contains(&&*shell_name) {
+                    // TODO
+                } else if shell_name == "osh" {
+                    // TODO
+                } else if shell_name == "ksh" {
+                    // TODO
+                } else if shell_name == "tcsh" {
+                    // TODO
+                } else if shell_name == "yash" {
+                    // TODO
+                } else if shell_name == "nu" {
+                    // TODO
                 }
+
+                if shell_version == "" { shell_name } else { format!("{} {}", shell_name, shell_version) }
             }
         }
         "".to_string()
@@ -245,6 +245,9 @@ impl GetInfos {
                 if is_command_exist("pkg_info") {
                     packages_string.push(self.count_lines_in_output(return_str_from_command(&mut Command::new("pkg_info"))).to_string() + " (pkg)");
                 }
+                if is_command_exist("pkg") {
+                    packages_string.push(self.count_lines_in_output(return_str_from_command(Command::new("pkg").arg("info"))).to_string() + " (pkg)");
+                }
                 if is_command_exist("pkgin") {
                     packages_string.push(self.count_lines_in_output(return_str_from_command(Command::new("pkgin").arg("list"))).to_string() + " (pkgin)");
                 }
@@ -277,9 +280,16 @@ impl GetInfos {
                 if Path::new("/etc/SDE-VERSION").exists() {
                     packages_string.push(self.count_lines_in_output(return_str_from_command(Command::new("mine").arg("-q"))).to_string() + " (dnf)");
                 }
-                if is_command_exist("brew") {
-                    packages_string.push(self.count_lines_in_output(return_str_from_command(Command::new("brew").arg("-L"))).to_string() + " (pacstall)");
+                if is_command_exist("flatpak") {
+                    packages_string.push(self.count_lines_in_output(return_str_from_command(Command::new("flatpak").arg("list"))).to_string() + " (flatpak)");
                 }
+                if is_command_exist("spm") {
+                    packages_string.push(self.count_lines_in_output(return_str_from_command(Command::new("flatpak").arg("list").arg("-i"))).to_string() + " (spm)");
+                }
+                if is_command_exist("snap") {
+                    packages_string.push(self.count_lines_in_output(return_str_from_command(Command::new("snap").arg("list"))).to_string() + " (spm)");
+                }
+
 
                 packages_string.join(" ")
             },
