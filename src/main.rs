@@ -1,4 +1,4 @@
-use a_fetch::output::builder::OutputBuilder;
+use afetch::output::builder::OutputBuilder;
 use clap::{Arg, Command};
 
 

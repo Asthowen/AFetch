@@ -1,5 +1,5 @@
 [package]
-name = "a_fetch"
+name = "afetch"
 version = "0.0.1"
 authors = ["Asthowen<contact@asthowen.fr>"]
 edition = "2021"
@@ -15,8 +15,8 @@ strip = true
 lto = true
 
 [dependencies]
+minreq = { version = "2.6", features = ["https"] }
 sysinfo = "0.23"
 colored = "2.0"
 whoami = "1.2"
-minreq = { version = "2.6", features = ["https"] }
 clap = "3.1"
