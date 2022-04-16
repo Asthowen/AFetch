@@ -18,5 +18,5 @@ lto = true
 sysinfo = "0.23"
 colored = "2.0"
 whoami = "1.2"
-minreq = "2.6.0"
+minreq = { version = "2.6", features = ["https"] }
 clap = "3.1"

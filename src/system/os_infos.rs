@@ -2,7 +2,6 @@ use crate::util::utils::{return_str_from_command, get_file_in_one_line, is_comma
 use crate::util::os_logos;
 use std::process::Command;
 use std::path::Path;
-use clap::error::ContextValue::String;
 
 pub struct GetInfos {fake_logo: String}
 
@@ -44,10 +43,10 @@ impl GetInfos {
         } else if is_command_exist("pveversion") {
             return "Proxmox VE".to_string();
         } else if is_command_exist("lsb_release") {
-            match get_env("DISTRO_SHORTHAND").as_str() {
+            return match get_env("DISTRO_SHORTHAND").as_str() {
                 "on" | "off" => return_str_from_command(Command::new("lsb_release").arg("-si")),
                 _ => return_str_from_command(Command::new("lsb_release").arg("-sd"))
-            }
+            };
         } else if std::path::Path::new("/etc/GoboLinuxVersion").exists() {
             return "GoboLinux".to_string();
         } else if std::path::Path::new("/etc/SDE-VERSION").exists() {
@@ -303,7 +302,7 @@ impl GetInfos {
         }
     }
     pub fn get_public_ip(&self) -> String {
-        match minreq::get("http://ipinfo.io/ip").send() {
+        match minreq::get("https://ipinfo.io/ip").send() {
             Ok(response) => {
                 response.as_str().unwrap().to_string()
             }
