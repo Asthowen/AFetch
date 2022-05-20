@@ -11,15 +11,11 @@ pub fn get_file_in_one_line(file_path: &str) -> String {
 }
 
 pub fn is_command_exist(program: &str) -> bool {
-    if let Ok(path) = std::env::var("PATH") {
-        for p in path.split(":") {
-            let p_str = format!("{}/{}", p, program);
-            if std::fs::metadata(p_str).is_ok() {
-                return true;
-            }
-        }
+    if let Ok(_) = which::which(program) {
+        true
+    } else {
+        false
     }
-    false
 }
 
 pub fn format_time(time_to_format: u64) -> String {

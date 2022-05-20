@@ -46,7 +46,11 @@ impl OutputBuilder {
         let mut infos: OutputEntriesGenerator = OutputEntriesGenerator::init(self.disabled_entries.clone());
         infos.add_custom_entry(format!("{}@{}", username, host));
         infos.add_custom_entry("\x1b[0m".to_owned() + &"─".repeat(username.len() + host.len() + 1).to_string());
-        infos.add_entry("OS", system.name().unwrap());
+        if system.name().unwrap().to_lowercase().contains("windows") {
+            infos.add_entry("OS", format!("{} {}", system.name().unwrap(), system.os_version().unwrap().split(" ").collect::<Vec<&str>>()[0]));
+        } else {
+            infos.add_entry("OS", system.name().unwrap());
+        }
         infos.add_entry("Host", get_infos_obj.get_host());
         infos.add_entry("Kernel", system.kernel_version().unwrap().replace("\n", ""));
         infos.add_entry("Uptime", utils::format_time(system.uptime()));
@@ -86,7 +90,7 @@ impl OutputBuilder {
         let infos_vector: Vec<String> = infos.get_entries();
 
         let mut to_print: String = String::new();
-        if self.show_logo {
+        if self.show_logo && get_infos_obj.get_os_logo() != "" {
             for (iteration, line) in get_infos_obj.get_os_logo().lines().enumerate() {
                 if iteration < infos_vector.len() {
                     to_print.push_str(&*format!("{}    {}\n", line, infos_vector[iteration]));

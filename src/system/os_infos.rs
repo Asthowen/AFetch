@@ -1,4 +1,5 @@
 use crate::util::utils::{return_str_from_command, get_file_in_one_line, is_command_exist, check_if_env_exist, get_env};
+use sysinfo::{System, SystemExt};
 use crate::util::os_logos;
 use std::process::Command;
 use std::path::Path;
@@ -79,16 +80,20 @@ impl GetInfos {
         } else if std::env::consts::OS == "freebsd" {
             let os_logos_list: std::collections::HashMap<String, String> = os_logos::logos_list();
             return (&os_logos_list["FreeBSD"]).to_string();
+        } else if std::env::consts::OS == "windows" {
+            let os_logos_list: std::collections::HashMap<String, String> = os_logos::logos_list();
+            let system: System = System::default();
+            let windows_version: String = system.os_version().unwrap().split(" ").collect::<Vec<&str>>()[0].to_string();
+            return (&os_logos_list[format!("Windows{}", if windows_version != "" {windows_version} else {String::from("11")}).as_str()]).to_string();
         }
 
         "".to_string()
     }
 
     pub fn get_host(&self) -> String {
+        let mut host = String::new();
         match std::env::consts::OS {
             "linux" => {
-                let mut host = String::new();
-
                 if Path::new("/system/app/").exists() && Path::new("/system/priv-app").exists() {
                     host = return_str_from_command(Command::new("getprop").arg("ro.product.brand"));
                     host += return_str_from_command(Command::new("getprop").arg("ro.product.model")).as_str();
@@ -109,7 +114,11 @@ impl GetInfos {
                 }
 
                 host
-            }
+            },
+            "windows" => {
+                host = return_str_from_command(Command::new("wmic").arg("computersystem").arg("get").arg("manufacturer,model")).replace("Manufacturer  Model", "").replace("     ", " ").trim().to_string();
+                host
+            },
             _ => {
                 // TODO - add other OS
                 "".to_string()
@@ -159,7 +168,6 @@ impl GetInfos {
         match std::env::consts::OS {
             "linux" => {
                 let mut resolution: String = String::new();
-
                 if is_command_exist("xrandr") && check_if_env_exist("DISPLAY") && check_if_env_exist("WAYLAND_DISPLAY") {
                     let mut last_line: bool = false;
                     let mut temp_resolution: Vec<String> = Vec::new();
@@ -199,7 +207,12 @@ impl GetInfos {
                 }
 
                 resolution
-            }
+            },
+            "windows" => {
+                let width: String = return_str_from_command(&mut Command::new("wmic").arg("path").arg("Win32_VideoController").arg("get").arg("CurrentHorizontalResolution")).replace("CurrentHorizontalResolution", "").trim().to_string();
+                let height: String = return_str_from_command(&mut Command::new("wmic").arg("path").arg("Win32_VideoController").arg("get").arg("CurrentVerticalResolution")).replace("CurrentVerticalResolution", "").trim().to_string();
+                format!("{}x{}", width, height)
+            },
             _ => {
                 // TODO - add other OS
                 "".to_string()
@@ -290,9 +303,18 @@ impl GetInfos {
                     packages_string.push(self.count_lines_in_output(return_str_from_command(Command::new("flatpak").arg("list").arg("-i"))).to_string() + " (spm)");
                 }
                 if is_command_exist("snap") {
-                    packages_string.push((self.count_lines_in_output(return_str_from_command(Command::new("snap").arg("list"))) - 1).to_string() + "snap");
+                    packages_string.push((self.count_lines_in_output(return_str_from_command(Command::new("snap").arg("list"))) - 1).to_string() + " (snap)");
                 }
 
+                packages_string.join(" ")
+            },
+            "windows" => {
+                if is_command_exist("choco") {
+                    let choco_output = return_str_from_command(Command::new("choco").arg("list").arg("--localonly"));
+                    let choco_output_split: Vec<&str> = choco_output.split(" packages installed").collect::<Vec<&str>>()[0].split("\n").collect::<Vec<&str>>();
+                    packages_string.push((choco_output_split[choco_output_split.len() - 1]).to_string() + " (chocolatey)");
+                }
+                
                 packages_string.join(" ")
             },
             _ => {
