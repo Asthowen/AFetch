@@ -5,7 +5,7 @@ use clap::{Arg, Command};
 fn main() {
     let output_builder: OutputBuilder = OutputBuilder::init();
 
-    let app: clap::Command = Command::new("AFetch")
+    let app: Command = Command::new("AFetch")
         .about("A CLI app to retrieve system information.")
         .version("0.0.1")
         .help_template("{bin} ({version}) - Created by {author}\n\n{usage-heading}\n{usage}\n\n{all-args}\n")

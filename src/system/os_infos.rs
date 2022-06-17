@@ -23,23 +23,23 @@ impl GetInfos {
     }
 
     pub fn get_linux_distribution(&self) -> String {
-        if std::path::Path::new("/etc/os-release").exists() {
+        if Path::new("/etc/os-release").exists() {
             return self.parse_os_release("/etc/os-release");
-        } else if std::path::Path::new("/usr/lib/os-release").exists() {
+        } else if Path::new("/usr/lib/os-release").exists() {
             return self.parse_os_release("/usr/lib/os-release");
-        } else if std::path::Path::new("/etc/openwrt_release").exists() {
+        } else if Path::new("/etc/openwrt_release").exists() {
             return self.parse_os_release("/etc/openwrt_release");
-        } else if std::path::Path::new("/etc/lsb-release").exists() {
+        } else if Path::new("/etc/lsb-release").exists() {
             return self.parse_os_release("/etc/lsb-release");
-        } else if std::path::Path::new("/bedrock/etc/bedrock-release").exists() && std::env::var("BEDROCK_RESTRICT").is_ok() {
+        } else if Path::new("/bedrock/etc/bedrock-release").exists() && std::env::var("BEDROCK_RESTRICT").is_ok() {
             return "Bedrock Linux".to_string();
-        } else if std::path::Path::new("/etc/redstar-release").exists() {
+        } else if Path::new("/etc/redstar-release").exists() {
             return "Red Star OS".to_string();
-        } else if std::path::Path::new("/etc/armbian-release").exists() {
+        } else if Path::new("/etc/armbian-release").exists() {
             return "Armbian".to_string();
-        } else if std::path::Path::new("/etc/siduction-version").exists() {
+        } else if Path::new("/etc/siduction-version").exists() {
             return "Siduction".to_string();
-        } else if std::path::Path::new("/etc/mcst_version").exists() {
+        } else if Path::new("/etc/mcst_version").exists() {
             return "OS Elbrus".to_string();
         } else if is_command_exist("pveversion") {
             return "Proxmox VE".to_string();
@@ -48,15 +48,15 @@ impl GetInfos {
                 "on" | "off" => return_str_from_command(Command::new("lsb_release").arg("-si")),
                 _ => return_str_from_command(Command::new("lsb_release").arg("-sd"))
             };
-        } else if std::path::Path::new("/etc/GoboLinuxVersion").exists() {
+        } else if Path::new("/etc/GoboLinuxVersion").exists() {
             return "GoboLinux".to_string();
-        } else if std::path::Path::new("/etc/SDE-VERSION").exists() {
+        } else if Path::new("/etc/SDE-VERSION").exists() {
             return get_file_in_one_line("/etc/SDE-VERSION");
         } else if is_command_exist("tazpkg") {
             return "SliTaz".to_string();
         } else if is_command_exist("kpt") && is_command_exist("kpm") {
             return "KSLinux".to_string();
-        } else if std::path::Path::new("/system/app/").exists() && std::path::Path::new("/system/priv-app").exists() {
+        } else if Path::new("/system/app/").exists() && Path::new("/system/priv-app").exists() {
             return "Android".to_string();
         }
 
@@ -73,7 +73,7 @@ impl GetInfos {
         }
         if std::env::consts::OS == "linux" {
             for (os_name, os_logo) in os_logos::logos_list() {
-                if os_name.to_lowercase() == self.get_linux_distribution().to_lowercase().replace(" ","") {
+                if os_name.to_lowercase() == self.get_linux_distribution().to_lowercase().replace(' ', "") {
                     return os_logo;
                 }
             }
@@ -83,8 +83,8 @@ impl GetInfos {
         } else if std::env::consts::OS == "windows" {
             let os_logos_list: std::collections::HashMap<String, String> = os_logos::logos_list();
             let system: System = System::default();
-            let windows_version: String = system.os_version().unwrap().split(" ").collect::<Vec<&str>>()[0].to_string();
-            return (&os_logos_list[format!("Windows{}", if windows_version != "" {windows_version} else {String::from("11")}).as_str()]).to_string();
+            let windows_version: String = system.os_version().unwrap().split(' ').collect::<Vec<&str>>()[0].to_string();
+            return (&os_logos_list[format!("Windows{}", if !windows_version.is_empty() {windows_version} else {String::from("11")}).as_str()]).to_string();
         }
 
         "".to_string()
@@ -107,7 +107,7 @@ impl GetInfos {
                     host = get_file_in_one_line("/tmp/sysinfo/model");
                 }
 
-                if (host.contains("System Product Name") || host == "") && Path::new("/sys/devices/virtual/dmi/id/board_vendor").exists() && Path::new("/sys/devices/virtual/dmi/id/board_name").exists() {
+                if (host.contains("System Product Name") || !host.is_empty()) && Path::new("/sys/devices/virtual/dmi/id/board_vendor").exists() && Path::new("/sys/devices/virtual/dmi/id/board_name").exists() {
                     host = get_file_in_one_line("/sys/devices/virtual/dmi/id/board_vendor");
                     host += " ";
                     host += get_file_in_one_line("/sys/devices/virtual/dmi/id/board_name").as_str();
@@ -131,35 +131,27 @@ impl GetInfos {
         let mut shell_name: String = String::new();
 
         if check_if_env_exist("SHELL") {
-            shell_path = String::from(get_env("SHELL"));
-            let shell_name_spliced: Vec<&str> = shell_path.split("/").collect::<Vec<&str>>();
+            shell_path = get_env("SHELL");
+            let shell_name_spliced: Vec<&str> = shell_path.split('/').collect::<Vec<&str>>();
             shell_name = shell_name_spliced[shell_name_spliced.len() - 1].to_string();
         }
 
-        if shell_name != "" {
+        if !shell_name.is_empty() {
             return if check_if_env_exist("SHELL_VERSION") {
                 format!("{} {}", shell_name, get_env("SHELL_VERSION"))
             } else {
                 let mut shell_version: String = String::new();
                 if shell_name == "fish" {
-                    shell_version = return_str_from_command(Command::new(shell_path).arg("--version")).split("fish, version ").collect::<Vec<&str>>()[1].replace("\n", "");
+                    shell_version = return_str_from_command(Command::new(shell_path).arg("--version")).split("fish, version ").collect::<Vec<&str>>()[1].replace('\n', "");
                 } else if shell_name == "bash" {
                     shell_version = return_str_from_command(Command::new(shell_path).arg("-c").arg("echo $BASH_VERSION"));
                 } else if shell_name == "sh" {
-                    shell_version = return_str_from_command(Command::new("sh").arg("--version")).split("GNU bash, version ").collect::<Vec<&str>>()[1].split(" ").collect::<Vec<&str>>()[0].to_string();
+                    shell_version = return_str_from_command(Command::new("sh").arg("--version")).split("GNU bash, version ").collect::<Vec<&str>>()[1].split(' ').collect::<Vec<&str>>()[0].to_string();
                 } else if shell_name == "ksh" {
                     shell_version = return_str_from_command(Command::new("ksh").arg("--version")).split("(AT&T Research) ").collect::<Vec<&str>>()[1].trim().to_string();
-                }  else if shell_name == "osh" {
-                    // TODO
-                } else if shell_name == "tcsh" {
-                    // TODO
-                } else if shell_name == "yash" {
-                    // TODO
-                } else if shell_name == "nu" {
-                    // TODO
                 }
 
-                if shell_version == "" { shell_name } else { format!("{} {}", shell_name, shell_version) }
+                if !shell_version.is_empty() { shell_name } else { format!("{} {}", shell_name, shell_version) }
             }
         }
         "".to_string()
@@ -171,9 +163,9 @@ impl GetInfos {
                 if is_command_exist("xrandr") && check_if_env_exist("DISPLAY") && check_if_env_exist("WAYLAND_DISPLAY") {
                     let mut last_line: bool = false;
                     let mut temp_resolution: Vec<String> = Vec::new();
-                    for line in return_str_from_command(Command::new("xrandr").arg("--nograb").arg("--current")).split("\n") {
+                    for line in return_str_from_command(Command::new("xrandr").arg("--nograb").arg("--current")).split('\n') {
                         if last_line {
-                            temp_resolution.push(line.trim().split(" ").collect::<Vec<&str>>()[0].to_string());
+                            temp_resolution.push(line.trim().split(' ').collect::<Vec<&str>>()[0].to_string());
                             last_line = false;
                         } else if line.contains(" connected"){
                             last_line = true;
@@ -184,19 +176,19 @@ impl GetInfos {
                     let command: String = return_str_from_command(Command::new("xwininfo").arg("-root"));
                     resolution = format!(
                         "{}x{}",
-                        command.split("Width: ").collect::<Vec<&str>>()[1].split("\n").collect::<Vec<&str>>()[0],
-                        command.split("Height: ").collect::<Vec<&str>>()[1].split("\n").collect::<Vec<&str>>()[0]
+                        command.split("Width: ").collect::<Vec<&str>>()[1].split('\n').collect::<Vec<&str>>()[0],
+                        command.split("Height: ").collect::<Vec<&str>>()[1].split('\n').collect::<Vec<&str>>()[0]
                     );
                 } else if is_command_exist("xdpyinfo") && check_if_env_exist("DISPLAY") && check_if_env_exist("WAYLAND_DISPLAY") {
-                    resolution = return_str_from_command(&mut Command::new("xdpyinfo")).split("dimensions: ").collect::<Vec<&str>>()[1].trim().split(" ").collect::<Vec<&str>>()[0].to_string();
+                    resolution = return_str_from_command(&mut Command::new("xdpyinfo")).split("dimensions: ").collect::<Vec<&str>>()[1].trim().split(' ').collect::<Vec<&str>>()[0].to_string();
                 } else if Path::new("/sys/class/drm").exists() {
                     let mut temp_resolution: Vec<String> = Vec::new();
                     for path in std::fs::read_dir("/sys/class/drm/").unwrap() {
                         if path.as_ref().unwrap().path().is_dir() {
                             for sub_path in std::fs::read_dir(path.as_ref().unwrap().path().display().to_string()).unwrap() {
                                 if sub_path.as_ref().unwrap().file_name().to_string_lossy().contains("modes")  {
-                                    let first_line: String = std::fs::read_to_string(sub_path.as_ref().unwrap().path().display().to_string().as_str()).unwrap().split("\n").collect::<Vec<&str>>()[0].to_string();
-                                    if first_line != "" {
+                                    let first_line: String = std::fs::read_to_string(sub_path.as_ref().unwrap().path().display().to_string().as_str()).unwrap().split('\n').collect::<Vec<&str>>()[0].to_string();
+                                    if !first_line.is_empty() {
                                         temp_resolution.push(first_line);
                                     }
                                 }
@@ -209,8 +201,8 @@ impl GetInfos {
                 resolution
             },
             "windows" => {
-                let width: String = return_str_from_command(&mut Command::new("wmic").arg("path").arg("Win32_VideoController").arg("get").arg("CurrentHorizontalResolution")).replace("CurrentHorizontalResolution", "").trim().to_string();
-                let height: String = return_str_from_command(&mut Command::new("wmic").arg("path").arg("Win32_VideoController").arg("get").arg("CurrentVerticalResolution")).replace("CurrentVerticalResolution", "").trim().to_string();
+                let width: String = return_str_from_command(Command::new("wmic").arg("path").arg("Win32_VideoController").arg("get").arg("CurrentHorizontalResolution")).replace("CurrentHorizontalResolution", "").trim().to_string();
+                let height: String = return_str_from_command(Command::new("wmic").arg("path").arg("Win32_VideoController").arg("get").arg("CurrentVerticalResolution")).replace("CurrentVerticalResolution", "").trim().to_string();
                 format!("{}x{}", width, height)
             },
             _ => {
@@ -220,7 +212,7 @@ impl GetInfos {
         }
     }
     fn count_lines_in_output(&self, output: String) -> usize {
-        output.split("\n").collect::<Vec<&str>>().len()
+        output.split('\n').count()
     }
 
     pub fn get_packages_number(&self) -> String {
@@ -229,7 +221,7 @@ impl GetInfos {
         match std::env::consts::OS {
             "linux" | "freebsd" | "solaris" => {
                 if is_command_exist("pacman") {
-                    packages_string.push(self.count_lines_in_output(return_str_from_command(Command::new("pacman").arg("-Qq").arg("--color").arg("never"))).to_string().to_owned() + " (pacman)");
+                    packages_string.push(self.count_lines_in_output(return_str_from_command(Command::new("pacman").arg("-Qq").arg("--color").arg("never"))).to_string() + " (pacman)");
                 }
                 if is_command_exist("kiss") {
                     packages_string.push(self.count_lines_in_output(return_str_from_command(Command::new("kiss").arg("l"))).to_string() + " (kiss)");
@@ -311,7 +303,7 @@ impl GetInfos {
             "windows" => {
                 if is_command_exist("choco") {
                     let choco_output = return_str_from_command(Command::new("choco").arg("list").arg("--localonly"));
-                    let choco_output_split: Vec<&str> = choco_output.split(" packages installed").collect::<Vec<&str>>()[0].split("\n").collect::<Vec<&str>>();
+                    let choco_output_split: Vec<&str> = choco_output.split(" packages installed").collect::<Vec<&str>>()[0].split('\n').collect::<Vec<&str>>();
                     packages_string.push((choco_output_split[choco_output_split.len() - 1]).to_string() + " (chocolatey)");
                 }
                 
