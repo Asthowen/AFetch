@@ -1,0 +1,169 @@
+name: Generate executables and post them to release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  generate-linux-executables:
+    name: Build & publish for ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        name: [aarch64-unknown-linux-gnu, armv7-unknown-linux-gnueabihf, i686-unknown-linux-gnu, i686-unknown-linux-musl, mips-unknown-linux-gnu, mips64-unknown-linux-gnuabi64, mips64el-unknown-linux-gnuabi64, mipsel-unknown-linux-gnu, powerpc-unknown-linux-gnu, powerpc64-unknown-linux-gnu, powerpc64le-unknown-linux-gnu, arm-unknown-linux-gnueabi,x86_64-unknown-linux-gnu, x86_64-unknown-linux-musl]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        target: ${{ matrix.name }}
+
+    - name: Get afetch version
+      id: afetch_version
+      run: |
+        cargo install cargo-get
+        echo "::set-output name=APP_VERSION::$(cargo get version)"
+
+    - name: Get latest release
+      id: get_release
+      uses: leahlundqvist/get-release@v1.3.1
+      with:
+        tag_name: ${{ steps.afetch_version.outputs.APP_VERSION }}
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Use GitHub cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build
+      run: cargo build --release --locked
+
+    - name: Upload executable to releases
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ steps.get_release.outputs.upload_url }}
+        asset_path: ./target/release/afetch
+        asset_name: afetch-${{ steps.afetch_version.outputs.APP_VERSION }}-${{ matrix.name }}
+        asset_content_type: application/octet-stream
+
+  generate-windows-executables:
+    name: Build & publish for ${{ matrix.name }}
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        name: [i686-pc-windows-gnu, x86_64-pc-windows-gnu, x86_64-pc-windows-msvc, aarch64-pc-windows-msvc]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        target: ${{ matrix.name }}
+
+    - name: Get afetch version
+      id: afetch_version
+      run: |
+        cargo install cargo-get
+        echo "::set-output name=APP_VERSION::$(cargo get version)"
+
+    - name: Get latest release
+      id: get_release
+      uses: leahlundqvist/get-release@v1.3.1
+      with:
+        tag_name: ${{ steps.afetch_version.outputs.APP_VERSION }}
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Use GitHub cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build
+      run: cargo build --release --locked
+
+    - name: Upload executable to releases
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ steps.get_release.outputs.upload_url }}
+        asset_path: ./target/release/afetch.exe
+        asset_name: afetch-${{ steps.afetch_version.outputs.APP_VERSION }}-${{ matrix.name }}.exe
+        asset_content_type: application/octet-stream
+
+  generate-macos-executables:
+    name: Build & publish for ${{ matrix.name }}
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        name: [x86_64-apple-darwin, aarch64-apple-darwin]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        target: ${{ matrix.name }}
+
+    - name: Get afetch version
+      id: afetch_version
+      run: |
+        cargo install cargo-get
+        echo "::set-output name=APP_VERSION::$(cargo get version)"
+
+    - name: Get latest release
+      id: get_release
+      uses: leahlundqvist/get-release@v1.3.1
+      with:
+        tag_name: ${{ steps.afetch_version.outputs.APP_VERSION }}
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Use GitHub cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build
+      run: cargo build --release --locked
+
+    - name: Upload executable to releases
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ steps.get_release.outputs.upload_url }}
+        asset_path: ./target/release/afetch
+        asset_name: afetch-${{ steps.afetch_version.outputs.APP_VERSION }}-${{ matrix.name }}
+        asset_content_type: application/octet-stream
