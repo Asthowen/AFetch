@@ -15,9 +15,11 @@ strip = true
 lto = true
 
 [dependencies]
-minreq = { version = "2.6", features = ["https"] }
-sysinfo = "0.23"
+yaml-rust = "0.4"
+sysinfo = "0.25"
 colored = "2.0"
+minreq = "2.6"
 whoami = "1.2"
 which = "4.2"
 clap = "3.1"
+dirs = "4.0"

@@ -7,19 +7,19 @@ use std::path::Path;
 pub struct GetInfos {fake_logo: String}
 
 impl Default for GetInfos {
-    fn default() -> GetInfos {
-        GetInfos::init("".to_string())
+    fn default() -> Self {
+        Self::init("".to_owned())
     }
 }
 
 impl GetInfos {
-    pub fn init(fake_logo: String) -> GetInfos {
-        GetInfos { fake_logo }
+    pub const fn init(fake_logo: String) -> Self {
+        Self { fake_logo }
     }
 
     fn parse_os_release(&self, file_path: &str) -> String {
-        let contents: String = std::fs::read_to_string(file_path).unwrap();
-        contents.split("NAME=\"").collect::<Vec<&str>>()[1].split("\"\n").collect::<Vec<&str>>()[0].to_string()
+        let contents: String = std::fs::read_to_string(file_path).unwrap_or_else(|_| { "".to_owned() });
+        contents.split("NAME=\"").collect::<Vec<&str>>()[1].split("\"\n").collect::<Vec<&str>>()[0].to_owned()
     }
 
     pub fn get_linux_distribution(&self) -> String {
@@ -32,39 +32,39 @@ impl GetInfos {
         } else if Path::new("/etc/lsb-release").exists() {
             return self.parse_os_release("/etc/lsb-release");
         } else if Path::new("/bedrock/etc/bedrock-release").exists() && std::env::var("BEDROCK_RESTRICT").is_ok() {
-            return "Bedrock Linux".to_string();
+            return "Bedrock Linux".to_owned();
         } else if Path::new("/etc/redstar-release").exists() {
-            return "Red Star OS".to_string();
+            return "Red Star OS".to_owned();
         } else if Path::new("/etc/armbian-release").exists() {
-            return "Armbian".to_string();
+            return "Armbian".to_owned();
         } else if Path::new("/etc/siduction-version").exists() {
-            return "Siduction".to_string();
+            return "Siduction".to_owned();
         } else if Path::new("/etc/mcst_version").exists() {
-            return "OS Elbrus".to_string();
+            return "OS Elbrus".to_owned();
         } else if is_command_exist("pveversion") {
-            return "Proxmox VE".to_string();
+            return "Proxmox VE".to_owned();
         } else if is_command_exist("lsb_release") {
             return match get_env("DISTRO_SHORTHAND").as_str() {
                 "on" | "off" => return_str_from_command(Command::new("lsb_release").arg("-si")),
                 _ => return_str_from_command(Command::new("lsb_release").arg("-sd"))
             };
         } else if Path::new("/etc/GoboLinuxVersion").exists() {
-            return "GoboLinux".to_string();
+            return "GoboLinux".to_owned();
         } else if Path::new("/etc/SDE-VERSION").exists() {
             return get_file_in_one_line("/etc/SDE-VERSION");
         } else if is_command_exist("tazpkg") {
-            return "SliTaz".to_string();
+            return "SliTaz".to_owned();
         } else if is_command_exist("kpt") && is_command_exist("kpm") {
-            return "KSLinux".to_string();
+            return "KSLinux".to_owned();
         } else if Path::new("/system/app/").exists() && Path::new("/system/priv-app").exists() {
-            return "Android".to_string();
+            return "Android".to_owned();
         }
 
-        "".to_string()
+        "".to_owned()
     }
 
     pub fn get_os_logo(&self) -> String {
-        if !self.fake_logo.is_empty() {
+        if !self.fake_logo.is_empty() && self.fake_logo != "default" {
             for (os_name, os_logo) in os_logos::logos_list() {
                 if self.fake_logo.to_lowercase() == os_name.to_lowercase() {
                     return os_logo;
@@ -83,11 +83,11 @@ impl GetInfos {
         } else if std::env::consts::OS == "windows" {
             let os_logos_list: std::collections::HashMap<String, String> = os_logos::logos_list();
             let system: System = System::default();
-            let windows_version: String = system.os_version().unwrap().split(' ').collect::<Vec<&str>>()[0].to_string();
+            let windows_version: String = system.os_version().unwrap().split(' ').collect::<Vec<&str>>()[0].to_owned();
             return (&os_logos_list[format!("Windows{}", if !windows_version.is_empty() {windows_version} else {String::from("11")}).as_str()]).to_string();
         }
 
-        "".to_string()
+        "".to_owned()
     }
 
     pub fn get_host(&self) -> String {
@@ -116,12 +116,12 @@ impl GetInfos {
                 host
             },
             "windows" => {
-                host = return_str_from_command(Command::new("wmic").arg("computersystem").arg("get").arg("manufacturer,model")).replace("Manufacturer  Model", "").replace("     ", " ").trim().to_string();
+                host = return_str_from_command(Command::new("wmic").arg("computersystem").arg("get").arg("manufacturer,model")).replace("Manufacturer  Model", "").replace("     ", " ").trim().to_owned();
                 host
             },
             _ => {
                 // TODO - add other OS
-                "".to_string()
+                "".to_owned()
             }
         }
     }
@@ -133,7 +133,7 @@ impl GetInfos {
         if check_if_env_exist("SHELL") {
             shell_path = get_env("SHELL");
             let shell_name_spliced: Vec<&str> = shell_path.split('/').collect::<Vec<&str>>();
-            shell_name = shell_name_spliced[shell_name_spliced.len() - 1].to_string();
+            shell_name = shell_name_spliced[shell_name_spliced.len() - 1].to_owned();
         }
 
         if !shell_name.is_empty() {
@@ -146,15 +146,15 @@ impl GetInfos {
                 } else if shell_name == "bash" {
                     shell_version = return_str_from_command(Command::new(shell_path).arg("-c").arg("echo $BASH_VERSION"));
                 } else if shell_name == "sh" {
-                    shell_version = return_str_from_command(Command::new("sh").arg("--version")).split("GNU bash, version ").collect::<Vec<&str>>()[1].split(' ').collect::<Vec<&str>>()[0].to_string();
+                    shell_version = return_str_from_command(Command::new("sh").arg("--version")).split("GNU bash, version ").collect::<Vec<&str>>()[1].split(' ').collect::<Vec<&str>>()[0].to_owned();
                 } else if shell_name == "ksh" {
-                    shell_version = return_str_from_command(Command::new("ksh").arg("--version")).split("(AT&T Research) ").collect::<Vec<&str>>()[1].trim().to_string();
+                    shell_version = return_str_from_command(Command::new("ksh").arg("--version")).split("(AT&T Research) ").collect::<Vec<&str>>()[1].trim().to_owned();
                 }
 
-                if !shell_version.is_empty() { shell_name } else { format!("{} {}", shell_name, shell_version) }
+                if shell_version.is_empty() { shell_name } else { format!("{} {}", shell_name, shell_version) }
             }
         }
-        "".to_string()
+        "".to_owned()
     }
     pub fn get_screens_resolution(&self) -> String {
         match std::env::consts::OS {
@@ -165,7 +165,7 @@ impl GetInfos {
                     let mut temp_resolution: Vec<String> = Vec::new();
                     for line in return_str_from_command(Command::new("xrandr").arg("--nograb").arg("--current")).split('\n') {
                         if last_line {
-                            temp_resolution.push(line.trim().split(' ').collect::<Vec<&str>>()[0].to_string());
+                            temp_resolution.push(line.trim().split(' ').collect::<Vec<&str>>()[0].to_owned());
                             last_line = false;
                         } else if line.contains(" connected"){
                             last_line = true;
@@ -180,14 +180,14 @@ impl GetInfos {
                         command.split("Height: ").collect::<Vec<&str>>()[1].split('\n').collect::<Vec<&str>>()[0]
                     );
                 } else if is_command_exist("xdpyinfo") && check_if_env_exist("DISPLAY") && check_if_env_exist("WAYLAND_DISPLAY") {
-                    resolution = return_str_from_command(&mut Command::new("xdpyinfo")).split("dimensions: ").collect::<Vec<&str>>()[1].trim().split(' ').collect::<Vec<&str>>()[0].to_string();
+                    resolution = return_str_from_command(&mut Command::new("xdpyinfo")).split("dimensions: ").collect::<Vec<&str>>()[1].trim().split(' ').collect::<Vec<&str>>()[0].to_owned();
                 } else if Path::new("/sys/class/drm").exists() {
                     let mut temp_resolution: Vec<String> = Vec::new();
                     for path in std::fs::read_dir("/sys/class/drm/").unwrap() {
                         if path.as_ref().unwrap().path().is_dir() {
                             for sub_path in std::fs::read_dir(path.as_ref().unwrap().path().display().to_string()).unwrap() {
                                 if sub_path.as_ref().unwrap().file_name().to_string_lossy().contains("modes")  {
-                                    let first_line: String = std::fs::read_to_string(sub_path.as_ref().unwrap().path().display().to_string().as_str()).unwrap().split('\n').collect::<Vec<&str>>()[0].to_string();
+                                    let first_line: String = std::fs::read_to_string(sub_path.as_ref().unwrap().path().display().to_string().as_str()).unwrap().split('\n').collect::<Vec<&str>>()[0].to_owned();
                                     if !first_line.is_empty() {
                                         temp_resolution.push(first_line);
                                     }
@@ -201,13 +201,13 @@ impl GetInfos {
                 resolution
             },
             "windows" => {
-                let width: String = return_str_from_command(Command::new("wmic").arg("path").arg("Win32_VideoController").arg("get").arg("CurrentHorizontalResolution")).replace("CurrentHorizontalResolution", "").trim().to_string();
-                let height: String = return_str_from_command(Command::new("wmic").arg("path").arg("Win32_VideoController").arg("get").arg("CurrentVerticalResolution")).replace("CurrentVerticalResolution", "").trim().to_string();
+                let width: String = return_str_from_command(Command::new("wmic").arg("path").arg("Win32_VideoController").arg("get").arg("CurrentHorizontalResolution")).replace("CurrentHorizontalResolution", "").trim().to_owned();
+                let height: String = return_str_from_command(Command::new("wmic").arg("path").arg("Win32_VideoController").arg("get").arg("CurrentVerticalResolution")).replace("CurrentVerticalResolution", "").trim().to_owned();
                 format!("{}x{}", width, height)
             },
             _ => {
                 // TODO - add other OS
-                "".to_string()
+                "".to_owned()
             }
         }
     }
@@ -304,23 +304,23 @@ impl GetInfos {
                 if is_command_exist("choco") {
                     let choco_output = return_str_from_command(Command::new("choco").arg("list").arg("--localonly"));
                     let choco_output_split: Vec<&str> = choco_output.split(" packages installed").collect::<Vec<&str>>()[0].split('\n').collect::<Vec<&str>>();
-                    packages_string.push((choco_output_split[choco_output_split.len() - 1]).to_string() + " (chocolatey)");
+                    packages_string.push((choco_output_split[choco_output_split.len() - 1]).to_owned() + " (chocolatey)");
                 }
                 
                 packages_string.join(" ")
             },
             _ => {
                 // TODO - add other OS
-                "".to_string()
+                "".to_owned()
             }
         }
     }
     pub fn get_public_ip(&self) -> String {
-        match minreq::get("https://ipinfo.io/ip").send() {
+        match minreq::get("http://ipinfo.io/ip").send() {
             Ok(response) => {
-                response.as_str().unwrap().to_string()
+                response.as_str().unwrap_or("").to_owned()
             }
-            Err(_) => "".to_string()
+            Err(_) => "".to_owned()
         }
     }
 }
