@@ -1,20 +1,28 @@
-use sysinfo::{System, SystemExt, NetworkExt, DiskExt, CpuExt, Cpu};
 use crate::output::entries_generator::OutputEntriesGenerator;
-use crate::util::utils::convert_to_readable_unity;
 use crate::system::os_infos::GetInfos;
-use whoami::{username, hostname};
 use crate::util::utils;
-use yaml_rust::Yaml;
+use crate::util::utils::convert_to_readable_unity;
 use colored::*;
+use sysinfo::{Cpu, CpuExt, DiskExt, NetworkExt, System, SystemExt};
+use whoami::{hostname, username};
+use yaml_rust::Yaml;
 
 #[derive(Clone, Debug)]
 pub struct OutputBuilder {
-    show_logo: bool, disabled_entries: Vec<String>, fake_logo: String, pub config: Yaml
+    show_logo: bool,
+    disabled_entries: Vec<String>,
+    fake_logo: String,
+    pub config: Yaml,
 }
 
 impl OutputBuilder {
     pub const fn init(config: Yaml) -> Self {
-        Self { show_logo: false, disabled_entries: Vec::new(), fake_logo: String::new(), config }
+        Self {
+            show_logo: false,
+            disabled_entries: Vec::new(),
+            fake_logo: String::new(),
+            config,
+        }
     }
 
     pub const fn show_logo(mut self, status: bool) -> Self {
@@ -23,7 +31,8 @@ impl OutputBuilder {
     }
 
     pub fn disable_entry(mut self, entry: &str) -> Self {
-        self.disabled_entries.push(entry.to_owned().replace(' ', "").to_lowercase());
+        self.disabled_entries
+            .push(entry.to_owned().replace(' ', "").to_lowercase());
         self
     }
 
@@ -47,11 +56,25 @@ impl OutputBuilder {
 
         let mut infos: OutputEntriesGenerator = OutputEntriesGenerator::init();
         infos.add_custom_entry(format!("{}@{}", username, host).cyan().bold().to_string());
-        infos.add_custom_entry(format!("\x1b[0m{}", "─".repeat(username.len() + host.len() + 1)));
+        infos.add_custom_entry(format!(
+            "\x1b[0m{}",
+            "─".repeat(username.len() + host.len() + 1)
+        ));
 
         if !self.disabled_entries.contains(&"os".to_owned()) {
             if system.name().unwrap().to_lowercase().contains("windows") {
-                infos.add_entry("OS", format!("{} {}", system.name().unwrap(), system.os_version().unwrap().split(' ').collect::<Vec<&str>>()[0]));
+                infos.add_entry(
+                    "OS",
+                    format!(
+                        "{} {}",
+                        system.name().unwrap(),
+                        system
+                            .os_version()
+                            .unwrap()
+                            .split(' ')
+                            .collect::<Vec<&str>>()[0]
+                    ),
+                );
             } else {
                 infos.add_entry("OS", system.name().unwrap());
             }
@@ -75,7 +98,14 @@ impl OutputBuilder {
             infos.add_entry("Shell", get_infos.get_shell());
         }
         if !self.disabled_entries.contains(&"memory".to_owned()) {
-            infos.add_entry("Memory", format!("{}/{}", convert_to_readable_unity((system.used_memory() * 1000) as f64), convert_to_readable_unity((system.total_memory() * 1000) as f64)));
+            infos.add_entry(
+                "Memory",
+                format!(
+                    "{}/{}",
+                    convert_to_readable_unity((system.used_memory() * 1000) as f64),
+                    convert_to_readable_unity((system.total_memory() * 1000) as f64)
+                ),
+            );
         }
         if !self.disabled_entries.contains(&"cpu".to_owned()) {
             let cpu_infos: &Cpu = system.global_cpu_info();
@@ -90,7 +120,10 @@ impl OutputBuilder {
             if cpu_name.is_empty() {
                 infos.add_entry("CPU", format!("{:.5}%", cpu_infos.cpu_usage().to_string()));
             } else {
-                infos.add_entry("CPU", format!("{} - {:.5}%", cpu_name, cpu_infos.cpu_usage()));
+                infos.add_entry(
+                    "CPU",
+                    format!("{} - {:.5}%", cpu_name, cpu_infos.cpu_usage()),
+                );
             }
         }
         if !self.disabled_entries.contains(&"network".to_owned()) {
@@ -99,7 +132,14 @@ impl OutputBuilder {
                 network_sent += data.transmitted();
                 network_recv += data.received();
             }
-            infos.add_entry("Network", format!("download: {}/s - upload: {}/s", convert_to_readable_unity(network_sent as f64), convert_to_readable_unity(network_recv as f64)));
+            infos.add_entry(
+                "Network",
+                format!(
+                    "download: {}/s - upload: {}/s",
+                    convert_to_readable_unity(network_sent as f64),
+                    convert_to_readable_unity(network_recv as f64)
+                ),
+            );
         }
         let print_disk: bool = !self.disabled_entries.contains(&"disk".to_owned());
         let print_disks: bool = !self.disabled_entries.contains(&"disks".to_owned());
@@ -112,12 +152,29 @@ impl OutputBuilder {
                     total_disk_used += disk.total_space() - disk.available_space();
                     total_disk_total += disk.total_space();
                     if print_disk {
-                        infos.add_entry(format!("Disk ({})", disk.mount_point().to_str().unwrap_or("")).as_str(), format!("{}/{}", convert_to_readable_unity((disk.total_space() - disk.available_space()) as f64), convert_to_readable_unity(disk.total_space() as f64)));
+                        infos.add_entry(
+                            format!("Disk ({})", disk.mount_point().to_str().unwrap_or(""))
+                                .as_str(),
+                            format!(
+                                "{}/{}",
+                                convert_to_readable_unity(
+                                    (disk.total_space() - disk.available_space()) as f64
+                                ),
+                                convert_to_readable_unity(disk.total_space() as f64)
+                            ),
+                        );
                     }
                 }
             }
             if print_disks {
-                infos.add_entry("Disks", format!("{}/{}", convert_to_readable_unity(total_disk_used as f64), convert_to_readable_unity(total_disk_total as f64)));
+                infos.add_entry(
+                    "Disks",
+                    format!(
+                        "{}/{}",
+                        convert_to_readable_unity(total_disk_used as f64),
+                        convert_to_readable_unity(total_disk_total as f64)
+                    ),
+                );
             }
         }
         if !self.disabled_entries.contains(&"publicip".to_owned()) {
@@ -137,7 +194,7 @@ impl OutputBuilder {
             }
             let lines_count: usize = get_infos.get_os_logo().lines().count();
             if lines_count < infos_vector.len() {
-                for iteration in infos_vector.iter().skip(lines_count)  {
+                for iteration in infos_vector.iter().skip(lines_count) {
                     to_print.push_str(&*format!("{}\n", iteration));
                 }
             }

@@ -7,7 +7,9 @@ pub fn return_str_from_command(command: &mut std::process::Command) -> String {
 }
 
 pub fn get_file_in_one_line(file_path: &str) -> String {
-    std::fs::read_to_string(file_path).unwrap().replace('\n', "")
+    std::fs::read_to_string(file_path)
+        .unwrap()
+        .replace('\n', "")
 }
 
 pub fn is_command_exist(program: &str) -> bool {
