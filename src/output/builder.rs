@@ -62,28 +62,37 @@ impl OutputBuilder {
         ));
 
         if !self.disabled_entries.contains(&"os".to_owned()) {
-            if system.name().unwrap().to_lowercase().contains("windows") {
-                infos.add_entry(
-                    "OS",
-                    format!(
-                        "{} {}",
-                        system.name().unwrap(),
-                        system
-                            .os_version()
-                            .unwrap()
-                            .split(' ')
-                            .collect::<Vec<&str>>()[0]
-                    ),
-                );
-            } else {
-                infos.add_entry("OS", system.name().unwrap());
+            let system_name: String = system.name().unwrap_or("".to_owned());
+            if !system_name.is_empty() {
+                if system_name.to_lowercase().contains("windows") {
+                    infos.add_entry(
+                        "OS",
+                        format!(
+                            "{} {}",
+                            system_name,
+                            system
+                                .os_version()
+                                .unwrap()
+                                .split(' ')
+                                .collect::<Vec<&str>>()[0]
+                        ),
+                    );
+                } else {
+                    infos.add_entry("OS", system_name);
+                }
             }
         }
         if !self.disabled_entries.contains(&"host".to_owned()) {
             infos.add_entry("Host", get_infos.get_host());
         }
         if !self.disabled_entries.contains(&"kernel".to_owned()) {
-            infos.add_entry("Kernel", system.kernel_version().unwrap().replace('\n', ""));
+            infos.add_entry(
+                "Kernel",
+                system
+                    .kernel_version()
+                    .unwrap_or("".to_owned())
+                    .replace('\n', ""),
+            );
         }
         if !self.disabled_entries.contains(&"uptime".to_owned()) {
             infos.add_entry("Uptime", utils::format_time(system.uptime()));
@@ -96,6 +105,9 @@ impl OutputBuilder {
         }
         if !self.disabled_entries.contains(&"shell".to_owned()) {
             infos.add_entry("Shell", get_infos.get_shell());
+        }
+        if !self.disabled_entries.contains(&"terminal".to_owned()) {
+            infos.add_entry("Terminal", get_infos.get_terminal());
         }
         if !self.disabled_entries.contains(&"memory".to_owned()) {
             infos.add_entry(

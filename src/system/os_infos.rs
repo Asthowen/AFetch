@@ -1,3 +1,4 @@
+use crate::system::pid::pid_names_clean;
 use crate::util::os_logos;
 use crate::util::utils::{
     check_if_env_exist, get_env, get_file_in_one_line, is_command_exist, return_str_from_command,
@@ -600,5 +601,41 @@ impl GetInfos {
             Ok(response) => response.as_str().unwrap_or("").to_owned(),
             Err(_) => "".to_owned(),
         }
+    }
+    pub fn get_terminal(&self) -> String {
+        if check_if_env_exist("TERM_PROGRAM") {
+            return match get_env("TERM_PROGRAM").as_str() {
+                "iTerm.app" => "iTerm2".to_owned(),
+                "Terminal.app" => "Apple Terminal".to_owned(),
+                "Hyper" => "HyperTerm".to_owned(),
+                _ => "".to_owned(),
+            };
+        }
+        if check_if_env_exist("TERM") {
+            let term: String = get_env("TERM");
+            if term == "tw52" || term == "tw100" {
+                return "TosWin2".to_owned();
+            }
+        }
+        if check_if_env_exist("SSH_CONNECTION") {
+            return get_env("SSH_TTY");
+        }
+        if check_if_env_exist("WT_SESSION") {
+            return "Windows Terminal".to_owned();
+        }
+
+        let pids: Vec<u32> = crate::system::pid::get_parent_pid(std::process::id());
+        let pids_name: Vec<String> = crate::system::pid::get_pid_names(pids);
+        let pids_name_clean: Vec<String> = pid_names_clean(pids_name);
+        if pids_name_clean.len() != 1 {
+            return "".to_owned();
+        }
+        let terminal_name: String = pids_name_clean[0].clone();
+
+        format!(
+            "{}{}",
+            (&terminal_name[..1].to_string()).to_uppercase(),
+            &terminal_name[1..]
+        )
     }
 }
