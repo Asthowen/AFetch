@@ -62,7 +62,7 @@ impl OutputBuilder {
         ));
 
         if !self.disabled_entries.contains(&"os".to_owned()) {
-            let system_name: String = system.name().unwrap_or("".to_owned());
+            let system_name: String = system.name().unwrap_or_else(|| "".to_owned());
             if !system_name.is_empty() {
                 if system_name.to_lowercase().contains("windows") {
                     infos.add_entry(
@@ -90,7 +90,7 @@ impl OutputBuilder {
                 "Kernel",
                 system
                     .kernel_version()
-                    .unwrap_or("".to_owned())
+                    .unwrap_or_else(|| "".to_owned())
                     .replace('\n', ""),
             );
         }
@@ -102,6 +102,9 @@ impl OutputBuilder {
         }
         if !self.disabled_entries.contains(&"resolution".to_owned()) {
             infos.add_entry("Resolution", get_infos.get_screens_resolution());
+        }
+        if !self.disabled_entries.contains(&"de".to_owned()) {
+            infos.add_entry("DE", get_infos.get_desktop_environment());
         }
         if !self.disabled_entries.contains(&"shell".to_owned()) {
             infos.add_entry("Shell", get_infos.get_shell());
@@ -119,6 +122,7 @@ impl OutputBuilder {
                 ),
             );
         }
+
         if !self.disabled_entries.contains(&"cpu".to_owned()) {
             let cpu_infos: &Cpu = system.global_cpu_info();
             let cpu_name: String = if !cpu_infos.brand().is_empty() {
@@ -192,6 +196,22 @@ impl OutputBuilder {
         if !self.disabled_entries.contains(&"publicip".to_owned()) {
             infos.add_entry("Public IP", get_infos.get_public_ip());
         }
+        if !self.disabled_entries.contains(&"battery".to_owned()) {
+            let manager = battery::Manager::new().unwrap();
+
+            for (idx, maybe_battery) in manager.batteries().unwrap().enumerate() {
+                let battery = maybe_battery.unwrap();
+                println!("Battery #{}:", idx);
+                println!("Vendor: {:?}", battery.vendor());
+                println!("Model: {:?}", battery.model());
+                println!("State: {:?}", battery.state());
+                println!("Time to full charge: {:?}", battery.time_to_full());
+                println!("{:?}", battery.state_of_charge());
+                println!("");
+            }
+
+            // infos.add_entry("Battery", get_infos.get_battery());
+        }
 
         let infos_vector: Vec<String> = infos.get_entries();
         let mut to_print: String = String::new();
@@ -199,15 +219,15 @@ impl OutputBuilder {
         if self.show_logo && !get_infos.get_os_logo().is_empty() {
             for (iteration, line) in get_infos.get_os_logo().lines().enumerate() {
                 if iteration < infos_vector.len() {
-                    to_print.push_str(&*format!("{}    {}\n", line, infos_vector[iteration]));
+                    to_print.push_str(&*format!("{}\x1b[0m    {}\n", line, infos_vector[iteration]));
                 } else {
-                    to_print.push_str(&*format!("{}\n", line));
+                    to_print.push_str(&*format!("{}\x1b[0m\n", line));
                 }
             }
             let lines_count: usize = get_infos.get_os_logo().lines().count();
             if lines_count < infos_vector.len() {
                 for iteration in infos_vector.iter().skip(lines_count) {
-                    to_print.push_str(&*format!("{}\n", iteration));
+                    to_print.push_str(&*format!("{}{}\n", " ".repeat(46), iteration));
                 }
             }
         } else {
