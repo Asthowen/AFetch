@@ -1,33 +1,44 @@
+use crate::system::logos;
 use crate::system::pid::pid_names_clean;
-use crate::util::os_logos;
-use crate::util::utils::{
+use crate::utils::{
     check_if_env_exist, get_env, get_file_in_one_line, is_command_exist, return_str_from_command,
 };
 use std::path::Path;
 use std::process::Command;
 use sysinfo::{System, SystemExt};
 
-pub struct GetInfos {
-    fake_logo: String,
+#[derive(Debug)]
+pub struct Infos {
+    pub sysinfo_obj: System,
 }
 
-impl Default for GetInfos {
-    fn default() -> Self {
-        Self::init("".to_owned())
-    }
-}
-
-impl GetInfos {
-    pub const fn init(fake_logo: String) -> Self {
-        Self { fake_logo }
+impl Infos {
+    pub fn init() -> Self {
+        Self {
+            sysinfo_obj: System::new_all(),
+        }
     }
 
     fn parse_os_release(&self, file_path: &str) -> String {
         let contents: String = std::fs::read_to_string(file_path).unwrap_or_else(|_| "".to_owned());
-        contents.split("NAME=\"").collect::<Vec<&str>>()[1]
-            .split("\"\n")
-            .collect::<Vec<&str>>()[0]
-            .to_owned()
+        let split_lines: Vec<&str> = contents.split("\n").collect::<Vec<&str>>();
+
+        let mut name: &str = "";
+        for value in split_lines {
+            if value.starts_with("ID=") {
+                name = value.split("ID=").collect::<Vec<&str>>()[1]
+                    .split('"')
+                    .collect::<Vec<&str>>()[0];
+                break;
+            } else if value.starts_with("NAME=") {
+                name = value.split("NAME=\"").collect::<Vec<&str>>()[1]
+                    .split('"')
+                    .collect::<Vec<&str>>()[0];
+                break;
+            }
+        }
+
+        name.to_owned()
     }
 
     pub fn get_linux_distribution(&self) -> String {
@@ -73,30 +84,25 @@ impl GetInfos {
         "".to_owned()
     }
 
-    pub fn get_os_logo(&self) -> String {
-        if !self.fake_logo.is_empty() && self.fake_logo != "default" {
-            for (os_name, os_logo) in os_logos::logos_list() {
-                if self.fake_logo.to_lowercase() == os_name.to_lowercase() {
-                    return os_logo;
-                }
-            }
-        }
+    pub fn get_os_logo(&self) -> &str {
         if std::env::consts::OS == "linux" {
-            for (os_name, os_logo) in os_logos::logos_list() {
-                if os_name.to_lowercase()
-                    == self
-                        .get_linux_distribution()
-                        .to_lowercase()
-                        .replace(' ', "")
-                {
+            let current_os_id: String = self
+                .get_linux_distribution()
+                .to_lowercase()
+                .replace(' ', "");
+
+            for (os_name, os_logo) in logos::logos_list() {
+                if os_name.to_lowercase() == current_os_id {
                     return os_logo;
                 }
             }
         } else if std::env::consts::OS == "freebsd" {
-            let os_logos_list: std::collections::HashMap<String, String> = os_logos::logos_list();
-            return (&os_logos_list["FreeBSD"]).to_string();
+            let os_logos_list: std::collections::HashMap<&'static str, &'static str> =
+                logos::logos_list();
+            return &os_logos_list["FreeBSD"];
         } else if std::env::consts::OS == "windows" {
-            let os_logos_list: std::collections::HashMap<String, String> = os_logos::logos_list();
+            let os_logos_list: std::collections::HashMap<&'static str, &'static str> =
+                logos::logos_list();
             let system: System = System::default();
             let windows_version: String = system
                 .os_version()
@@ -104,7 +110,7 @@ impl GetInfos {
                 .split(' ')
                 .collect::<Vec<&str>>()[0]
                 .to_owned();
-            return (&os_logos_list[format!(
+            return &os_logos_list[format!(
                 "Windows{}",
                 if !windows_version.is_empty() {
                     windows_version
@@ -112,11 +118,10 @@ impl GetInfos {
                     String::from("11")
                 }
             )
-            .as_str()])
-                .to_string();
+            .as_str()];
         }
 
-        "".to_owned()
+        ""
     }
 
     pub fn get_host(&self) -> String {
@@ -608,7 +613,8 @@ impl GetInfos {
                 "iTerm.app" => "iTerm2".to_owned(),
                 "Terminal.app" => "Apple Terminal".to_owned(),
                 "Hyper" => "HyperTerm".to_owned(),
-                _ => "".to_owned(),
+                "vscode" => "VSCode".to_owned(),
+                value => value.to_owned(),
             };
         }
         if check_if_env_exist("TERM") {
@@ -634,7 +640,7 @@ impl GetInfos {
 
         format!(
             "{}{}",
-            (&terminal_name[..1].to_string()).to_uppercase(),
+            &terminal_name[..1].to_uppercase(),
             &terminal_name[1..]
         )
     }

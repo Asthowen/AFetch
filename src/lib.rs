@@ -12,6 +12,6 @@
 )]
 #![deny(clippy::needless_return, clippy::str_to_string)]
 
-pub mod output;
 pub mod system;
-pub mod util;
+pub mod translations;
+pub mod utils;
