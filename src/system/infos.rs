@@ -740,15 +740,12 @@ impl Infos {
                 &_ => {}
             }
             version = version
-                .replace("TDE:", "")
                 .replace('\n', "")
-                .replace("plasmashell", "")
-                .replace("tde-config", "")
-                .replace("liblxqt", "")
+                .replace("-", "")
                 .replace([')', '('], "")
                 .replace(r#"\""#, "")
-                .replace(' ', "")
-                .replace("Copyright", "");
+                .replace(' ', "");
+            version = version.chars().filter(|c| c.is_digit(10) || c == &'.').collect();
 
             (de_name, version)
 
