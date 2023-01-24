@@ -1,6 +1,6 @@
 <!--suppress HtmlDeprecatedAttribute -->
 <br>
-<img src="https://raw.githubusercontent.com/Asthowen/AFetch/rewrite/.github/resources/banner.svg" align="center">
+<img src="https://raw.githubusercontent.com/Asthowen/AFetch/main/.github/resources/banner.svg" align="center">
 <br>
 <br>
 <p align="center">
