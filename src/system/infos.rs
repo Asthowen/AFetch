@@ -21,7 +21,7 @@ impl Infos {
 
     fn parse_os_release(&self, file_path: &str) -> String {
         let contents: String = std::fs::read_to_string(file_path).unwrap_or_else(|_| "".to_owned());
-        let split_lines: Vec<&str> = contents.split("\n").collect::<Vec<&str>>();
+        let split_lines: Vec<&str> = contents.split('\n').collect::<Vec<&str>>();
 
         let mut name: &str = "";
         for value in split_lines {
@@ -99,7 +99,7 @@ impl Infos {
         } else if std::env::consts::OS == "freebsd" {
             let os_logos_list: std::collections::HashMap<&'static str, &'static str> =
                 logos::logos_list();
-            return &os_logos_list["FreeBSD"];
+            return os_logos_list["FreeBSD"];
         } else if std::env::consts::OS == "windows" {
             let os_logos_list: std::collections::HashMap<&'static str, &'static str> =
                 logos::logos_list();
@@ -110,7 +110,7 @@ impl Infos {
                 .split(' ')
                 .collect::<Vec<&str>>()[0]
                 .to_owned();
-            return &os_logos_list[format!(
+            return os_logos_list[format!(
                 "Windows{}",
                 if !windows_version.is_empty() {
                     windows_version
@@ -643,5 +643,116 @@ impl Infos {
             &terminal_name[..1].to_uppercase(),
             &terminal_name[1..]
         )
+    }
+    pub fn get_de(&self) -> (String, String) {
+        if std::env::consts::OS == "windows" && check_if_env_exist("distro") {
+            let system: System = System::default();
+
+            let windows_version: String = system
+                .os_version()
+                .unwrap()
+                .split(' ')
+                .collect::<Vec<&str>>()[0]
+                .to_owned();
+            if windows_version == "10" {
+                ("Fluent".to_owned(), "".to_owned())
+            } else if windows_version == "8" {
+                ("Metro".to_owned(), "".to_owned())
+            } else {
+                ("Aero".to_owned(), "".to_owned())
+            }
+        } else if std::env::consts::OS == "macos" {
+            ("Aqua".to_owned(), "".to_owned())
+        } else {
+            let mut de_name: String = "".to_owned();
+            if check_if_env_exist("DESKTOP_SESSION") && get_env("DESKTOP_SESSION") == "regolith" {
+                de_name = "Regolith".to_owned();
+            } else if check_if_env_exist("XDG_CURRENT_DESKTOP") {
+                de_name = get_env("XDG_CURRENT_DESKTOP")
+                    .replace("X-", "")
+                    .replace("Gnome", "Budgie")
+                    .replace("Budgie:GNOME", "Budgie");
+            } else if check_if_env_exist("DESKTOP_SESSION") {
+                de_name = get_env("DESKTOP_SESSION");
+            } else if check_if_env_exist("GNOME_DESKTOP_SESSION_ID") {
+                de_name = "Gnome".to_owned();
+            } else if check_if_env_exist("MATE_DESKTOP_SESSION_ID") {
+                de_name = "Mate".to_owned();
+            } else if check_if_env_exist("TDE_FULL_SESSION") {
+                de_name = "Trinity".to_owned();
+            }
+
+            match de_name.as_str() {
+                "KDE_SESSION_VERSION" => de_name = "KDE".to_owned(),
+                "xfce4" => de_name = "Xfce4".to_owned(),
+                "xfce5" => de_name = "Xfce5".to_owned(),
+                "xfce" => de_name = "Xfce".to_owned(),
+                "mate" => de_name = "Mate".to_owned(),
+                "GNOME" => de_name = "Gnome".to_owned(),
+                "MUFFIN" => de_name = "Cinnamon".to_owned(),
+                &_ => {}
+            }
+            let mut version: String = "".to_owned();
+            match de_name.as_str() {
+                "Plasma" | "KDE" => {
+                    version = return_str_from_command(Command::new("plasmashell").arg("--version"));
+                }
+                "Mate" => {
+                    version =
+                        return_str_from_command(Command::new("mate-session").arg("--version"));
+                }
+                "Gnome" => {
+                    version = return_str_from_command(Command::new("gnome-shell").arg("--version"));
+                }
+                "Xfce" => {
+                    version =
+                        return_str_from_command(Command::new("xfce4-session").arg("--version"));
+                }
+                "Deepin" => {
+                    version = return_str_from_command(
+                        Command::new("awk")
+                            .arg("-F'='")
+                            .arg("'/MajorVersion/ {print $2}'")
+                            .arg("/etc/os-version"),
+                    );
+                }
+                "Cinnamon" => {
+                    version = return_str_from_command(Command::new("cinnamon").arg("--version"));
+                }
+                "Budgie" => {
+                    version =
+                        return_str_from_command(Command::new("budgie-desktop").arg("--version"));
+                }
+                "LXQt" => {
+                    version =
+                        return_str_from_command(Command::new("lxqt-session").arg("--version"));
+                }
+                "Lumina" => {
+                    version =
+                        return_str_from_command(Command::new("lumina-desktop").arg("--version"));
+                }
+                "Trinity" => {
+                    version = return_str_from_command(Command::new("tde-config").arg("--version"));
+                }
+                "Unity" => {
+                    version = return_str_from_command(Command::new("unity").arg("--version"));
+                }
+                &_ => {}
+            }
+            version = version
+                .replace("TDE:", "")
+                .replace('\n', "")
+                .replace("plasmashell", "")
+                .replace("tde-config", "")
+                .replace("liblxqt", "")
+                .replace([')', '('], "")
+                .replace(r#"\""#, "")
+                .replace(' ', "")
+                .replace("Copyright", "");
+
+            (de_name, version)
+
+            // todo hide VM if VM == WM
+        }
     }
 }

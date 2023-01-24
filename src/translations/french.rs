@@ -17,5 +17,6 @@ pub fn french() -> HashMap<&'static str, &'static str> {
         ("label-disk-1", " : "),
         ("label-disks", "Disques : "),
         ("label-public-ip", "IP publique : "),
+        ("label-desktop", "Bureau : "),
     ])
 }
