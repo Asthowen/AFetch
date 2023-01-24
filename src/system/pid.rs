@@ -10,7 +10,7 @@ pub fn get_parent_pid(pid: u32) -> Vec<u32> {
     }
 
     let output: String = String::from_utf8_lossy(&ret.unwrap().stdout).to_string();
-    for pid in output.split("\n") {
+    for pid in output.split('\n') {
         match pid.trim().parse::<u32>() {
             Ok(p) => pids.push(p),
             Err(_) => break,
@@ -31,7 +31,7 @@ pub fn get_pid_names(pids: Vec<u32>) -> Vec<String> {
         names.push(
             String::from_utf8_lossy(&ret.unwrap().stdout)
                 .to_string()
-                .replace("\n", ""),
+                .replace('\n', ""),
         );
     }
     names

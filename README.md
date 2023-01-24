@@ -1,7 +1,8 @@
 <!--suppress HtmlDeprecatedAttribute -->
-<h1 align="center">
-  AFetch
-</h1>
+<br>
+<img src="https://raw.githubusercontent.com/Asthowen/AFetch/main/.github/resources/banner.svg" align="center">
+<br>
+<br>
 <p align="center">
     <a href="https://www.rust-lang.org/">
         <img src="https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white" alt="Made with Rust">
@@ -9,7 +10,6 @@
     <a href="https://github.com/Asthowen/AFetch">
         <img src="https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white" alt="Use git">
     </a>
-    <br>
     <a href="https://github.com/Asthowen/AFetch/blob/main/LICENSE">
         <img src="https://img.shields.io/github/license/Asthowen/AFetch?style=for-the-badge" alt="License">
     </a>
