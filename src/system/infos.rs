@@ -740,12 +740,14 @@ impl Infos {
                 &_ => {}
             }
             version = version
-                .replace('\n', "")
-                .replace("-", "")
+                .replace(['\n', '-'], "")
                 .replace([')', '('], "")
                 .replace(r#"\""#, "")
                 .replace(' ', "");
-            version = version.chars().filter(|c| c.is_digit(10) || c == &'.').collect();
+            version = version
+                .chars()
+                .filter(|c| c.is_ascii_digit() || c == &'.')
+                .collect();
 
             (de_name, version)
 

@@ -37,7 +37,7 @@ fn main() {
     let yaml_to_parse: String = if afetch_config_path.exists() {
         std::fs::read_to_string(afetch_config_path).unwrap()
     } else {
-        let to_write: String = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\n  color:\n    - 255\n    - 255\n    - 255\n  color_header:\n    - 133\n    - 218\n    - 249\ndisabled_entries:\n  - ip".to_owned();
+        let to_write: String = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\n  color:\n    - 255\n    - 255\n    - 255\n  color_header:\n    - 133\n    - 218\n    - 249\ndisabled_entries:\n  - public-ip".to_owned();
         std::fs::write(afetch_config_path, to_write.clone()).unwrap();
         to_write
     };
@@ -86,7 +86,22 @@ fn main() {
     let (username, host) = (username(), hostname());
     let mut infos_to_print: Vec<String> = Vec::new();
     let mut output: String = "".to_owned();
-    infos_to_print.push(format!("{}@{}", username, host).cyan().bold().to_string());
+    infos_to_print.push(format!(
+        "{}@{}",
+        username
+            .truecolor(
+                yaml.logo.color_header[0],
+                yaml.logo.color_header[1],
+                yaml.logo.color_header[2],
+            )
+            .bold(),
+        host.truecolor(
+            yaml.logo.color_header[0],
+            yaml.logo.color_header[1],
+            yaml.logo.color_header[2],
+        )
+        .bold()
+    ));
     infos_to_print.push(format!(
         "\x1b[0m{}",
         "─".repeat(username.len() + host.len() + 1)
@@ -306,7 +321,7 @@ fn main() {
                     yaml.logo.color_header[1],
                     yaml.logo.color_header[2]
                 ),
-                format!("{} - {:.5}%", cpu_name, cpu_infos.cpu_usage()).truecolor(
+                format!("{} - {:.1}%", cpu_name, cpu_infos.cpu_usage()).truecolor(
                     yaml.logo.color[0],
                     yaml.logo.color[1],
                     yaml.logo.color[2]
@@ -328,7 +343,7 @@ fn main() {
                 yaml.logo.color_header[2]
             ),
             format!(
-                "download: {}/s - upload: {}/s",
+                "{}/s ↘  {}/s ↗",
                 convert_to_readable_unity(network_sent as f64),
                 convert_to_readable_unity(network_recv as f64)
             )
@@ -397,7 +412,7 @@ fn main() {
             ));
         }
     }
-    if !yaml.disabled_entries.contains(&"publicip".to_owned()) {
+    if !yaml.disabled_entries.contains(&"public-ip".to_owned()) {
         infos_to_print.push(format!(
             "{}{}",
             language["label-public-ip"].bold().truecolor(
@@ -411,6 +426,19 @@ fn main() {
                 yaml.logo.color[2]
             )
         ));
+    }
+
+    if !yaml.disabled_entries.contains(&"color-blocks".to_owned()) {
+        let mut first_colors: String = "".to_owned();
+        let mut second_colors: String = "".to_owned();
+        for i in 0..8 {
+            first_colors += &format!("\x1b[3{}m███\x1b[0m", i);
+            second_colors += &format!("\x1b[3{};1m███\x1b[0m", i);
+        }
+        infos_to_print.push("".to_owned());
+        infos_to_print.push("".to_owned());
+        infos_to_print.push(first_colors);
+        infos_to_print.push(second_colors);
     }
 
     if let Some(logo) = logo {
