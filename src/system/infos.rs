@@ -42,46 +42,65 @@ impl Infos {
     }
 
     pub fn get_linux_distribution(&self) -> String {
-        if Path::new("/etc/os-release").exists() {
-            return self.parse_os_release("/etc/os-release");
+        let mut distribution_name: String = if Path::new("/etc/os-release").exists() {
+            self.parse_os_release("/etc/os-release")
         } else if Path::new("/usr/lib/os-release").exists() {
-            return self.parse_os_release("/usr/lib/os-release");
+            self.parse_os_release("/usr/lib/os-release")
         } else if Path::new("/etc/openwrt_release").exists() {
-            return self.parse_os_release("/etc/openwrt_release");
+            self.parse_os_release("/etc/openwrt_release")
         } else if Path::new("/etc/lsb-release").exists() {
-            return self.parse_os_release("/etc/lsb-release");
-        } else if Path::new("/bedrock/etc/bedrock-release").exists()
+            self.parse_os_release("/etc/lsb-release")
+        } else if Path::new("/besdrock/etc/bedrock-release").exists()
             && std::env::var("BEDROCK_RESTRICT").is_ok()
         {
-            return "Bedrock Linux".to_owned();
+            "Bedrock Linux".to_owned()
         } else if Path::new("/etc/redstar-release").exists() {
-            return "Red Star OS".to_owned();
+            "Red Star OS".to_owned()
         } else if Path::new("/etc/armbian-release").exists() {
-            return "Armbian".to_owned();
+            "Armbian".to_owned()
         } else if Path::new("/etc/siduction-version").exists() {
-            return "Siduction".to_owned();
+            "Siduction".to_owned()
         } else if Path::new("/etc/mcst_version").exists() {
-            return "OS Elbrus".to_owned();
+            "OS Elbrus".to_owned()
         } else if is_command_exist("pveversion") {
-            return "Proxmox VE".to_owned();
+            "Proxmox VE".to_owned()
         } else if is_command_exist("lsb_release") {
-            return match get_env("DISTRO_SHORTHAND").as_str() {
+            match get_env("DISTRO_SHORTHAND").as_str() {
                 "on" | "off" => return_str_from_command(Command::new("lsb_release").arg("-si")),
                 _ => return_str_from_command(Command::new("lsb_release").arg("-sd")),
-            };
+            }
         } else if Path::new("/etc/GoboLinuxVersion").exists() {
-            return "GoboLinux".to_owned();
+            "GoboLinux".to_owned()
         } else if Path::new("/etc/SDE-VERSION").exists() {
-            return get_file_in_one_line("/etc/SDE-VERSION");
+            get_file_in_one_line("/etc/SDE-VERSION")
         } else if is_command_exist("tazpkg") {
-            return "SliTaz".to_owned();
+            "SliTaz".to_owned()
         } else if is_command_exist("kpt") && is_command_exist("kpm") {
-            return "KSLinux".to_owned();
+            "KSLinux".to_owned()
         } else if Path::new("/system/app/").exists() && Path::new("/system/priv-app").exists() {
-            return "Android".to_owned();
+            "Android".to_owned()
+        } else {
+            "".to_owned()
+        };
+
+        if distribution_name == "Ubuntu" && check_if_env_exist("XDG_CONFIG_DIRS") {
+            let env_value: String = get_env("XDG_CONFIG_DIRS");
+            if env_value.contains("cinnamon") {
+                distribution_name = "Ubuntu Cinnamon".to_owned();
+            } else if env_value.contains("studio") {
+                distribution_name = "Ubuntu Studio".to_owned();
+            } else if env_value.contains("plasma") || env_value.contains("xubuntu") {
+                distribution_name = "Kubuntu".to_owned();
+            } else if env_value.contains("mate") {
+                distribution_name = "Ubuntu Mate".to_owned();
+            } else if env_value.contains("lubuntu") {
+                distribution_name = "Lubuntu".to_owned();
+            } else if env_value.contains("budgie") {
+                distribution_name = "Ubuntu Budgie".to_owned();
+            }
         }
 
-        "".to_owned()
+        distribution_name
     }
 
     pub fn get_os_logo(&self) -> &str {

@@ -37,7 +37,7 @@ fn main() {
     let yaml_to_parse: String = if afetch_config_path.exists() {
         std::fs::read_to_string(afetch_config_path).unwrap()
     } else {
-        let to_write: String = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\n  color:\n    - 255\n    - 255\n    - 255\n  color_header:\n    - 133\n    - 218\n    - 249\ndisabled_entries:\n  - public-ip".to_owned();
+        let to_write: String = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\n  color:\n    - 255\n    - 255\n    - 255\n  color_header:\n    - 133\n    - 218\n    - 249\ndisabled_entries:\n  - public-ip\n  - battery".to_owned();
         std::fs::write(afetch_config_path, to_write.clone()).unwrap();
         to_write
     };
@@ -87,7 +87,7 @@ fn main() {
     let mut infos_to_print: Vec<String> = Vec::new();
     let mut output: String = "".to_owned();
     infos_to_print.push(format!(
-        "{}@{}",
+        "{}{}{}",
         username
             .truecolor(
                 yaml.logo.color_header[0],
@@ -95,6 +95,7 @@ fn main() {
                 yaml.logo.color_header[2],
             )
             .bold(),
+        "@".truecolor(yaml.logo.color[0], yaml.logo.color[1], yaml.logo.color[2]),
         host.truecolor(
             yaml.logo.color_header[0],
             yaml.logo.color_header[1],
@@ -103,8 +104,12 @@ fn main() {
         .bold()
     ));
     infos_to_print.push(format!(
-        "\x1b[0m{}",
-        "─".repeat(username.len() + host.len() + 1)
+        "{}",
+        "─".repeat(username.len() + host.len() + 1).truecolor(
+            yaml.logo.color[0],
+            yaml.logo.color[1],
+            yaml.logo.color[2]
+        )
     ));
 
     if !yaml.disabled_entries.contains(&"os".to_owned()) {
@@ -428,12 +433,36 @@ fn main() {
         ));
     }
 
+    if !yaml.disabled_entries.contains(&"battery".to_owned()) {
+        let manager_result = battery::Manager::new();
+        if let Ok(manager) = manager_result {
+            let batteries_infos_result = manager.batteries();
+            if let Ok(mut batteries_infos) = batteries_infos_result {
+                if let Some(Ok(battery_infos)) = batteries_infos.next() {
+                    infos_to_print.push(format!(
+                        "{}{}%",
+                        language["label-battery"].bold().truecolor(
+                            yaml.logo.color_header[0],
+                            yaml.logo.color_header[1],
+                            yaml.logo.color_header[2]
+                        ),
+                        battery_infos.state_of_charge().value.to_string().truecolor(
+                            yaml.logo.color[0],
+                            yaml.logo.color[1],
+                            yaml.logo.color[2]
+                        )
+                    ));
+                }
+            }
+        }
+    }
+
     if !yaml.disabled_entries.contains(&"color-blocks".to_owned()) {
         let mut first_colors: String = "".to_owned();
         let mut second_colors: String = "".to_owned();
         for i in 0..8 {
-            first_colors += &format!("\x1b[3{}m███\x1b[0m", i);
-            second_colors += &format!("\x1b[3{};1m███\x1b[0m", i);
+            first_colors += &format!("\x1b[4{}m   \x1b[0m", i);
+            second_colors += &format!("\x1b[10{}m   \x1b[0m", i);
         }
         infos_to_print.push("".to_owned());
         infos_to_print.push("".to_owned());
