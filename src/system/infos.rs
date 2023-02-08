@@ -1,13 +1,9 @@
 use crate::system::logos;
-use crate::system::pid::pid_names_clean;
-use crate::utils::{
-    check_if_env_exist, get_env, get_file_in_one_line, is_command_exist, return_str_from_command,
-};
+use crate::utils::{command_exist, env_exist, get_env, get_file_content, return_str_from_command};
 use std::path::Path;
 use std::process::Command;
 use sysinfo::{System, SystemExt};
 
-#[derive(Debug)]
 pub struct Infos {
     pub sysinfo_obj: System,
 }
@@ -20,25 +16,21 @@ impl Infos {
     }
 
     fn parse_os_release(&self, file_path: &str) -> String {
-        let contents: String = std::fs::read_to_string(file_path).unwrap_or_else(|_| "".to_owned());
-        let split_lines: Vec<&str> = contents.split('\n').collect::<Vec<&str>>();
+        let contents = std::fs::read_to_string(file_path).unwrap_or_else(|_| "".to_owned());
+        let split_lines = contents.split('\n');
 
-        let mut name: &str = "";
-        for value in split_lines {
-            if value.starts_with("ID=") {
-                name = value.split("ID=").collect::<Vec<&str>>()[1]
-                    .split('"')
-                    .collect::<Vec<&str>>()[0];
-                break;
-            } else if value.starts_with("NAME=") {
-                name = value.split("NAME=\"").collect::<Vec<&str>>()[1]
-                    .split('"')
-                    .collect::<Vec<&str>>()[0];
-                break;
-            }
-        }
-
-        name.to_owned()
+        split_lines
+            .filter_map(|value| {
+                let mut parts = value.splitn(2, '=');
+                match (parts.next(), parts.next()) {
+                    (Some("ID"), Some(part)) | (Some("NAME"), Some(part)) => Some(part),
+                    _ => None,
+                }
+            })
+            .map(|value| value.trim_matches('"'))
+            .next()
+            .unwrap_or("")
+            .to_owned()
     }
 
     pub fn get_linux_distribution(&self) -> String {
@@ -51,7 +43,7 @@ impl Infos {
         } else if Path::new("/etc/lsb-release").exists() {
             self.parse_os_release("/etc/lsb-release")
         } else if Path::new("/besdrock/etc/bedrock-release").exists()
-            && std::env::var("BEDROCK_RESTRICT").is_ok()
+            && env_exist("BEDROCK_RESTRICT")
         {
             "Bedrock Linux".to_owned()
         } else if Path::new("/etc/redstar-release").exists() {
@@ -62,9 +54,9 @@ impl Infos {
             "Siduction".to_owned()
         } else if Path::new("/etc/mcst_version").exists() {
             "OS Elbrus".to_owned()
-        } else if is_command_exist("pveversion") {
+        } else if command_exist("pveversion") {
             "Proxmox VE".to_owned()
-        } else if is_command_exist("lsb_release") {
+        } else if command_exist("lsb_release") {
             match get_env("DISTRO_SHORTHAND").as_str() {
                 "on" | "off" => return_str_from_command(Command::new("lsb_release").arg("-si")),
                 _ => return_str_from_command(Command::new("lsb_release").arg("-sd")),
@@ -72,10 +64,10 @@ impl Infos {
         } else if Path::new("/etc/GoboLinuxVersion").exists() {
             "GoboLinux".to_owned()
         } else if Path::new("/etc/SDE-VERSION").exists() {
-            get_file_in_one_line("/etc/SDE-VERSION")
-        } else if is_command_exist("tazpkg") {
+            get_file_content("/etc/SDE-VERSION")
+        } else if command_exist("tazpkg") {
             "SliTaz".to_owned()
-        } else if is_command_exist("kpt") && is_command_exist("kpm") {
+        } else if command_exist("kpt") && command_exist("kpm") {
             "KSLinux".to_owned()
         } else if Path::new("/system/app/").exists() && Path::new("/system/priv-app").exists() {
             "Android".to_owned()
@@ -83,7 +75,7 @@ impl Infos {
             "".to_owned()
         };
 
-        if distribution_name == "Ubuntu" && check_if_env_exist("XDG_CONFIG_DIRS") {
+        if distribution_name == "Ubuntu" && env_exist("XDG_CONFIG_DIRS") {
             let env_value: String = get_env("XDG_CONFIG_DIRS");
             if env_value.contains("cinnamon") {
                 distribution_name = "Ubuntu Cinnamon".to_owned();
@@ -155,23 +147,23 @@ impl Infos {
                 } else if Path::new("/sys/devices/virtual/dmi/id/product_name").exists()
                     && Path::new("/sys/devices/virtual/dmi/id/product_version").exists()
                 {
-                    host = get_file_in_one_line("/sys/devices/virtual/dmi/id/product_name");
+                    host = get_file_content("/sys/devices/virtual/dmi/id/product_name");
                     host += " ";
-                    host += get_file_in_one_line("/sys/devices/virtual/dmi/id/product_version")
-                        .as_str();
+                    host +=
+                        get_file_content("/sys/devices/virtual/dmi/id/product_version").as_str();
                 } else if Path::new("/sys/firmware/devicetree/base/model").exists() {
-                    host = get_file_in_one_line("/sys/firmware/devicetree/base/model");
+                    host = get_file_content("/sys/firmware/devicetree/base/model");
                 } else if Path::new("/tmp/sysinfo/model").exists() {
-                    host = get_file_in_one_line("/tmp/sysinfo/model");
+                    host = get_file_content("/tmp/sysinfo/model");
                 }
 
                 if (host.contains("System Product Name") || !host.is_empty())
                     && Path::new("/sys/devices/virtual/dmi/id/board_vendor").exists()
                     && Path::new("/sys/devices/virtual/dmi/id/board_name").exists()
                 {
-                    host = get_file_in_one_line("/sys/devices/virtual/dmi/id/board_vendor");
+                    host = get_file_content("/sys/devices/virtual/dmi/id/board_vendor");
                     host += " ";
-                    host += get_file_in_one_line("/sys/devices/virtual/dmi/id/board_name").as_str();
+                    host += get_file_content("/sys/devices/virtual/dmi/id/board_name").as_str();
                 }
 
                 host
@@ -200,14 +192,14 @@ impl Infos {
         let mut shell_path: String = String::new();
         let mut shell_name: String = String::new();
 
-        if check_if_env_exist("SHELL") {
+        if env_exist("SHELL") {
             shell_path = get_env("SHELL");
             let shell_name_spliced: Vec<&str> = shell_path.split('/').collect::<Vec<&str>>();
             shell_name = shell_name_spliced[shell_name_spliced.len() - 1].to_owned();
         }
 
         if !shell_name.is_empty() {
-            return if check_if_env_exist("SHELL_VERSION") {
+            return if env_exist("SHELL_VERSION") {
                 format!("{} {}", shell_name, get_env("SHELL_VERSION"))
             } else {
                 let mut shell_version: String = String::new();
@@ -249,10 +241,7 @@ impl Infos {
         match std::env::consts::OS {
             "linux" => {
                 let mut resolution: String = String::new();
-                if is_command_exist("xrandr")
-                    && check_if_env_exist("DISPLAY")
-                    && check_if_env_exist("WAYLAND_DISPLAY")
-                {
+                if command_exist("xrandr") && env_exist("DISPLAY") && env_exist("WAYLAND_DISPLAY") {
                     let mut last_line: bool = false;
                     let mut temp_resolution: Vec<String> = Vec::new();
                     for line in return_str_from_command(
@@ -269,9 +258,9 @@ impl Infos {
                         }
                     }
                     resolution = temp_resolution.join(" ");
-                } else if is_command_exist("xwininfo")
-                    && check_if_env_exist("DISPLAY")
-                    && check_if_env_exist("WAYLAND_DISPLAY")
+                } else if command_exist("xwininfo")
+                    && env_exist("DISPLAY")
+                    && env_exist("WAYLAND_DISPLAY")
                 {
                     let command: String =
                         return_str_from_command(Command::new("xwininfo").arg("-root"));
@@ -284,9 +273,9 @@ impl Infos {
                             .split('\n')
                             .collect::<Vec<&str>>()[0]
                     );
-                } else if is_command_exist("xdpyinfo")
-                    && check_if_env_exist("DISPLAY")
-                    && check_if_env_exist("WAYLAND_DISPLAY")
+                } else if command_exist("xdpyinfo")
+                    && env_exist("DISPLAY")
+                    && env_exist("WAYLAND_DISPLAY")
                 {
                     resolution = return_str_from_command(&mut Command::new("xdpyinfo"))
                         .split("dimensions: ")
@@ -374,175 +363,52 @@ impl Infos {
 
         match std::env::consts::OS {
             "linux" | "freebsd" | "solaris" => {
-                if is_command_exist("pacman") {
-                    packages_string.push(format!(
-                        "{} (pacman)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("pacman")
-                                .arg("-Qq")
-                                .arg("--color")
-                                .arg("never"),
-                        ))
-                    ));
+                let package_managers = [
+                    ("pacman", vec!["pacman", "-Qq", "--color", "never"]),
+                    ("kiss", vec!["kiss", "l"]),
+                    ("cpt", vec!["cpt-list"]),
+                    ("dpkg", vec!["dpkg-query", "-f", "'.\n'", "-W"]),
+                    ("xbps-query", vec!["xbps-query", "-l"]),
+                    ("apk", vec!["apk", "info"]),
+                    ("opkg", vec!["opkg", "list-installed"]),
+                    ("pacman-g2", vec!["pacman-g2", "-Q"]),
+                    ("lvu", vec!["lvu", "installed"]),
+                    ("tce", vec!["tce-status", "-i"]),
+                    ("pkg", vec!["pkg_info"]),
+                    ("pkg", vec!["pkg", "info"]),
+                    ("pkgin", vec!["pkgin", "list"]),
+                    (
+                        "tazpkg",
+                        vec!["pkgs_h=6", "tazpkg", "list", "&&", "((packages-=6))"],
+                    ),
+                    ("sorcery", vec!["gaze", "installed"]),
+                    ("alps", vec!["alps", "showinstalled"]),
+                    ("butch", vec!["butch", "list"]),
+                    ("swupd", vec!["swupd", "bundle-list", "--quiet"]),
+                    ("pisi", vec!["pisi", "li"]),
+                    ("pacstall", vec!["pacstall", "-L"]),
+                    ("flatpak", vec!["flatpak", "list"]),
+                    ("spm", vec!["spm", "list", "-i"]),
+                    ("snap", vec!["snap", "list"]),
+                    ("snap", vec!["mine", "-q"]),
+                ];
+
+                for (name, mut args) in package_managers {
+                    let command_name = args[0];
+                    if command_exist(command_name) {
+                        args.remove(0);
+                        packages_string.push(format!(
+                            "{} ({})",
+                            self.count_lines_in_output(return_str_from_command(
+                                Command::new(command_name).args(args)
+                            )),
+                            name
+                        ));
+                    }
                 }
-                if is_command_exist("kiss") {
-                    packages_string.push(format!(
-                        "{} (kiss)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("kiss").arg("l")
-                        ))
-                    ));
-                }
-                if is_command_exist("cpt-list") {
-                    packages_string.push(format!(
-                        "{} (cpt)",
-                        self.count_lines_in_output(return_str_from_command(&mut Command::new(
-                            "cpt-list",
-                        )))
-                    ));
-                }
-                if is_command_exist("dpkg") {
-                    packages_string.push(format!(
-                        "{} (dpkg)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("dpkg-query").arg("-f").arg("'.\n'").arg("-W"),
-                        ))
-                    ));
-                }
-                if is_command_exist("xbps-query") {
-                    packages_string.push(format!(
-                        "{} (xbps-query)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("xbps-query").arg("-l"),
-                        ))
-                    ));
-                }
-                if is_command_exist("apk") {
-                    packages_string.push(format!(
-                        "{} (apk)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("apk").arg("info"),
-                        ))
-                    ));
-                }
-                if is_command_exist("opkg") {
-                    packages_string.push(format!(
-                        "{} (opkg)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("opkg").arg("list-installed"),
-                        ))
-                    ));
-                }
-                if is_command_exist("pacman-g2") {
-                    packages_string.push(format!(
-                        "{} (pacman-g2)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("pacman-g2").arg("-Q"),
-                        ))
-                    ));
-                }
-                if is_command_exist("lvu") {
-                    packages_string.push(format!(
-                        "{} (lvu)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("lvu").arg("installed"),
-                        ))
-                    ));
-                }
-                if is_command_exist("tce-status") {
-                    packages_string.push(format!(
-                        "{} (tce)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("tce-status").arg("-i"),
-                        ))
-                    ));
-                }
-                if is_command_exist("pkg_info") {
-                    packages_string.push(format!(
-                        "{} (pkg)",
-                        self.count_lines_in_output(return_str_from_command(&mut Command::new(
-                            "pkg_info",
-                        )))
-                    ));
-                }
-                if is_command_exist("pkg") {
-                    packages_string.push(format!(
-                        "{} (pkg)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("pkg").arg("info"),
-                        ))
-                    ));
-                }
-                if is_command_exist("pkgin") {
-                    packages_string.push(format!(
-                        "{} (pkgin)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("pkgin").arg("list"),
-                        ))
-                    ));
-                }
-                if is_command_exist("tazpkg") {
-                    packages_string.push(format!(
-                        "{} (tazpkg)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("pkgs_h=6")
-                                .arg("tazpkg")
-                                .arg("list")
-                                .arg("&&")
-                                .arg("((packages-=6))"),
-                        ))
-                    ));
-                }
-                if is_command_exist("sorcery") {
-                    packages_string.push(format!(
-                        "{} (sorcery)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("gaze").arg("installed"),
-                        ))
-                    ));
-                }
-                if is_command_exist("alps") {
-                    packages_string.push(format!(
-                        "{} (alps)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("alps").arg("showinstalled"),
-                        ))
-                    ));
-                }
-                if is_command_exist("butch") {
-                    packages_string.push(format!(
-                        "{} (butch)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("butch").arg("list"),
-                        ))
-                    ));
-                }
-                if is_command_exist("swupd") {
-                    packages_string.push(format!(
-                        "{} (swupd)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("swupd").arg("bundle-list").arg("--quiet"),
-                        ))
-                    ));
-                }
-                if is_command_exist("pisi") {
-                    packages_string.push(format!(
-                        "{} (pisi)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("pisi").arg("li"),
-                        ))
-                    ));
-                }
-                if is_command_exist("pacstall") {
-                    packages_string.push(format!(
-                        "{} (pacstall)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("pacstall").arg("-L"),
-                        ))
-                    ));
-                }
-                if is_command_exist("dnf")
-                    && is_command_exist("sqlite3")
+
+                if command_exist("dnf")
+                    && command_exist("sqlite3")
                     && Path::new("/var/cache/dnf/packages.db").exists()
                 {
                     packages_string.push(format!(
@@ -553,7 +419,7 @@ impl Infos {
                                 .arg(r#""SELECT count(pkg) FROM installed""#),
                         ))
                     ));
-                } else if is_command_exist("rpm") {
+                } else if command_exist("rpm") {
                     packages_string.push(format!(
                         "{} (dnf)",
                         self.count_lines_in_output(return_str_from_command(
@@ -561,43 +427,11 @@ impl Infos {
                         ))
                     ));
                 }
-                if Path::new("/etc/SDE-VERSION").exists() {
-                    packages_string.push(format!(
-                        "{} (mine)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("mine").arg("-q"),
-                        ))
-                    ));
-                }
-                if is_command_exist("flatpak") {
-                    packages_string.push(format!(
-                        "{} (flatpak)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("flatpak").arg("list"),
-                        ))
-                    ));
-                }
-                if is_command_exist("spm") {
-                    packages_string.push(format!(
-                        "{} (spm)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("spm").arg("list").arg("-i"),
-                        ))
-                    ));
-                }
-                if is_command_exist("snap") {
-                    packages_string.push(format!(
-                        "{} (snap)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("snap").arg("list"),
-                        ))
-                    ));
-                }
 
                 packages_string.join(" ")
             }
             "windows" => {
-                if is_command_exist("choco") {
+                if command_exist("choco") {
                     let choco_output: String = return_str_from_command(
                         Command::new("choco").arg("list").arg("--localonly"),
                     );
@@ -627,7 +461,7 @@ impl Infos {
         }
     }
     pub fn get_terminal(&self) -> String {
-        if check_if_env_exist("TERM_PROGRAM") {
+        if env_exist("TERM_PROGRAM") {
             return match get_env("TERM_PROGRAM").as_str() {
                 "iTerm.app" => "iTerm2".to_owned(),
                 "Terminal.app" => "Apple Terminal".to_owned(),
@@ -636,26 +470,36 @@ impl Infos {
                 value => value.to_owned(),
             };
         }
-        if check_if_env_exist("TERM") {
+        if env_exist("TERM") {
             let term: String = get_env("TERM");
             if term == "tw52" || term == "tw100" {
                 return "TosWin2".to_owned();
             }
         }
-        if check_if_env_exist("SSH_CONNECTION") {
+        if env_exist("SSH_CONNECTION") {
             return get_env("SSH_TTY");
         }
-        if check_if_env_exist("WT_SESSION") {
+        if env_exist("WT_SESSION") {
             return "Windows Terminal".to_owned();
         }
 
-        let pids: Vec<u32> = crate::system::pid::get_parent_pid(std::process::id());
-        let pids_name: Vec<String> = crate::system::pid::get_pid_names(pids);
-        let pids_name_clean: Vec<String> = pid_names_clean(pids_name);
-        if pids_name_clean.len() != 1 {
+        let pids: Vec<u32> =
+            if let Ok(pids) = crate::system::pid::get_parent_pids(std::process::id()) {
+                pids
+            } else {
+                return "".to_owned();
+            };
+        let pids_name: Vec<String> = if let Ok(pids_name) = crate::system::pid::get_pid_names(pids)
+        {
+            pids_name
+        } else {
+            return "".to_owned();
+        };
+        let clean_pid_names: Vec<String> = crate::system::pid::clean_pid_names(pids_name);
+        if clean_pid_names.len() != 1 {
             return "".to_owned();
         }
-        let terminal_name: String = pids_name_clean[0].clone();
+        let terminal_name: String = clean_pid_names[0].clone();
 
         format!(
             "{}{}",
@@ -664,7 +508,7 @@ impl Infos {
         )
     }
     pub fn get_de(&self) -> (String, String) {
-        if std::env::consts::OS == "windows" && check_if_env_exist("distro") {
+        if std::env::consts::OS == "windows" && env_exist("distro") {
             let system: System = System::default();
 
             let windows_version: String = system
@@ -684,20 +528,20 @@ impl Infos {
             ("Aqua".to_owned(), "".to_owned())
         } else {
             let mut de_name: String = "".to_owned();
-            if check_if_env_exist("DESKTOP_SESSION") && get_env("DESKTOP_SESSION") == "regolith" {
+            if env_exist("DESKTOP_SESSION") && get_env("DESKTOP_SESSION") == "regolith" {
                 de_name = "Regolith".to_owned();
-            } else if check_if_env_exist("XDG_CURRENT_DESKTOP") {
+            } else if env_exist("XDG_CURRENT_DESKTOP") {
                 de_name = get_env("XDG_CURRENT_DESKTOP")
                     .replace("X-", "")
                     .replace("Gnome", "Budgie")
                     .replace("Budgie:GNOME", "Budgie");
-            } else if check_if_env_exist("DESKTOP_SESSION") {
+            } else if env_exist("DESKTOP_SESSION") {
                 de_name = get_env("DESKTOP_SESSION");
-            } else if check_if_env_exist("GNOME_DESKTOP_SESSION_ID") {
+            } else if env_exist("GNOME_DESKTOP_SESSION_ID") {
                 de_name = "Gnome".to_owned();
-            } else if check_if_env_exist("MATE_DESKTOP_SESSION_ID") {
+            } else if env_exist("MATE_DESKTOP_SESSION_ID") {
                 de_name = "Mate".to_owned();
-            } else if check_if_env_exist("TDE_FULL_SESSION") {
+            } else if env_exist("TDE_FULL_SESSION") {
                 de_name = "Trinity".to_owned();
             }
 

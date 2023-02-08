@@ -29,10 +29,19 @@ struct Config {
 
 fn main() {
     let afetch_config_path: std::path::PathBuf = dirs::config_dir().unwrap_or_else(|| {
-        println!("Your infos.sysinfo_obj is not supported, please open an issue at: https://github.com/Asthowen/AFetch/ so I can add support for your infos.sysinfo_obj.");
+        println!("An error occurred while retrieving the configuration files folder, please open an issue at: https://github.com/Asthowen/AFetch/issues/new so that we can solve your issue.");
         exit(9);
     }).join("afetch").join("config.yaml");
-    std::fs::create_dir_all(afetch_config_path.parent().unwrap()).unwrap();
+
+    if !afetch_config_path.parent().unwrap().exists() {
+        std::fs::create_dir_all(&afetch_config_path).unwrap_or_else(|e| {
+            println!(
+                "An error occurred while creating the configuration files: {}",
+                e.to_string()
+            );
+            exit(9);
+        });
+    }
 
     let yaml_to_parse: String = if afetch_config_path.exists() {
         std::fs::read_to_string(afetch_config_path).unwrap()

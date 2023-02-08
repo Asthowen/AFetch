@@ -3,16 +3,20 @@ pub const fn div_mod(dividend: u64, divisor: u64) -> (u64, u64) {
 }
 
 pub fn return_str_from_command(command: &mut std::process::Command) -> String {
-    String::from_utf8(command.output().unwrap().stdout).unwrap()
+    if let Ok(output) = command.output() {
+        String::from_utf8(output.stdout).unwrap_or_else(|_| "".to_owned())
+    } else {
+        "".to_owned()
+    }
 }
 
-pub fn get_file_in_one_line(file_path: &str) -> String {
+pub fn get_file_content(file_path: &str) -> String {
     std::fs::read_to_string(file_path)
-        .unwrap()
+        .unwrap_or_else(|_| "".to_owned())
         .replace('\n', "")
 }
 
-pub fn is_command_exist(program: &str) -> bool {
+pub fn command_exist(program: &str) -> bool {
     which::which(program).is_ok()
 }
 
@@ -20,21 +24,21 @@ pub fn format_time(time_to_format: u64) -> String {
     let (minutes, seconds): (u64, u64) = div_mod(time_to_format, 60);
     let (hours, minutes): (u64, u64) = div_mod(minutes, 60);
     let (days, hours): (u64, u64) = div_mod(hours, 24);
-    let mut uptime_formatted: Vec<String> = Vec::new();
+    let mut time_formatted: String = String::new();
 
     if days > 0 {
-        uptime_formatted.push(format!("{} days", days));
+        time_formatted.push_str(&format!("{} days", days));
     }
     if hours > 0 {
-        uptime_formatted.push(format!("{} hours", hours));
+        time_formatted.push_str(&format!("{} hours", hours));
     }
     if minutes > 0 {
-        uptime_formatted.push(format!("{} mins", minutes));
+        time_formatted.push_str(&format!("{} mins", minutes));
     }
-    if seconds > 0 && seconds == 0 {
-        uptime_formatted.push(format!("{} seconds", seconds));
+    if seconds > 0 || time_formatted.is_empty() {
+        time_formatted.push_str(&format!("{} seconds", seconds));
     }
-    uptime_formatted.join(", ")
+    time_formatted
 }
 
 // Based on the human_bytes library of Forkbomb9: https://gitlab.com/forkbomb9/human_bytes-rs
@@ -52,14 +56,10 @@ pub fn convert_to_readable_unity<T: Into<f64>>(size: T) -> String {
     result
 }
 
-pub fn check_if_env_exist(env_var: &str) -> bool {
+pub fn env_exist(env_var: &str) -> bool {
     std::env::var(env_var).is_ok()
 }
 
 pub fn get_env(env_var: &str) -> String {
-    if check_if_env_exist(env_var) {
-        std::env::var(env_var).unwrap()
-    } else {
-        "".to_owned()
-    }
+    std::env::var(env_var).unwrap_or_else(|_| "".to_owned())
 }
