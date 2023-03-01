@@ -3,12 +3,9 @@
 <img src="https://raw.githubusercontent.com/Asthowen/AFetch/main/.github/resources/banner.svg" align="center">
 <br>
 <br>
-<p align="center">
+<div align="center">
     <a href="https://www.rust-lang.org/">
         <img src="https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white" alt="Made with Rust">
-    </a>
-    <a href="https://github.com/Asthowen/AFetch">
-        <img src="https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white" alt="Use git">
     </a>
     <a href="https://github.com/Asthowen/AFetch/blob/main/LICENSE">
         <img src="https://img.shields.io/github/license/Asthowen/AFetch?style=for-the-badge" alt="License">
@@ -16,14 +13,21 @@
     <a href="https://github.com/Asthowen/AFetch/stargazers">
         <img src="https://img.shields.io/github/stars/Asthowen/AFetch?style=for-the-badge" alt="Stars">
     </a>
-</p>
-<h3 align="center">
-    <strong>AFetch is a simple fetch program written in Rust.</strong>
-</h3>
+</div>
+<div align="center">
+    <h3>
+        <strong>A CLI system information tool written in Rust.</strong>
+    </h3>
+</div>
 
-> ⚠️ Warning, this software is still in alpha and is absolutely not usable in production! I am not responsible for any damage that could be caused by it.
+## Installation
+### Install with Cargo
+You can use cargo to install the latest version of Afetch:
+```cargo
+cargo install --locked afetch
+```
 
-## Build manually
+### Build manually
 Start by cloning the repo:
 ```bash
 git clone https://github.com/Asthowen/AFetch.git
@@ -35,7 +39,80 @@ Now switch to project folder and compile a release:
 cd AFetch && cargo build --release
 ```
 
-Your executable will be in the `target/release/` folder, it is named `afetch`.
+Your executable will be in the `target/release/` folder, it is named `afetch`.3
+
+## Configuration
+### Locations of the configuration file
+**Linux** -> **`$XDG_CONFIG_HOME/afetch` or `$HOME/.config/afetch`**
+<br>
+**Windows** -> `%APPDATA%\Roaming\afetch`
+<br>
+**MacOS** -> `$HOME/Library/Application Support/afetch`
+
+### Configuration options
+#### - Language
+**Key name**: language
+<br>
+**Description**: The language used by AFetch.
+<br>
+**Available**: auto / fr / en
+<br>
+**Default**: auto
+
+#### - Disable entries
+**Key name**: disabled_entries
+<br>
+**Description**: List of entries to be deactivated.
+<br>
+**Available**: os / host / kernel / uptime / packages / resolution / desktop / shell / terminal / memory / cpu / network / disk / disks / public-ip / battery / color-blocks
+<br>
+**Default**: battery & public-ip
+<br>
+**Example**:
+```yaml
+disabled_entries:
+  - battery
+  - public-ip
+```
+
+#### - Logo
+**Key name**: logo
+<br>
+**Description**: Allows you to customize the logo.
+<br>
+**Example**:
+```yaml
+logo:
+  status: enable # disable / enable
+  char_type: braille # braille / picture
+  picture_path: none # `the file path: eg: ~/pictures/some.png` / none
+```
+
+#### - Text Color
+**Key name**: text_color
+<br>
+**Description**: Allows you to customize the color of printed information.
+<br>
+**Example**:
+```yaml
+text_color:
+  - 255 # r
+  - 255 # g
+  - 255 # b
+```
+
+#### - Text Header Color
+**Key name**: text_color
+<br>
+**Description**: Allows you to customize the color of printed information header.
+<br>
+**Example**:
+```yaml
+text_color_header:
+  - 133 # r
+  - 218 # g
+  - 249 # b
+```
 
 ## Contributors
 [<img width="45" src="https://avatars.githubusercontent.com/u/59535754?v=4" alt="Asthowen">](https://github.com/Asthowen)

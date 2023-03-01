@@ -24,21 +24,21 @@ pub fn format_time(time_to_format: u64) -> String {
     let (minutes, seconds): (u64, u64) = div_mod(time_to_format, 60);
     let (hours, minutes): (u64, u64) = div_mod(minutes, 60);
     let (days, hours): (u64, u64) = div_mod(hours, 24);
-    let mut time_formatted: String = String::new();
+    let mut time_formatted: Vec<String> = Vec::new();
 
     if days > 0 {
-        time_formatted.push_str(&format!("{} days", days));
+        time_formatted.push(format!("{} days", days));
     }
     if hours > 0 {
-        time_formatted.push_str(&format!("{} hours", hours));
+        time_formatted.push(format!("{} hours", hours));
     }
     if minutes > 0 {
-        time_formatted.push_str(&format!("{} mins", minutes));
+        time_formatted.push(format!("{} mins", minutes));
     }
-    if seconds > 0 || time_formatted.is_empty() {
-        time_formatted.push_str(&format!("{} seconds", seconds));
+    if seconds > 0 && hours == 0 {
+        time_formatted.push(format!("{} seconds", seconds));
     }
-    time_formatted
+    time_formatted.join(", ")
 }
 
 // Based on the human_bytes library of Forkbomb9: https://gitlab.com/forkbomb9/human_bytes-rs

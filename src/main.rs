@@ -2,7 +2,7 @@ use afetch::system::infos::Infos;
 use afetch::translations::list::{language_code_list, language_list};
 use afetch::utils;
 use afetch::utils::convert_to_readable_unity;
-use colored::Colorize;
+use colored::{Colorize, CustomColor};
 use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -16,14 +16,14 @@ struct LogoConfig {
     status: String,
     char_type: String,
     picture_path: String,
-    color: Vec<u8>,
-    color_header: Vec<u8>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Config {
     language: String,
     logo: LogoConfig,
+    text_color: Vec<u8>,
+    text_color_header: Vec<u8>,
     disabled_entries: Vec<String>,
 }
 
@@ -33,27 +33,40 @@ fn main() {
         exit(9);
     }).join("afetch").join("config.yaml");
 
-    if !afetch_config_path.parent().unwrap().exists() {
+    if !afetch_config_path.parent().unwrap_or(&afetch_config_path).exists() {
         std::fs::create_dir_all(&afetch_config_path).unwrap_or_else(|e| {
             println!(
                 "An error occurred while creating the configuration files: {}",
-                e.to_string()
+                e
             );
             exit(9);
         });
     }
 
     let yaml_to_parse: String = if afetch_config_path.exists() {
-        std::fs::read_to_string(afetch_config_path).unwrap()
+        std::fs::read_to_string(afetch_config_path).unwrap_or_default()
     } else {
-        let to_write: String = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\n  color:\n    - 255\n    - 255\n    - 255\n  color_header:\n    - 133\n    - 218\n    - 249\ndisabled_entries:\n  - public-ip\n  - battery".to_owned();
-        std::fs::write(afetch_config_path, to_write.clone()).unwrap();
+        let to_write: String = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\ntext_color_header:\n  - 133 # r\n  - 218 # g\n  - 249 # b\ndisabled_entries:\n  - battery\n  - public-ip".to_owned();
+        if let Err(e) = std::fs::write(afetch_config_path, &to_write) {
+            println!(
+                "An error occurred while creating the configuration file: {}",
+                e
+            );
+            exit(9);
+        }
         to_write
     };
     let yaml: Config = serde_yaml::from_str(&yaml_to_parse).unwrap_or_else(|e| {
         println!("Your configuration is malformed ({})", e);
         exit(9);
     });
+    let header_color: CustomColor = CustomColor::new(
+        yaml.text_color_header[0],
+        yaml.text_color_header[1],
+        yaml.text_color_header[2],
+    );
+    let logo_color: CustomColor =
+        CustomColor::new(yaml.text_color[0], yaml.text_color[1], yaml.text_color[2]);
 
     let language: HashMap<&'static str, &'static str> = if yaml.language == "auto" {
         let locale_value_base: String = sys_locale::get_locale()
@@ -78,11 +91,7 @@ fn main() {
 
     let infos: Infos = Infos::init();
     let logo_type: i8 = if yaml.logo.status == "enable" {
-        if yaml.logo.char_type == "braille" {
-            0
-        } else {
-            1
-        }
+        i8::from(yaml.logo.char_type != "braille")
     } else {
         2
     };
@@ -92,33 +101,20 @@ fn main() {
         None
     };
 
-    let (username, host) = (username(), hostname());
+    let (username, host): (String, String) = (username(), hostname());
     let mut infos_to_print: Vec<String> = Vec::new();
     let mut output: String = "".to_owned();
     infos_to_print.push(format!(
         "{}{}{}",
-        username
-            .truecolor(
-                yaml.logo.color_header[0],
-                yaml.logo.color_header[1],
-                yaml.logo.color_header[2],
-            )
-            .bold(),
-        "@".truecolor(yaml.logo.color[0], yaml.logo.color[1], yaml.logo.color[2]),
-        host.truecolor(
-            yaml.logo.color_header[0],
-            yaml.logo.color_header[1],
-            yaml.logo.color_header[2],
-        )
-        .bold()
+        username.custom_color(header_color).bold(),
+        "@".custom_color(logo_color),
+        host.custom_color(header_color).bold()
     ));
     infos_to_print.push(format!(
         "{}",
-        "─".repeat(username.len() + host.len() + 1).truecolor(
-            yaml.logo.color[0],
-            yaml.logo.color[1],
-            yaml.logo.color[2]
-        )
+        "─"
+            .repeat(username.len() + host.len() + 1)
+            .custom_color(logo_color)
     ));
 
     if !yaml.disabled_entries.contains(&"os".to_owned()) {
@@ -128,34 +124,26 @@ fn main() {
                 infos_to_print.push(
                     format!(
                         "{}{} {}",
-                        language["label-os"].bold().truecolor(
-                            yaml.logo.color_header[0],
-                            yaml.logo.color_header[1],
-                            yaml.logo.color_header[2]
-                        ),
+                        language["label-os"].bold().custom_color(header_color),
                         system_name,
                         infos
                             .sysinfo_obj
                             .os_version()
-                            .unwrap()
+                            .unwrap_or_else(|| "   ".to_owned())
                             .split(' ')
                             .collect::<Vec<&str>>()[0]
                     )
-                    .truecolor(yaml.logo.color[0], yaml.logo.color[1], yaml.logo.color[2])
+                    .custom_color(logo_color)
                     .to_string(),
                 );
             } else {
                 infos_to_print.push(
                     format!(
                         "{}{}",
-                        language["label-os"].bold().truecolor(
-                            yaml.logo.color_header[0],
-                            yaml.logo.color_header[1],
-                            yaml.logo.color_header[2]
-                        ),
+                        language["label-os"].bold().custom_color(header_color),
                         system_name
                     )
-                    .truecolor(yaml.logo.color[0], yaml.logo.color[1], yaml.logo.color[2])
+                    .custom_color(logo_color)
                     .to_string(),
                 );
             }
@@ -164,86 +152,50 @@ fn main() {
     if !yaml.disabled_entries.contains(&"host".to_owned()) {
         infos_to_print.push(format!(
             "{}{}",
-            language["label-host"].bold().truecolor(
-                yaml.logo.color_header[0],
-                yaml.logo.color_header[1],
-                yaml.logo.color_header[2]
-            ),
-            infos
-                .get_host()
-                .truecolor(yaml.logo.color[0], yaml.logo.color[1], yaml.logo.color[2])
+            language["label-host"].bold().custom_color(header_color),
+            infos.get_host().custom_color(logo_color)
         ));
     }
     if !yaml.disabled_entries.contains(&"kernel".to_owned()) {
         infos_to_print.push(format!(
             "{}{}",
-            language["label-kernel"].bold().truecolor(
-                yaml.logo.color_header[0],
-                yaml.logo.color_header[1],
-                yaml.logo.color_header[2]
-            ),
+            language["label-kernel"].bold().custom_color(header_color),
             infos
                 .sysinfo_obj
                 .kernel_version()
                 .unwrap_or_else(|| "".to_owned())
                 .replace('\n', "")
-                .truecolor(yaml.logo.color[0], yaml.logo.color[1], yaml.logo.color[2])
+                .custom_color(logo_color)
         ));
     }
     if !yaml.disabled_entries.contains(&"uptime".to_owned()) {
         infos_to_print.push(format!(
             "{}{}",
-            language["label-uptime"].bold().truecolor(
-                yaml.logo.color_header[0],
-                yaml.logo.color_header[1],
-                yaml.logo.color_header[2]
-            ),
-            utils::format_time(infos.sysinfo_obj.uptime()).truecolor(
-                yaml.logo.color[0],
-                yaml.logo.color[1],
-                yaml.logo.color[2]
-            )
+            language["label-uptime"].bold().custom_color(header_color),
+            utils::format_time(infos.sysinfo_obj.uptime()).custom_color(logo_color)
         ));
     }
     if !yaml.disabled_entries.contains(&"packages".to_owned()) {
         infos_to_print.push(format!(
             "{}{}",
-            language["label-packages"].bold().truecolor(
-                yaml.logo.color_header[0],
-                yaml.logo.color_header[1],
-                yaml.logo.color_header[2],
-            ),
-            infos.get_packages_number().truecolor(
-                yaml.logo.color[0],
-                yaml.logo.color[1],
-                yaml.logo.color[2]
-            )
+            language["label-packages"].bold().custom_color(header_color),
+            infos.get_packages_number().custom_color(logo_color)
         ));
     }
     if !yaml.disabled_entries.contains(&"resolution".to_owned()) {
         infos_to_print.push(format!(
             "{}{}",
-            language["label-resolution"].bold().truecolor(
-                yaml.logo.color_header[0],
-                yaml.logo.color_header[1],
-                yaml.logo.color_header[2],
-            ),
-            infos.get_screens_resolution().truecolor(
-                yaml.logo.color[0],
-                yaml.logo.color[1],
-                yaml.logo.color[2]
-            )
+            language["label-resolution"]
+                .bold()
+                .custom_color(header_color),
+            infos.get_screens_resolution().custom_color(logo_color)
         ));
     }
     if !yaml.disabled_entries.contains(&"desktop".to_owned()) {
         let de_infos: (String, String) = infos.get_de();
         infos_to_print.push(format!(
             "{}{}",
-            language["label-desktop"].bold().truecolor(
-                yaml.logo.color_header[0],
-                yaml.logo.color_header[1],
-                yaml.logo.color_header[2],
-            ),
+            language["label-desktop"].bold().custom_color(header_color),
             format!(
                 "{} {}",
                 de_infos.0,
@@ -256,51 +208,33 @@ fn main() {
                     "".to_owned()
                 }
             )
-            .truecolor(yaml.logo.color[0], yaml.logo.color[1], yaml.logo.color[2])
+            .custom_color(logo_color)
         ));
     }
     if !yaml.disabled_entries.contains(&"shell".to_owned()) {
         infos_to_print.push(format!(
             "{}{}",
-            language["label-shell"].bold().truecolor(
-                yaml.logo.color_header[0],
-                yaml.logo.color_header[1],
-                yaml.logo.color_header[2]
-            ),
-            infos
-                .get_shell()
-                .truecolor(yaml.logo.color[0], yaml.logo.color[1], yaml.logo.color[2])
+            language["label-shell"].bold().custom_color(header_color),
+            infos.get_shell().custom_color(logo_color)
         ));
     }
     if !yaml.disabled_entries.contains(&"terminal".to_owned()) {
         infos_to_print.push(format!(
             "{}{}",
-            language["label-terminal"].bold().truecolor(
-                yaml.logo.color_header[0],
-                yaml.logo.color_header[1],
-                yaml.logo.color_header[2]
-            ),
-            infos.get_terminal().truecolor(
-                yaml.logo.color[0],
-                yaml.logo.color[1],
-                yaml.logo.color[2]
-            )
+            language["label-terminal"].bold().custom_color(header_color),
+            infos.get_terminal().custom_color(logo_color)
         ));
     }
     if !yaml.disabled_entries.contains(&"memory".to_owned()) {
         infos_to_print.push(format!(
             "{}{}",
-            language["label-memory"].bold().truecolor(
-                yaml.logo.color_header[0],
-                yaml.logo.color_header[1],
-                yaml.logo.color_header[2]
-            ),
+            language["label-memory"].bold().custom_color(header_color),
             format!(
                 "{}/{}",
                 convert_to_readable_unity(infos.sysinfo_obj.used_memory() as f64),
                 convert_to_readable_unity(infos.sysinfo_obj.total_memory() as f64)
             )
-            .truecolor(yaml.logo.color[0], yaml.logo.color[1], yaml.logo.color[2])
+            .custom_color(logo_color)
         ));
     }
     if !yaml.disabled_entries.contains(&"cpu".to_owned()) {
@@ -316,30 +250,14 @@ fn main() {
         if cpu_name.is_empty() {
             infos_to_print.push(format!(
                 "{}{:.5}%",
-                language["label-cpu"].bold().truecolor(
-                    yaml.logo.color_header[0],
-                    yaml.logo.color_header[1],
-                    yaml.logo.color_header[2]
-                ),
-                cpu_infos.cpu_usage().to_string().truecolor(
-                    yaml.logo.color[0],
-                    yaml.logo.color[1],
-                    yaml.logo.color[2]
-                )
+                language["label-cpu"].bold().custom_color(header_color),
+                cpu_infos.cpu_usage().to_string().custom_color(logo_color)
             ));
         } else {
             infos_to_print.push(format!(
                 "{}{}",
-                language["label-cpu"].bold().truecolor(
-                    yaml.logo.color_header[0],
-                    yaml.logo.color_header[1],
-                    yaml.logo.color_header[2]
-                ),
-                format!("{} - {:.1}%", cpu_name, cpu_infos.cpu_usage()).truecolor(
-                    yaml.logo.color[0],
-                    yaml.logo.color[1],
-                    yaml.logo.color[2]
-                )
+                language["label-cpu"].bold().custom_color(header_color),
+                format!("{} - {:.1}%", cpu_name, cpu_infos.cpu_usage()).custom_color(logo_color)
             ));
         }
     }
@@ -351,17 +269,13 @@ fn main() {
         }
         infos_to_print.push(format!(
             "{}{}",
-            language["label-network"].bold().truecolor(
-                yaml.logo.color_header[0],
-                yaml.logo.color_header[1],
-                yaml.logo.color_header[2]
-            ),
+            language["label-network"].bold().custom_color(header_color),
             format!(
                 "{}/s ↘  {}/s ↗",
                 convert_to_readable_unity(network_sent as f64),
                 convert_to_readable_unity(network_recv as f64)
             )
-            .truecolor(yaml.logo.color[0], yaml.logo.color[1], yaml.logo.color[2])
+            .custom_color(logo_color)
         ));
     }
     let print_disk: bool = !yaml.disabled_entries.contains(&"disk".to_owned());
@@ -377,16 +291,9 @@ fn main() {
                 if print_disk {
                     infos_to_print.push(format!(
                         "{}{}{}",
-                        language["label-disk"].bold().truecolor(
-                            yaml.logo.color_header[0],
-                            yaml.logo.color_header[1],
-                            yaml.logo.color_header[2]
-                        ),
-                        format!("({})", disk.mount_point().to_str().unwrap_or(""),).truecolor(
-                            yaml.logo.color_header[0],
-                            yaml.logo.color_header[1],
-                            yaml.logo.color_header[2]
-                        ),
+                        language["label-disk"].bold().custom_color(header_color),
+                        format!("({})", disk.mount_point().to_str().unwrap_or(""),)
+                            .custom_color(header_color),
                         format!(
                             "{}{}/{}",
                             language["label-disk-1"],
@@ -395,50 +302,31 @@ fn main() {
                             ),
                             convert_to_readable_unity(disk.total_space() as f64)
                         )
-                        .truecolor(
-                            yaml.logo.color[0],
-                            yaml.logo.color[1],
-                            yaml.logo.color[2]
-                        )
+                        .custom_color(logo_color)
                     ));
                 }
             }
         }
         if print_disks {
             infos_to_print.push(format!(
-                "{}{}{}{}",
-                language["label-disks"].bold().truecolor(
-                    yaml.logo.color_header[0],
-                    yaml.logo.color_header[1],
-                    yaml.logo.color_header[2]
-                ),
-                convert_to_readable_unity(total_disk_used as f64).truecolor(
-                    yaml.logo.color[0],
-                    yaml.logo.color[1],
-                    yaml.logo.color[2]
-                ),
-                "/".truecolor(yaml.logo.color[0], yaml.logo.color[1], yaml.logo.color[2]),
-                convert_to_readable_unity(total_disk_total as f64).truecolor(
-                    yaml.logo.color[0],
-                    yaml.logo.color[1],
-                    yaml.logo.color[2]
+                "{}{}",
+                language["label-disks"].bold().custom_color(header_color),
+                format!(
+                    "{}/{}",
+                    convert_to_readable_unity(total_disk_used as f64),
+                    convert_to_readable_unity(total_disk_total as f64)
                 )
+                .custom_color(logo_color)
             ));
         }
     }
     if !yaml.disabled_entries.contains(&"public-ip".to_owned()) {
         infos_to_print.push(format!(
             "{}{}",
-            language["label-public-ip"].bold().truecolor(
-                yaml.logo.color_header[0],
-                yaml.logo.color_header[1],
-                yaml.logo.color_header[2]
-            ),
-            infos.get_public_ip().truecolor(
-                yaml.logo.color[0],
-                yaml.logo.color[1],
-                yaml.logo.color[2]
-            )
+            language["label-public-ip"]
+                .bold()
+                .custom_color(header_color),
+            infos.get_public_ip().custom_color(logo_color)
         ));
     }
 
@@ -449,17 +337,11 @@ fn main() {
             if let Ok(mut batteries_infos) = batteries_infos_result {
                 if let Some(Ok(battery_infos)) = batteries_infos.next() {
                     infos_to_print.push(format!(
-                        "{}{}%",
-                        language["label-battery"].bold().truecolor(
-                            yaml.logo.color_header[0],
-                            yaml.logo.color_header[1],
-                            yaml.logo.color_header[2]
-                        ),
-                        battery_infos.state_of_charge().value.to_string().truecolor(
-                            yaml.logo.color[0],
-                            yaml.logo.color[1],
-                            yaml.logo.color[2]
-                        )
+                        "{}{:.4}%",
+                        language["label-battery"].bold().custom_color(header_color),
+                        (battery_infos.state_of_charge().value * 100.0)
+                            .to_string()
+                            .custom_color(logo_color)
                     ));
                 }
             }
@@ -480,19 +362,23 @@ fn main() {
     }
 
     if let Some(logo) = logo {
-        let mut last_index = 0;
+        let mut last_index: usize = 0;
 
         for (i, info) in infos_to_print.into_iter().enumerate() {
             if logo.len() > i {
                 output += &format!("{}   {}\n", logo[i], info);
+            } else {
+                output += &format!("{}{}\n", " ".repeat(45), info);
             }
             last_index += 1;
         }
+
         if last_index < logo.len() {
             for logo_line in &logo[last_index..] {
                 output += &format!("{}\n", logo_line);
             }
         }
+
         println!("{}", output);
     } else if logo_type == 1 {
         println!();

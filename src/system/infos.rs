@@ -1,6 +1,6 @@
 use crate::system::logos;
 use crate::utils::{command_exist, env_exist, get_env, get_file_content, return_str_from_command};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use sysinfo::{System, SystemExt};
 
@@ -16,7 +16,7 @@ impl Infos {
     }
 
     fn parse_os_release(&self, file_path: &str) -> String {
-        let contents = std::fs::read_to_string(file_path).unwrap_or_else(|_| "".to_owned());
+        let contents = std::fs::read_to_string(file_path).unwrap_or_default();
         let split_lines = contents.split('\n');
 
         split_lines
@@ -29,7 +29,7 @@ impl Infos {
             })
             .map(|value| value.trim_matches('"'))
             .next()
-            .unwrap_or("")
+            .unwrap_or_default()
             .to_owned()
     }
 
@@ -117,7 +117,7 @@ impl Infos {
             let system: System = System::default();
             let windows_version: String = system
                 .os_version()
-                .unwrap()
+                .unwrap_or_default()
                 .split(' ')
                 .collect::<Vec<&str>>()[0]
                 .to_owned();
@@ -286,36 +286,35 @@ impl Infos {
                         .to_owned();
                 } else if Path::new("/sys/class/drm").exists() {
                     let mut temp_resolution: Vec<String> = Vec::new();
-                    for path in std::fs::read_dir("/sys/class/drm/").unwrap() {
-                        if path.as_ref().unwrap().path().is_dir() {
-                            for sub_path in std::fs::read_dir(
-                                path.as_ref().unwrap().path().display().to_string(),
-                            )
-                            .unwrap()
+
+                    let read_dir = if let Ok(read_dir) = std::fs::read_dir("/sys/class/drm/") {
+                        read_dir
+                    } else {
+                        return "".to_owned();
+                    };
+
+                    for path in read_dir.filter_map(Result::ok) {
+                        let path: PathBuf = path.path();
+                        if !path.is_dir() {
+                            continue;
+                        }
+
+                        for sub_path in std::fs::read_dir(path).unwrap().filter_map(Result::ok) {
+                            let sub_path = sub_path.path();
+                            if sub_path
+                                .file_name()
+                                .unwrap_or_default()
+                                .to_string_lossy()
+                                .contains("modes")
                             {
-                                if sub_path
-                                    .as_ref()
-                                    .unwrap()
-                                    .file_name()
-                                    .to_string_lossy()
-                                    .contains("modes")
-                                {
-                                    let first_line: String = std::fs::read_to_string(
-                                        sub_path
-                                            .as_ref()
-                                            .unwrap()
-                                            .path()
-                                            .display()
-                                            .to_string()
-                                            .as_str(),
-                                    )
-                                    .unwrap()
+                                let first_line: String = std::fs::read_to_string(sub_path)
+                                    .unwrap_or_default()
                                     .split('\n')
                                     .collect::<Vec<&str>>()[0]
-                                        .to_owned();
-                                    if !first_line.is_empty() {
-                                        temp_resolution.push(first_line);
-                                    }
+                                    .to_owned();
+
+                                if !first_line.is_empty() {
+                                    temp_resolution.push(first_line);
                                 }
                             }
                         }
@@ -456,7 +455,7 @@ impl Infos {
     }
     pub fn get_public_ip(&self) -> String {
         match minreq::get("http://ipinfo.io/ip").send() {
-            Ok(response) => response.as_str().unwrap_or("").to_owned(),
+            Ok(response) => response.as_str().unwrap_or_default().to_owned(),
             Err(_) => "".to_owned(),
         }
     }
@@ -513,7 +512,7 @@ impl Infos {
 
             let windows_version: String = system
                 .os_version()
-                .unwrap()
+                .unwrap_or_default()
                 .split(' ')
                 .collect::<Vec<&str>>()[0]
                 .to_owned();
