@@ -33,7 +33,11 @@ fn main() {
         exit(9);
     }).join("afetch").join("config.yaml");
 
-    if !afetch_config_path.parent().unwrap_or(&afetch_config_path).exists() {
+    if !afetch_config_path
+        .parent()
+        .unwrap_or(&afetch_config_path)
+        .exists()
+    {
         std::fs::create_dir_all(&afetch_config_path).unwrap_or_else(|e| {
             println!(
                 "An error occurred while creating the configuration files: {}",
@@ -46,7 +50,7 @@ fn main() {
     let yaml_to_parse: String = if afetch_config_path.exists() {
         std::fs::read_to_string(afetch_config_path).unwrap_or_default()
     } else {
-        let to_write: String = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\ntext_color_header:\n  - 133 # r\n  - 218 # g\n  - 249 # b\ndisabled_entries:\n  - battery\n  - public-ip".to_owned();
+        let to_write: String = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\ntext_color_header:\n  - 133 # r\n  - 218 # g\n  - 249 # b\ndisabled_entries:\n  - battery\n  - public-ip\n  - network".to_owned();
         if let Err(e) = std::fs::write(afetch_config_path, &to_write) {
             println!(
                 "An error occurred while creating the configuration file: {}",
@@ -150,11 +154,14 @@ fn main() {
         }
     }
     if !yaml.disabled_entries.contains(&"host".to_owned()) {
-        infos_to_print.push(format!(
-            "{}{}",
-            language["label-host"].bold().custom_color(header_color),
-            infos.get_host().custom_color(logo_color)
-        ));
+        let host: String = infos.get_host();
+        if !host.is_empty() {
+            infos_to_print.push(format!(
+                "{}{}",
+                language["label-host"].bold().custom_color(header_color),
+                host.custom_color(logo_color)
+            ));
+        }
     }
     if !yaml.disabled_entries.contains(&"kernel".to_owned()) {
         infos_to_print.push(format!(
@@ -172,7 +179,7 @@ fn main() {
         infos_to_print.push(format!(
             "{}{}",
             language["label-uptime"].bold().custom_color(header_color),
-            utils::format_time(infos.sysinfo_obj.uptime()).custom_color(logo_color)
+            utils::format_time(infos.sysinfo_obj.uptime(), &language).custom_color(logo_color)
         ));
     }
     if !yaml.disabled_entries.contains(&"packages".to_owned()) {
@@ -183,33 +190,38 @@ fn main() {
         ));
     }
     if !yaml.disabled_entries.contains(&"resolution".to_owned()) {
-        infos_to_print.push(format!(
-            "{}{}",
-            language["label-resolution"]
-                .bold()
-                .custom_color(header_color),
-            infos.get_screens_resolution().custom_color(logo_color)
-        ));
+        let screens_resolution = infos.get_screens_resolution();
+        if !screens_resolution.is_empty() {
+            infos_to_print.push(format!(
+                "{}{}",
+                language["label-resolution"]
+                    .bold()
+                    .custom_color(header_color),
+                screens_resolution.custom_color(logo_color)
+            ));
+        }
     }
     if !yaml.disabled_entries.contains(&"desktop".to_owned()) {
         let de_infos: (String, String) = infos.get_de();
-        infos_to_print.push(format!(
-            "{}{}",
-            language["label-desktop"].bold().custom_color(header_color),
-            format!(
-                "{} {}",
-                de_infos.0,
-                if !yaml
-                    .disabled_entries
-                    .contains(&"desktop-version".to_owned())
-                {
-                    de_infos.1
-                } else {
-                    "".to_owned()
-                }
-            )
-            .custom_color(logo_color)
-        ));
+        if !de_infos.0.is_empty() {
+            infos_to_print.push(format!(
+                "{}{}",
+                language["label-desktop"].bold().custom_color(header_color),
+                format!(
+                    "{} {}",
+                    de_infos.0,
+                    if !yaml
+                        .disabled_entries
+                        .contains(&"desktop-version".to_owned())
+                    {
+                        de_infos.1
+                    } else {
+                        "".to_owned()
+                    }
+                )
+                    .custom_color(logo_color)
+            ));
+        }
     }
     if !yaml.disabled_entries.contains(&"shell".to_owned()) {
         infos_to_print.push(format!(
@@ -219,11 +231,14 @@ fn main() {
         ));
     }
     if !yaml.disabled_entries.contains(&"terminal".to_owned()) {
-        infos_to_print.push(format!(
-            "{}{}",
-            language["label-terminal"].bold().custom_color(header_color),
-            infos.get_terminal().custom_color(logo_color)
-        ));
+        let terminal: String = infos.get_terminal();
+        if !terminal.is_empty() {
+            infos_to_print.push(format!(
+                "{}{}",
+                language["label-terminal"].bold().custom_color(header_color),
+                terminal.custom_color(logo_color)
+            ));
+        }
     }
     if !yaml.disabled_entries.contains(&"memory".to_owned()) {
         infos_to_print.push(format!(

@@ -2,6 +2,14 @@ use std::collections::HashMap;
 
 pub fn french() -> HashMap<&'static str, &'static str> {
     HashMap::from_iter(vec![
+        ("days", "jours"),
+        ("hours", "heures"),
+        ("minutes", "minutes"),
+        ("seconds", "secondes"),
+        ("day", "jour"),
+        ("hour", "heure"),
+        ("minute", "minute"),
+        ("second", "seconde"),
         ("label-os", "OS : "),
         ("label-host", "Hôte : "),
         ("label-kernel", "Noyau : "),

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 pub const fn div_mod(dividend: u64, divisor: u64) -> (u64, u64) {
     (dividend / divisor, dividend % divisor)
 }
@@ -20,23 +22,36 @@ pub fn command_exist(program: &str) -> bool {
     which::which(program).is_ok()
 }
 
-pub fn format_time(time_to_format: u64) -> String {
+pub fn format_time(time_to_format: u64, language: &HashMap<&'static str, &'static str>) -> String {
     let (minutes, seconds): (u64, u64) = div_mod(time_to_format, 60);
     let (hours, minutes): (u64, u64) = div_mod(minutes, 60);
     let (days, hours): (u64, u64) = div_mod(hours, 24);
     let mut time_formatted: Vec<String> = Vec::new();
 
-    if days > 0 {
-        time_formatted.push(format!("{} days", days));
+    match days {
+        0 => (),
+        1 => time_formatted.push(format!("{} {}", days, language["day"])),
+        _ => time_formatted.push(format!("{} {}", days, language["days"])),
     }
-    if hours > 0 {
-        time_formatted.push(format!("{} hours", hours));
+
+    match hours {
+        0 => (),
+        1 => time_formatted.push(format!("{} {}", hours, language["hour"])),
+        _ => time_formatted.push(format!("{} {}", hours, language["hours"])),
     }
-    if minutes > 0 {
-        time_formatted.push(format!("{} mins", minutes));
+
+    match minutes {
+        0 => (),
+        1 => time_formatted.push(format!("{} {}", minutes, language["minute"])),
+        _ => time_formatted.push(format!("{} {}", minutes, language["minutes"])),
     }
+
     if seconds > 0 && hours == 0 {
-        time_formatted.push(format!("{} seconds", seconds));
+        match minutes {
+            0 => (),
+            1 => time_formatted.push(format!("{} {}", seconds, language["second"])),
+            _ => time_formatted.push(format!("{} {}", seconds, language["seconds"])),
+        }
     }
     time_formatted.join(", ")
 }

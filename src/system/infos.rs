@@ -16,21 +16,17 @@ impl Infos {
     }
 
     fn parse_os_release(&self, file_path: &str) -> String {
-        let contents = std::fs::read_to_string(file_path).unwrap_or_default();
-        let split_lines = contents.split('\n');
-
-        split_lines
-            .filter_map(|value| {
-                let mut parts = value.splitn(2, '=');
-                match (parts.next(), parts.next()) {
-                    (Some("ID"), Some(part)) | (Some("NAME"), Some(part)) => Some(part),
-                    _ => None,
+        let contents: String = std::fs::read_to_string(file_path).unwrap_or_default();
+        contents
+            .lines()
+            .find_map(|line| {
+                if let Some(("ID", part)) | Some(("NAME", part)) = line.split_once('=') {
+                    Some(part.trim_matches('"').to_owned())
+                } else {
+                    None
                 }
             })
-            .map(|value| value.trim_matches('"'))
-            .next()
             .unwrap_or_default()
-            .to_owned()
     }
 
     pub fn get_linux_distribution(&self) -> String {
@@ -136,7 +132,7 @@ impl Infos {
     }
 
     pub fn get_host(&self) -> String {
-        let mut host = String::new();
+        let mut host = String::default();
         match std::env::consts::OS {
             "linux" => {
                 if Path::new("/system/app/").exists() && Path::new("/system/priv-app").exists() {
@@ -189,8 +185,8 @@ impl Infos {
     }
 
     pub fn get_shell(&self) -> String {
-        let mut shell_path: String = String::new();
-        let mut shell_name: String = String::new();
+        let mut shell_path: String = String::default();
+        let mut shell_name: String = String::default();
 
         if env_exist("SHELL") {
             shell_path = get_env("SHELL");
@@ -202,7 +198,7 @@ impl Infos {
             return if env_exist("SHELL_VERSION") {
                 format!("{} {}", shell_name, get_env("SHELL_VERSION"))
             } else {
-                let mut shell_version: String = String::new();
+                let mut shell_version: String = String::default();
                 if shell_name == "fish" {
                     shell_version =
                         return_str_from_command(Command::new(shell_path).arg("--version"))
@@ -240,14 +236,15 @@ impl Infos {
     pub fn get_screens_resolution(&self) -> String {
         match std::env::consts::OS {
             "linux" => {
-                let mut resolution: String = String::new();
-                if command_exist("xrandr") && env_exist("DISPLAY") && env_exist("WAYLAND_DISPLAY") {
+                let mut resolution: String = String::default();
+                if command_exist("xrandr") && env_exist("DISPLAY") && !env_exist("WAYLAND_DISPLAY")
+                {
                     let mut last_line: bool = false;
                     let mut temp_resolution: Vec<String> = Vec::new();
                     for line in return_str_from_command(
                         Command::new("xrandr").arg("--nograb").arg("--current"),
                     )
-                    .split('\n')
+                    .lines()
                     {
                         if last_line {
                             temp_resolution
@@ -260,22 +257,22 @@ impl Infos {
                     resolution = temp_resolution.join(" ");
                 } else if command_exist("xwininfo")
                     && env_exist("DISPLAY")
-                    && env_exist("WAYLAND_DISPLAY")
+                    && !env_exist("WAYLAND_DISPLAY")
                 {
                     let command: String =
                         return_str_from_command(Command::new("xwininfo").arg("-root"));
                     resolution = format!(
                         "{}x{}",
                         command.split("Width: ").collect::<Vec<&str>>()[1]
-                            .split('\n')
+                            .lines()
                             .collect::<Vec<&str>>()[0],
                         command.split("Height: ").collect::<Vec<&str>>()[1]
-                            .split('\n')
+                            .lines()
                             .collect::<Vec<&str>>()[0]
                     );
                 } else if command_exist("xdpyinfo")
                     && env_exist("DISPLAY")
-                    && env_exist("WAYLAND_DISPLAY")
+                    && !env_exist("WAYLAND_DISPLAY")
                 {
                     resolution = return_str_from_command(&mut Command::new("xdpyinfo"))
                         .split("dimensions: ")
@@ -309,7 +306,7 @@ impl Infos {
                             {
                                 let first_line: String = std::fs::read_to_string(sub_path)
                                     .unwrap_or_default()
-                                    .split('\n')
+                                    .lines()
                                     .collect::<Vec<&str>>()[0]
                                     .to_owned();
 
@@ -354,7 +351,7 @@ impl Infos {
         }
     }
     fn count_lines_in_output(&self, output: String) -> usize {
-        output.split('\n').count()
+        output.lines().count()
     }
 
     pub fn get_packages_number(&self) -> String {
@@ -437,7 +434,7 @@ impl Infos {
                     let choco_output_split: Vec<&str> = choco_output
                         .split(" packages installed")
                         .collect::<Vec<&str>>()[0]
-                        .split('\n')
+                        .lines()
                         .collect::<Vec<&str>>();
                     packages_string.push(format!(
                         "{} (chocolatey)",
@@ -557,7 +554,8 @@ impl Infos {
             let mut version: String = "".to_owned();
             match de_name.as_str() {
                 "Plasma" | "KDE" => {
-                    version = return_str_from_command(Command::new("plasmashell").arg("--version"));
+                    version = return_str_from_command(Command::new("plasmashell").arg("--version"))
+                        .replace("plasmashell", "");
                 }
                 "Mate" => {
                     version =
@@ -607,8 +605,7 @@ impl Infos {
                 .replace(r#"\""#, "")
                 .replace(' ', "");
             version = version
-                .chars()
-                .filter(|c| c.is_ascii_digit() || c == &'.')
+                .matches(|c: char| !c.is_ascii_digit() || c != '.')
                 .collect();
 
             (de_name, version)

@@ -1,20 +1,20 @@
 <!--suppress HtmlDeprecatedAttribute -->
-<br>
-<img src="https://raw.githubusercontent.com/Asthowen/AFetch/main/.github/resources/banner.svg" align="center">
-<br>
-<br>
 <div align="center">
-    <a href="https://www.rust-lang.org/">
-        <img src="https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white" alt="Made with Rust">
-    </a>
-    <a href="https://github.com/Asthowen/AFetch/blob/main/LICENSE">
-        <img src="https://img.shields.io/github/license/Asthowen/AFetch?style=for-the-badge" alt="License">
-    </a>
-    <a href="https://github.com/Asthowen/AFetch/stargazers">
-        <img src="https://img.shields.io/github/stars/Asthowen/AFetch?style=for-the-badge" alt="Stars">
-    </a>
-</div>
-<div align="center">
+    <br>
+    <img src="https://raw.githubusercontent.com/Asthowen/AFetch/main/.github/resources/banner.svg" align="center">
+    <br>
+    <br>
+    <div>
+        <a href="https://www.rust-lang.org/">
+            <img src="https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white" alt="Made with Rust">
+        </a>
+        <a href="https://github.com/Asthowen/AFetch/blob/main/LICENSE">
+            <img src="https://img.shields.io/github/license/Asthowen/AFetch?style=for-the-badge" alt="License">
+        </a>
+        <a href="https://github.com/Asthowen/AFetch/stargazers">
+            <img src="https://img.shields.io/github/stars/Asthowen/AFetch?style=for-the-badge" alt="Stars">
+        </a>
+    </div>
     <h3>
         <strong>A CLI system information tool written in Rust.</strong>
     </h3>
@@ -43,7 +43,7 @@ Your executable will be in the `target/release/` folder, it is named `afetch`.3
 
 ## Configuration
 ### Locations of the configuration file
-**Linux** -> **`$XDG_CONFIG_HOME/afetch` or `$HOME/.config/afetch`**
+**Linux** -> `$XDG_CONFIG_HOME/afetch` or `$HOME/.config/afetch`
 <br>
 **Windows** -> `%APPDATA%\Roaming\afetch`
 <br>
