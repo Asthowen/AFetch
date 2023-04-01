@@ -381,7 +381,7 @@ fn main() {
 
         for (i, info) in infos_to_print.into_iter().enumerate() {
             if logo.len() > i {
-                output += &format!("{}   {}\n", logo[i], info);
+                output += &format!("{}{}   {}\n", logo[i], "".white(), info);
             } else {
                 output += &format!("{}{}\n", " ".repeat(45), info);
             }

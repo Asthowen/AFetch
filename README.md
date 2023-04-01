@@ -64,15 +64,16 @@ Your executable will be in the `target/release/` folder, it is named `afetch`.3
 <br>
 **Description**: List of entries to be deactivated.
 <br>
-**Available**: os / host / kernel / uptime / packages / resolution / desktop / shell / terminal / memory / cpu / network / disk / disks / public-ip / battery / color-blocks
+**Available**: os / host / kernel / uptime / packages / resolution / desktop / desktop-version / shell / terminal / memory / cpu / network / disk / disks / public-ip / battery / color-blocks
 <br>
-**Default**: battery & public-ip
+**Default**: network, battery & public-ip
 <br>
 **Example**:
 ```yaml
 disabled_entries:
   - battery
   - public-ip
+  - network
 ```
 
 #### - Logo
