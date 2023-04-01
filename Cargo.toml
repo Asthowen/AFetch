@@ -17,8 +17,8 @@ strip = true
 lto = true
 
 [dependencies]
-colored = { version = "2.0.0", git = "https://github.com/mackwic/colored.git" }
 serde = { version = "1.0.159", features = ["derive"] }
+afetch-colored = "2.0.1"
 serde_yaml = "0.9.19"
 sys-locale = "0.2.4"
 sysinfo = "0.28.4"

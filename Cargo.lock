@@ -12,8 +12,8 @@ checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 name = "afetch"
 version = "0.0.2"
 dependencies = [
+ "afetch-colored",
  "battery",
- "colored",
  "dirs",
  "image",
  "minreq",
@@ -24,6 +24,17 @@ dependencies = [
  "viuer",
  "which",
  "whoami",
+]
+
+[[package]]
+name = "afetch-colored"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46cf372dab8b9f9783dec4b3d2d2aeaf9a75edf13428734e28f8f81463846415"
+dependencies = [
+ "atty",
+ "lazy_static",
+ "winapi",
 ]
 
 [[package]]
@@ -122,16 +133,6 @@ name = "color_quant"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
-
-[[package]]
-name = "colored"
-version = "2.0.0"
-source = "git+https://github.com/mackwic/colored.git#11ffd20e7b5d1b48e4de7bb78ced26131ae5e114"
-dependencies = [
- "atty",
- "lazy_static",
- "winapi",
-]
 
 [[package]]
 name = "console"

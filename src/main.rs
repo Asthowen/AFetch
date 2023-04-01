@@ -2,7 +2,7 @@ use afetch::system::infos::Infos;
 use afetch::translations::list::{language_code_list, language_list};
 use afetch::utils;
 use afetch::utils::convert_to_readable_unity;
-use colored::{Colorize, CustomColor};
+use afetch_colored::{Colorize, CustomColor};
 use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
