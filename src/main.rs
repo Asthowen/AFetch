@@ -93,7 +93,19 @@ fn main() {
         language_list()["en"].clone()
     };
 
-    let infos: Infos = Infos::init();
+    let cli_args: Vec<_> = std::env::args().collect();
+    let search_logo_arg_opt = cli_args.iter().position(|r| r.to_lowercase() == "--logo");
+    let custom_logo: Option<String> = if let Some(search_logo_arg) = search_logo_arg_opt {
+        if let Some(logo) = cli_args.get(search_logo_arg + 1) {
+            Option::from(logo.to_lowercase())
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let infos: Infos = Infos::init(custom_logo);
     let logo_type: i8 = if yaml.logo.status == "enable" {
         i8::from(yaml.logo.char_type != "braille")
     } else {
@@ -219,7 +231,7 @@ fn main() {
                         "".to_owned()
                     }
                 )
-                    .custom_color(logo_color)
+                .custom_color(logo_color)
             ));
         }
     }

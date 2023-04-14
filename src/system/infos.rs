@@ -6,12 +6,14 @@ use sysinfo::{System, SystemExt};
 
 pub struct Infos {
     pub sysinfo_obj: System,
+    pub custom_logo: Option<String>,
 }
 
 impl Infos {
-    pub fn init() -> Self {
+    pub fn init(custom_logo: Option<String>) -> Self {
         Self {
             sysinfo_obj: System::new_all(),
+            custom_logo,
         }
     }
 
@@ -92,7 +94,13 @@ impl Infos {
     }
 
     pub fn get_os_logo(&self) -> &str {
-        if std::env::consts::OS == "linux" {
+        if let Some(logo) = self.custom_logo.clone() {
+            for (os_name, os_logo) in logos::logos_list() {
+                if os_name.to_lowercase() == logo {
+                    return os_logo;
+                }
+            }
+        } else if std::env::consts::OS == "linux" {
             let current_os_id: String = self
                 .get_linux_distribution()
                 .to_lowercase()
