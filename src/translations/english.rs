@@ -18,6 +18,7 @@ pub fn english() -> HashMap<&'static str, &'static str> {
         ("label-resolution", "Resolution: "),
         ("label-shell", "Shell: "),
         ("label-terminal", "Terminal: "),
+        ("label-terminal-font", "Font: "),
         ("label-memory", "Memory: "),
         ("label-cpu", "CPU: "),
         ("label-network", "Network: "),

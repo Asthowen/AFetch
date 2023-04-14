@@ -252,6 +252,18 @@ fn main() {
             ));
         }
     }
+    if !yaml.disabled_entries.contains(&"terminal_font".to_owned()) {
+        let terminal: String = infos.get_terminal_font();
+        if !terminal.is_empty() {
+            infos_to_print.push(format!(
+                "{}{}",
+                language["label-terminal-font"]
+                    .bold()
+                    .custom_color(header_color),
+                terminal.custom_color(logo_color)
+            ));
+        }
+    }
     if !yaml.disabled_entries.contains(&"memory".to_owned()) {
         infos_to_print.push(format!(
             "{}{}",

@@ -470,7 +470,7 @@ impl Infos {
                 "iTerm.app" => "iTerm2".to_owned(),
                 "Terminal.app" => "Apple Terminal".to_owned(),
                 "Hyper" => "HyperTerm".to_owned(),
-                "vscode" => "VSCode".to_owned(),
+                "vscode " => "VSCode".to_owned(),
                 value => value.to_owned(),
             };
         }
@@ -510,6 +510,178 @@ impl Infos {
             &terminal_name[..1].to_uppercase(),
             &terminal_name[1..]
         )
+    }
+    pub fn get_terminal_font(&self) -> String {
+        let mut term_font = String::new();
+
+        let terminal_name = if env_exist("TERM") && !get_env("TERM").starts_with("xterm") {
+            get_env("TERM")
+        } else {
+            self.get_terminal()
+        };
+
+        if !terminal_name.is_empty() {
+            match terminal_name.to_lowercase().as_str() {
+                "alacritty" => {
+                    let xdg_config_home = get_env("XDG_CONFIG_HOME");
+                    let home = get_env("HOME");
+                    let confs = vec![
+                        format!("{}/alacritty.yml", xdg_config_home),
+                        format!("{}/alacritty.yml", home),
+                        format!("{}/.alacritty.yml", xdg_config_home),
+                        format!("{}/.alacritty.yml", home),
+                    ];
+
+                    for conf in confs {
+                        if let Ok(contents) = std::fs::read_to_string(&conf) {
+                            println!("ok");
+                            if let Some(line) = contents
+                                .lines()
+                                .find(|line| line.contains("normal:") && line.contains("family:"))
+                            {
+                                term_font = line
+                                    .chars()
+                                    .skip_while(|c| c != &'\"')
+                                    .skip(1)
+                                    .take_while(|c| c != &'\"')
+                                    .collect();
+                                break;
+                            }
+                        }
+                    }
+                }
+                "Apple_Terminal" => {
+                    term_font =
+                        return_str_from_command(Command::new("osascript").arg("-e").arg(
+                            r#"tell application "Terminal" to font name of window frontmost"#,
+                        ));
+                }
+                "iTerm2" => {
+                    let current_profile_name = return_str_from_command(Command::new("osascript")
+                        .arg("-e")
+                        .arg(r#"tell application "iTerm2" to profile name of current session of current window"#)).trim().to_owned();
+
+                    let font_file = format!(
+                        "{}/Library/Preferences/com.googlecode.iterm2.plist",
+                        env!("HOME")
+                    );
+
+                    let profiles_count =
+                        return_str_from_command(Command::new("PlistBuddy").args(&[
+                            "-c",
+                            "Print ':New Bookmarks:'",
+                            &font_file,
+                        ]))
+                        .split("Guid")
+                        .count()
+                            - 1;
+
+                    for i in 0..profiles_count {
+                        let profile_name =
+                            return_str_from_command(Command::new("PlistBuddy").args(&[
+                                "-c",
+                                &format!("Print ':New Bookmarks:{}:Name:'", i),
+                                &font_file,
+                            ]))
+                            .trim()
+                            .to_owned();
+
+                        if profile_name == current_profile_name {
+                            let temp_term_font: String =
+                                return_str_from_command(Command::new("PlistBuddy").args(&[
+                                    "-c",
+                                    &format!("Print ':New Bookmarks:{}:Normal Font:'", i),
+                                    &font_file,
+                                ]))
+                                .trim()
+                                .to_owned();
+
+                            let diff_font: String =
+                                return_str_from_command(Command::new("PlistBuddy").args(&[
+                                    "-c",
+                                    &format!("Print ':New Bookmarks:{}:Use Non-ASCII Font:'", i),
+                                    &font_file,
+                                ]))
+                                .trim()
+                                .to_owned();
+
+                            if diff_font == "true" {
+                                let non_ascii: String =
+                                    return_str_from_command(Command::new("PlistBuddy").args(&[
+                                        "-c",
+                                        &format!("Print ':New Bookmarks:{}:Non Ascii Font:'", i),
+                                        &font_file,
+                                    ]))
+                                    .trim()
+                                    .to_owned();
+
+                                if temp_term_font != non_ascii {
+                                    term_font = format!(
+                                        "{} (normal) / {} (non-ascii)",
+                                        temp_term_font, non_ascii
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                "deepin-terminal" => {
+                    let config_file = format!(
+                        "{}/deepin/deepin-terminal/config.conf",
+                        std::env::var("XDG_CONFIG_HOME")
+                            .unwrap_or_else(|_| format!("{}/.config", get_env("HOME")))
+                    );
+
+                    for line in get_file_content(&config_file).lines() {
+                        if line.contains("font=") {
+                            term_font.push_str(line.split('=').nth(1).unwrap_or("").trim());
+                            term_font.push(' ');
+                        }
+                        if line.contains("font_size=") {
+                            term_font.push_str(line.split('=').nth(1).unwrap_or("").trim());
+                            break;
+                        }
+                    }
+                }
+                "GNUstep_Terminal" => {
+                    let file_content = get_file_content(&format!(
+                        "{}/GNUstep/Defaults/Terminal.plist",
+                        get_env("HOME")
+                    ));
+                    term_font = file_content
+                        .lines()
+                        .filter(|line| {
+                            line.contains("TerminalFont") || line.contains("TerminalFontSize")
+                        })
+                        .map(|line| line.trim_matches(|c| c == '<' || c == '>' || c == '/'))
+                        .collect::<Vec<&str>>()
+                        .join(" ");
+                }
+                "Hyper" => {
+                    let content = get_file_content(&format!("{}/.hyper.js", get_env("HOME")));
+
+                    let temp_term_font: Option<&str> = match content.split("fontFamily\":").nth(1) {
+                        Some(s) => s.split(',').next(),
+                        None => None,
+                    };
+
+                    term_font = match temp_term_font {
+                        Some(s) => s.trim_matches('"').to_owned(),
+                        None => "".to_owned(),
+                    };
+                }
+                "kitty" | "xterm-kitty" => {
+                    term_font = return_str_from_command(Command::new("kitty").arg("+runpy").arg(
+                        "from kitty.cli import *; o = create_default_opts(); \
+                print(f'{o.font_family} {o.font_size}')",
+                    ));
+                }
+
+                &_ => {}
+            }
+        }
+
+        term_font.replace("\n", "")
     }
     pub fn get_de(&self) -> (String, String) {
         if std::env::consts::OS == "windows" && env_exist("distro") {
@@ -577,12 +749,12 @@ impl Infos {
                         return_str_from_command(Command::new("xfce4-session").arg("--version"));
                 }
                 "Deepin" => {
-                    version = return_str_from_command(
-                        Command::new("awk")
-                            .arg("-F'='")
-                            .arg("'/MajorVersion/ {print $2}'")
-                            .arg("/etc/os-version"),
-                    );
+                    version = get_file_content("/etc/os-version")
+                        .lines()
+                        .find(|line| line.starts_with("MajorVersion="))
+                        .map(|line| line.split('=').nth(1).unwrap_or(""))
+                        .unwrap_or("")
+                        .to_string();
                 }
                 "Cinnamon" => {
                     version = return_str_from_command(Command::new("cinnamon").arg("--version"));
