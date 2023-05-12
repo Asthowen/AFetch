@@ -1,44 +1,31 @@
+use afetch::system::getters::{
+    get_battery, get_cpu, get_desktop, get_disks, get_host, get_kernel, get_memory, get_network,
+    get_os, get_packages, get_public_ip, get_resolution, get_shell, get_terminal,
+    get_terminal_font, get_uptime,
+};
 use afetch::system::infos::Infos;
 use afetch::translations::list::{language_code_list, language_list};
-use afetch::utils;
-use afetch::utils::convert_to_readable_unity;
+use afetch::utils::Config;
 use afetch_colored::{Colorize, CustomColor};
 use image::GenericImageView;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::Write;
+use std::path::PathBuf;
 use std::process::exit;
-use sysinfo::{Cpu, CpuExt, DiskExt, NetworkExt, SystemExt};
+use std::sync::Arc;
 use viuer::Config as ViuerConfig;
 use whoami::{hostname, username};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct LogoConfig {
-    status: String,
-    char_type: String,
-    picture_path: String,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct Config {
-    language: String,
-    logo: LogoConfig,
-    text_color: Vec<u8>,
-    text_color_header: Vec<u8>,
-    disabled_entries: Vec<String>,
-}
-
-fn main() {
-    let afetch_config_path: std::path::PathBuf = dirs::config_dir().unwrap_or_else(|| {
+#[tokio::main]
+async fn main() {
+    let afetch_config_parent_path: PathBuf = dirs::config_dir().unwrap_or_else(|| {
         println!("An error occurred while retrieving the configuration files folder, please open an issue at: https://github.com/Asthowen/AFetch/issues/new so that we can solve your issue.");
         exit(9);
-    }).join("afetch").join("config.yaml");
+    }).join("afetch");
+    let afetch_config_path = afetch_config_parent_path.join("config.yaml");
 
-    if !afetch_config_path
-        .parent()
-        .unwrap_or(&afetch_config_path)
-        .exists()
-    {
-        std::fs::create_dir_all(&afetch_config_path).unwrap_or_else(|e| {
+    if !afetch_config_parent_path.exists() {
+        std::fs::create_dir_all(&afetch_config_parent_path).unwrap_or_else(|e| {
             println!(
                 "An error occurred while creating the configuration files: {}",
                 e
@@ -69,8 +56,7 @@ fn main() {
         yaml.text_color_header[1],
         yaml.text_color_header[2],
     );
-    let logo_color: CustomColor =
-        CustomColor::new(yaml.text_color[0], yaml.text_color[1], yaml.text_color[2]);
+    let logo_color = CustomColor::new(yaml.text_color[0], yaml.text_color[1], yaml.text_color[2]);
 
     let language: HashMap<&'static str, &'static str> = if yaml.language == "auto" {
         let locale_value_base: String = sys_locale::get_locale()
@@ -106,13 +92,20 @@ fn main() {
     };
 
     let infos: Infos = Infos::init(custom_logo);
+
+    let shared_yaml = Arc::new(yaml.clone());
+    let shared_header_color = Arc::new(header_color);
+    let shared_logo_color = Arc::new(logo_color);
+    let shared_language = Arc::new(language.clone());
+    let shared_infos = Arc::new(infos);
+
     let logo_type: i8 = if yaml.logo.status == "enable" {
         i8::from(yaml.logo.char_type != "braille")
     } else {
         2
     };
     let logo: Option<Vec<&str>> = if logo_type == 0 {
-        Option::from(infos.get_os_logo().lines().collect::<Vec<&str>>())
+        Option::from(shared_infos.get_os_logo().lines().collect::<Vec<&str>>())
     } else {
         None
     };
@@ -133,258 +126,184 @@ fn main() {
             .custom_color(logo_color)
     ));
 
-    if !yaml.disabled_entries.contains(&"os".to_owned()) {
-        let system_name: String = infos.sysinfo_obj.name().unwrap_or_else(|| "".to_owned());
-        if !system_name.is_empty() {
-            if system_name.to_lowercase().contains("windows") {
-                infos_to_print.push(
-                    format!(
-                        "{}{} {}",
-                        language["label-os"].bold().custom_color(header_color),
-                        system_name,
-                        infos
-                            .sysinfo_obj
-                            .os_version()
-                            .unwrap_or_else(|| "   ".to_owned())
-                            .split(' ')
-                            .collect::<Vec<&str>>()[0]
-                    )
-                    .custom_color(logo_color)
-                    .to_string(),
-                );
-            } else {
-                infos_to_print.push(
-                    format!(
-                        "{}{}",
-                        language["label-os"].bold().custom_color(header_color),
-                        system_name
-                    )
-                    .custom_color(logo_color)
-                    .to_string(),
-                );
-            }
-        }
-    }
-    if !yaml.disabled_entries.contains(&"host".to_owned()) {
-        let host: String = infos.get_host();
-        if !host.is_empty() {
-            infos_to_print.push(format!(
-                "{}{}",
-                language["label-host"].bold().custom_color(header_color),
-                host.custom_color(logo_color)
-            ));
-        }
-    }
-    if !yaml.disabled_entries.contains(&"kernel".to_owned()) {
-        infos_to_print.push(format!(
-            "{}{}",
-            language["label-kernel"].bold().custom_color(header_color),
-            infos
-                .sysinfo_obj
-                .kernel_version()
-                .unwrap_or_else(|| "".to_owned())
-                .replace('\n', "")
-                .custom_color(logo_color)
-        ));
-    }
-    if !yaml.disabled_entries.contains(&"uptime".to_owned()) {
-        infos_to_print.push(format!(
-            "{}{}",
-            language["label-uptime"].bold().custom_color(header_color),
-            utils::format_time(infos.sysinfo_obj.uptime(), &language).custom_color(logo_color)
-        ));
-    }
-    if !yaml.disabled_entries.contains(&"packages".to_owned()) {
-        infos_to_print.push(format!(
-            "{}{}",
-            language["label-packages"].bold().custom_color(header_color),
-            infos.get_packages_number().custom_color(logo_color)
-        ));
-    }
-    if !yaml.disabled_entries.contains(&"resolution".to_owned()) {
-        let screens_resolution = infos.get_screens_resolution();
-        if !screens_resolution.is_empty() {
-            infos_to_print.push(format!(
-                "{}{}",
-                language["label-resolution"]
-                    .bold()
-                    .custom_color(header_color),
-                screens_resolution.custom_color(logo_color)
-            ));
-        }
-    }
-    if !yaml.disabled_entries.contains(&"desktop".to_owned()) {
-        let de_infos: (String, String) = infos.get_de();
-        if !de_infos.0.is_empty() {
-            infos_to_print.push(format!(
-                "{}{}",
-                language["label-desktop"].bold().custom_color(header_color),
-                format!(
-                    "{} {}",
-                    de_infos.0,
-                    if !yaml
-                        .disabled_entries
-                        .contains(&"desktop-version".to_owned())
-                    {
-                        de_infos.1
-                    } else {
-                        "".to_owned()
-                    }
-                )
-                .custom_color(logo_color)
-            ));
-        }
-    }
-    if !yaml.disabled_entries.contains(&"shell".to_owned()) {
-        infos_to_print.push(format!(
-            "{}{}",
-            language["label-shell"].bold().custom_color(header_color),
-            infos.get_shell().custom_color(logo_color)
-        ));
-    }
-    if !yaml.disabled_entries.contains(&"terminal".to_owned()) {
-        let terminal: String = infos.get_terminal();
-        if !terminal.is_empty() {
-            infos_to_print.push(format!(
-                "{}{}",
-                language["label-terminal"].bold().custom_color(header_color),
-                terminal.custom_color(logo_color)
-            ));
-        }
-    }
-    if !yaml.disabled_entries.contains(&"terminal_font".to_owned()) {
-        let terminal: String = infos.get_terminal_font();
-        if !terminal.is_empty() {
-            infos_to_print.push(format!(
-                "{}{}",
-                language["label-terminal-font"]
-                    .bold()
-                    .custom_color(header_color),
-                terminal.custom_color(logo_color)
-            ));
-        }
-    }
-    if !yaml.disabled_entries.contains(&"memory".to_owned()) {
-        infos_to_print.push(format!(
-            "{}{}",
-            language["label-memory"].bold().custom_color(header_color),
-            format!(
-                "{}/{}",
-                convert_to_readable_unity(infos.sysinfo_obj.used_memory() as f64),
-                convert_to_readable_unity(infos.sysinfo_obj.total_memory() as f64)
-            )
-            .custom_color(logo_color)
-        ));
-    }
-    if !yaml.disabled_entries.contains(&"cpu".to_owned()) {
-        let cpu_infos: &Cpu = infos.sysinfo_obj.global_cpu_info();
-        let cpu_name: String = if !cpu_infos.brand().is_empty() {
-            cpu_infos.brand().to_owned()
-        } else if !infos.sysinfo_obj.global_cpu_info().vendor_id().is_empty() {
-            cpu_infos.vendor_id().to_owned()
-        } else {
-            "".to_owned()
-        };
+    let (
+        os_result,
+        host_result,
+        kernel_result,
+        uptime_result,
+        packages_result,
+        resolution_result,
+        desktop_result,
+        shell_result,
+        terminal_result,
+        terminal_font_result,
+        memory_result,
+        cpu_result,
+        network_result,
+        disks_result,
+        public_ip_result,
+        battery_result,
+    ) = tokio::join!(
+        get_os(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_host(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_kernel(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_uptime(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_packages(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_resolution(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_desktop(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_shell(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_terminal(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_terminal_font(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_memory(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_cpu(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_network(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_disks(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_public_ip(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
+        get_battery(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+        )
+    );
 
-        if cpu_name.is_empty() {
-            infos_to_print.push(format!(
-                "{}{:.5}%",
-                language["label-cpu"].bold().custom_color(header_color),
-                cpu_infos.cpu_usage().to_string().custom_color(logo_color)
-            ));
-        } else {
-            infos_to_print.push(format!(
-                "{}{}",
-                language["label-cpu"].bold().custom_color(header_color),
-                format!("{} - {:.1}%", cpu_name, cpu_infos.cpu_usage()).custom_color(logo_color)
-            ));
-        }
+    if let Some(os) = os_result {
+        infos_to_print.push(os);
     }
-    if !yaml.disabled_entries.contains(&"network".to_owned()) {
-        let (mut network_sent, mut network_recv) = (0, 0);
-        for (_, data) in infos.sysinfo_obj.networks() {
-            network_sent += data.transmitted();
-            network_recv += data.received();
-        }
-        infos_to_print.push(format!(
-            "{}{}",
-            language["label-network"].bold().custom_color(header_color),
-            format!(
-                "{}/s ↘  {}/s ↗",
-                convert_to_readable_unity(network_sent as f64),
-                convert_to_readable_unity(network_recv as f64)
-            )
-            .custom_color(logo_color)
-        ));
+    if let Some(host) = host_result {
+        infos_to_print.push(host);
     }
-    let print_disk: bool = !yaml.disabled_entries.contains(&"disk".to_owned());
-    let print_disks: bool = !yaml.disabled_entries.contains(&"disks".to_owned());
-
-    if print_disks || print_disk {
-        let (mut total_disk_used, mut total_disk_total) = (0, 0);
-        for disk in infos.sysinfo_obj.disks() {
-            let disk_mount_point: String = disk.mount_point().to_str().unwrap().to_owned();
-            if !disk_mount_point.contains("/docker") && !disk_mount_point.contains("/boot") {
-                total_disk_used += disk.total_space() - disk.available_space();
-                total_disk_total += disk.total_space();
-                if print_disk {
-                    infos_to_print.push(format!(
-                        "{}{}{}",
-                        language["label-disk"].bold().custom_color(header_color),
-                        format!("({})", disk.mount_point().to_str().unwrap_or(""),)
-                            .custom_color(header_color),
-                        format!(
-                            "{}{}/{}",
-                            language["label-disk-1"],
-                            convert_to_readable_unity(
-                                (disk.total_space() - disk.available_space()) as f64
-                            ),
-                            convert_to_readable_unity(disk.total_space() as f64)
-                        )
-                        .custom_color(logo_color)
-                    ));
-                }
-            }
-        }
-        if print_disks {
-            infos_to_print.push(format!(
-                "{}{}",
-                language["label-disks"].bold().custom_color(header_color),
-                format!(
-                    "{}/{}",
-                    convert_to_readable_unity(total_disk_used as f64),
-                    convert_to_readable_unity(total_disk_total as f64)
-                )
-                .custom_color(logo_color)
-            ));
-        }
+    if let Some(kernel) = kernel_result {
+        infos_to_print.push(kernel);
     }
-    if !yaml.disabled_entries.contains(&"public-ip".to_owned()) {
-        infos_to_print.push(format!(
-            "{}{}",
-            language["label-public-ip"]
-                .bold()
-                .custom_color(header_color),
-            infos.get_public_ip().custom_color(logo_color)
-        ));
+    if let Some(uptime) = uptime_result {
+        infos_to_print.push(uptime);
     }
-
-    if !yaml.disabled_entries.contains(&"battery".to_owned()) {
-        let manager_result = battery::Manager::new();
-        if let Ok(manager) = manager_result {
-            let batteries_infos_result = manager.batteries();
-            if let Ok(mut batteries_infos) = batteries_infos_result {
-                if let Some(Ok(battery_infos)) = batteries_infos.next() {
-                    infos_to_print.push(format!(
-                        "{}{:.4}%",
-                        language["label-battery"].bold().custom_color(header_color),
-                        (battery_infos.state_of_charge().value * 100.0)
-                            .to_string()
-                            .custom_color(logo_color)
-                    ));
-                }
-            }
-        }
+    if let Some(packages) = packages_result {
+        infos_to_print.push(packages);
+    }
+    if let Some(resolution) = resolution_result {
+        infos_to_print.push(resolution);
+    }
+    if let Some(desktop) = desktop_result {
+        infos_to_print.push(desktop);
+    }
+    if let Some(shell) = shell_result {
+        infos_to_print.push(shell);
+    }
+    if let Some(terminal) = terminal_result {
+        infos_to_print.push(terminal);
+    }
+    if let Some(terminal_font) = terminal_font_result {
+        infos_to_print.push(terminal_font);
+    }
+    if let Some(memory) = memory_result {
+        infos_to_print.push(memory);
+    }
+    if let Some(cpu) = cpu_result {
+        infos_to_print.push(cpu);
+    }
+    if let Some(network) = network_result {
+        infos_to_print.push(network);
+    }
+    if let Some(mut disks) = disks_result {
+        infos_to_print.append(&mut disks);
+    }
+    if let Some(public_ip) = public_ip_result {
+        infos_to_print.push(public_ip);
+    }
+    if let Some(battery) = battery_result {
+        infos_to_print.push(battery);
     }
 
     if !yaml.disabled_entries.contains(&"color-blocks".to_owned()) {
@@ -449,10 +368,9 @@ fn main() {
 
         println!();
     } else {
-        println!();
         for info in &infos_to_print {
-            output += &format!(" {}\n", info);
+            write!(output, " {}\n", info).ok();
         }
-        println!("{}", output);
+        println!("\n{}", output);
     }
 }

@@ -2,6 +2,7 @@ use crate::system::logos;
 use crate::utils::{command_exist, env_exist, get_env, get_file_content, return_str_from_command};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use sysinfo::CpuRefreshKind;
 use sysinfo::{System, SystemExt};
 
 pub struct Infos {
@@ -11,8 +12,13 @@ pub struct Infos {
 
 impl Infos {
     pub fn init(custom_logo: Option<String>) -> Self {
+        let mut sysinfo_obj = System::new();
+        sysinfo_obj.refresh_disks_list();
+        sysinfo_obj.refresh_memory();
+        sysinfo_obj.refresh_cpu_specifics(CpuRefreshKind::everything());
+
         Self {
-            sysinfo_obj: System::new_all(),
+            sysinfo_obj,
             custom_logo,
         }
     }
@@ -550,13 +556,13 @@ impl Infos {
                         }
                     }
                 }
-                "Apple_Terminal" => {
+                "apple_terminal" => {
                     term_font =
                         return_str_from_command(Command::new("osascript").arg("-e").arg(
                             r#"tell application "Terminal" to font name of window frontmost"#,
                         ));
                 }
-                "iTerm2" => {
+                "iterm2" => {
                     let current_profile_name = return_str_from_command(Command::new("osascript")
                         .arg("-e")
                         .arg(r#"tell application "iTerm2" to profile name of current session of current window"#)).trim().to_owned();
@@ -567,7 +573,7 @@ impl Infos {
                     );
 
                     let profiles_count =
-                        return_str_from_command(Command::new("PlistBuddy").args(&[
+                        return_str_from_command(Command::new("PlistBuddy").args([
                             "-c",
                             "Print ':New Bookmarks:'",
                             &font_file,
@@ -578,7 +584,7 @@ impl Infos {
 
                     for i in 0..profiles_count {
                         let profile_name =
-                            return_str_from_command(Command::new("PlistBuddy").args(&[
+                            return_str_from_command(Command::new("PlistBuddy").args([
                                 "-c",
                                 &format!("Print ':New Bookmarks:{}:Name:'", i),
                                 &font_file,
@@ -588,7 +594,7 @@ impl Infos {
 
                         if profile_name == current_profile_name {
                             let temp_term_font: String =
-                                return_str_from_command(Command::new("PlistBuddy").args(&[
+                                return_str_from_command(Command::new("PlistBuddy").args([
                                     "-c",
                                     &format!("Print ':New Bookmarks:{}:Normal Font:'", i),
                                     &font_file,
@@ -597,7 +603,7 @@ impl Infos {
                                 .to_owned();
 
                             let diff_font: String =
-                                return_str_from_command(Command::new("PlistBuddy").args(&[
+                                return_str_from_command(Command::new("PlistBuddy").args([
                                     "-c",
                                     &format!("Print ':New Bookmarks:{}:Use Non-ASCII Font:'", i),
                                     &font_file,
@@ -607,7 +613,7 @@ impl Infos {
 
                             if diff_font == "true" {
                                 let non_ascii: String =
-                                    return_str_from_command(Command::new("PlistBuddy").args(&[
+                                    return_str_from_command(Command::new("PlistBuddy").args([
                                         "-c",
                                         &format!("Print ':New Bookmarks:{}:Non Ascii Font:'", i),
                                         &font_file,
@@ -643,7 +649,7 @@ impl Infos {
                         }
                     }
                 }
-                "GNUstep_Terminal" => {
+                "gnustep_terminal" => {
                     let file_content = get_file_content(&format!(
                         "{}/GNUstep/Defaults/Terminal.plist",
                         get_env("HOME")
@@ -657,7 +663,7 @@ impl Infos {
                         .collect::<Vec<&str>>()
                         .join(" ");
                 }
-                "Hyper" => {
+                "hyper" => {
                     let content = get_file_content(&format!("{}/.hyper.js", get_env("HOME")));
 
                     let temp_term_font: Option<&str> = match content.split("fontFamily\":").nth(1) {
@@ -681,7 +687,7 @@ impl Infos {
             }
         }
 
-        term_font.replace("\n", "")
+        term_font.replace('\n', "")
     }
     pub fn get_de(&self) -> (String, String) {
         if std::env::consts::OS == "windows" && env_exist("distro") {
@@ -754,7 +760,7 @@ impl Infos {
                         .find(|line| line.starts_with("MajorVersion="))
                         .map(|line| line.split('=').nth(1).unwrap_or(""))
                         .unwrap_or("")
-                        .to_string();
+                        .to_owned();
                 }
                 "Cinnamon" => {
                     version = return_str_from_command(Command::new("cinnamon").arg("--version"));
