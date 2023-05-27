@@ -307,16 +307,14 @@ async fn main() {
     }
 
     if !yaml.disabled_entries.contains(&"color-blocks".to_owned()) {
-        let mut first_colors: String = "".to_owned();
-        let mut second_colors: String = "".to_owned();
-        for i in 0..8 {
-            first_colors += &format!("\x1b[4{}m   \x1b[0m", i);
-            second_colors += &format!("\x1b[10{}m   \x1b[0m", i);
-        }
-        infos_to_print.push("".to_owned());
-        infos_to_print.push("".to_owned());
-        infos_to_print.push(first_colors);
-        infos_to_print.push(second_colors);
+        let first_colors: String = (0..8).map(|i| format!("\x1b[4{}m   \x1b[0m", i)).collect();
+        let second_colors: String = (0..8).map(|i| format!("\x1b[10{}m   \x1b[0m", i)).collect();
+        infos_to_print.extend(vec![
+            "".to_owned(),
+            "".to_owned(),
+            first_colors,
+            second_colors,
+        ]);
     }
 
     if let Some(logo) = logo {
@@ -369,7 +367,7 @@ async fn main() {
         println!();
     } else {
         for info in &infos_to_print {
-            write!(output, " {}\n", info).ok();
+            writeln!(output, " {}", info).ok();
         }
         println!("\n{}", output);
     }

@@ -1,4 +1,21 @@
+use std::fs;
+use std::path::Path;
 use std::str::FromStr;
+
+pub fn get_ppid(pid: &str) -> Option<String> {
+    let status_path = Path::new("/proc").join(pid).join("status");
+
+    if let Ok(status_content) = fs::read_to_string(status_path) {
+        for line in status_content.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 2 && parts[0] == "PPid:" {
+                return Some(parts[1].to_owned());
+            }
+        }
+    }
+
+    None
+}
 
 pub fn get_parent_pids(pid: u32) -> Result<Vec<u32>, String> {
     let output = std::process::Command::new("ps")

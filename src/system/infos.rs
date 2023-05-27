@@ -1,5 +1,9 @@
 use crate::system::logos;
+use crate::system::pid::get_ppid;
 use crate::utils::{command_exist, env_exist, get_env, get_file_content, return_str_from_command};
+use std::fs::File;
+use std::io::BufRead;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use sysinfo::CpuRefreshKind;
@@ -100,13 +104,19 @@ impl Infos {
     }
 
     pub fn get_os_logo(&self) -> &str {
-        if let Some(logo) = self.custom_logo.clone() {
+        if let Some(logo) = &self.custom_logo {
             for (os_name, os_logo) in logos::logos_list() {
-                if os_name.to_lowercase() == logo {
+                if &os_name.to_lowercase() == logo {
                     return os_logo;
                 }
             }
-        } else if std::env::consts::OS == "linux" {
+        }
+
+        #[cfg(target_os = "macos")]
+        return logos::logos_list()["MacOS"];
+
+        #[cfg(target_os = "linux")]
+        {
             let current_os_id: String = self
                 .get_linux_distribution()
                 .to_lowercase()
@@ -117,11 +127,17 @@ impl Infos {
                     return os_logo;
                 }
             }
-        } else if std::env::consts::OS == "freebsd" {
+        }
+
+        #[cfg(target_os = "freebsd")]
+        {
             let os_logos_list: std::collections::HashMap<&'static str, &'static str> =
                 logos::logos_list();
             return os_logos_list["FreeBSD"];
-        } else if std::env::consts::OS == "windows" {
+        }
+
+        #[cfg(target_os = "windows")]
+        {
             let os_logos_list: std::collections::HashMap<&'static str, &'static str> =
                 logos::logos_list();
             let system: System = System::default();
@@ -171,9 +187,11 @@ impl Infos {
                     && Path::new("/sys/devices/virtual/dmi/id/board_vendor").exists()
                     && Path::new("/sys/devices/virtual/dmi/id/board_name").exists()
                 {
-                    host = get_file_content("/sys/devices/virtual/dmi/id/board_vendor");
-                    host += " ";
-                    host += get_file_content("/sys/devices/virtual/dmi/id/board_name").as_str();
+                    host = format!(
+                        "{} {}",
+                        get_file_content("/sys/devices/virtual/dmi/id/board_vendor"),
+                        get_file_content("/sys/devices/virtual/dmi/id/board_name").as_str(),
+                    )
                 }
 
                 host
@@ -440,6 +458,7 @@ impl Infos {
 
                 packages_string.join(" ")
             }
+            #[cfg(target_os = "windows")]
             "windows" => {
                 if command_exist("choco") {
                     let choco_output: String = return_str_from_command(
@@ -509,7 +528,7 @@ impl Infos {
         if clean_pid_names.len() != 1 {
             return "".to_owned();
         }
-        let terminal_name: String = clean_pid_names[0].clone();
+        let terminal_name: &str = &clean_pid_names[0];
 
         format!(
             "{}{}",
@@ -682,6 +701,186 @@ impl Infos {
                 print(f'{o.font_family} {o.font_size}')",
                     ));
                 }
+                "konsole" | "yakuake" => {
+                    let child = get_ppid(&format!("{}", std::process::id()))
+                        .unwrap_or_else(|| "".to_owned());
+
+                    let qt_bindir_result = Command::new("qtpaths").arg("--binaries-dir").output();
+                    let qt_bindir = if let Ok(qt_bindir) = qt_bindir_result {
+                        qt_bindir
+                    } else {
+                        return "".to_owned();
+                    };
+                    let qt_bindir_output = String::from_utf8_lossy(&qt_bindir.stdout);
+                    let qt_bindir_path = qt_bindir_output.trim();
+                    let mut path = std::env::var("PATH").unwrap_or_else(|_| String::new());
+                    path.push(':');
+                    path.push_str(qt_bindir_path);
+                    std::env::set_var("PATH", path);
+
+                    let konsole_instances_output_result = Command::new("qdbus").output();
+                    let konsole_instances_output =
+                        if let Ok(konsole_instances_output) = konsole_instances_output_result {
+                            konsole_instances_output
+                        } else {
+                            return "".to_owned();
+                        };
+
+                    let konsole_instances_output_str =
+                        String::from_utf8_lossy(&konsole_instances_output.stdout);
+                    let konsole_instances = konsole_instances_output_str
+                        .lines()
+                        .filter(|line| line.contains(&format!("org.kde.{}", get_env("term"))))
+                        .map(|line| line.split_whitespace().next().unwrap())
+                        .collect::<Vec<&str>>();
+
+                    let mut profile = String::new();
+
+                    for i in &konsole_instances {
+                        let konsole_sessions_output_result = Command::new("qdbus").arg(i).output();
+                        let konsole_sessions_output =
+                            if let Ok(konsole_sessions_output) = konsole_sessions_output_result {
+                                konsole_sessions_output
+                            } else {
+                                return "".to_owned();
+                            };
+                        let konsole_sessions_output_str =
+                            String::from_utf8_lossy(&konsole_sessions_output.stdout);
+                        let konsole_sessions = konsole_sessions_output_str
+                            .lines()
+                            .filter(|line| line.contains("/Sessions/"))
+                            .collect::<Vec<&str>>();
+
+                        for session in &konsole_sessions {
+                            let process_id_output_result = Command::new("qdbus")
+                                .arg(i)
+                                .arg(session)
+                                .arg("processId")
+                                .output();
+                            let process_id_output =
+                                if let Ok(process_id_output) = process_id_output_result {
+                                    process_id_output
+                                } else {
+                                    return "".to_owned();
+                                };
+                            let process_id_output_str =
+                                String::from_utf8_lossy(&process_id_output.stdout);
+                            let session_process_id = process_id_output_str.trim();
+
+                            if child == session_process_id {
+                                let environment_output_result = Command::new("qdbus")
+                                    .arg(i)
+                                    .arg(session)
+                                    .arg("environment")
+                                    .output();
+
+                                let environment_output =
+                                    if let Ok(environment_output) = environment_output_result {
+                                        environment_output
+                                    } else {
+                                        return "".to_owned();
+                                    };
+
+                                let environment_output_str =
+                                    String::from_utf8_lossy(&environment_output.stdout);
+                                let profile_name = environment_output_str
+                                    .lines()
+                                    .find(|line| line.starts_with("KONSOLE_PROFILE_NAME="))
+                                    .map(|line| line.trim_start_matches("KONSOLE_PROFILE_NAME="))
+                                    .unwrap_or("");
+
+                                profile = if profile_name.is_empty() {
+                                    let profile_output_result = Command::new("qdbus")
+                                        .arg(i)
+                                        .arg(session)
+                                        .arg("profile")
+                                        .output();
+
+                                    let profile_output =
+                                        if let Ok(profile_output) = profile_output_result {
+                                            profile_output
+                                        } else {
+                                            return "".to_owned();
+                                        };
+                                    let profile_output_str =
+                                        String::from_utf8_lossy(&profile_output.stdout);
+                                    profile_output_str.trim().to_owned()
+                                } else {
+                                    profile_name.to_owned()
+                                };
+
+                                break;
+                            }
+                        }
+
+                        if !profile.is_empty() {
+                            break;
+                        }
+                    }
+
+                    if profile.is_empty() {
+                        return "".to_owned();
+                    }
+
+                    let profile_filename_result = std::fs::read_dir(Path::new(&format!(
+                        "{}/.local/share/konsole/",
+                        dirs::home_dir().unwrap().display()
+                    )))
+                    .expect("Failed to read profile directory")
+                    .filter_map(|entry| {
+                        if let Ok(entry) = entry {
+                            let path = entry.path();
+                            if let Some(file_name) = path.file_name().and_then(|name| name.to_str())
+                            {
+                                if file_name.ends_with(".profile") {
+                                    Some(path)
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    })
+                    .filter(|path| {
+                        let file_contents =
+                            std::fs::read_to_string(path).expect("Failed to read profile file");
+                        file_contents.contains(&format!("Name={}", profile))
+                    })
+                    .collect::<Vec<_>>();
+
+                    let profile_filename =
+                        if let Some(profile_filename) = profile_filename_result.first() {
+                            profile_filename
+                        } else {
+                            return "".to_owned();
+                        };
+                    let profile_file_result = File::open(profile_filename);
+                    let profile_file = if let Ok(profile_file) = profile_file_result {
+                        profile_file
+                    } else {
+                        return "".to_owned();
+                    };
+
+                    let reader = BufReader::new(profile_file);
+
+                    for line in reader.lines() {
+                        let line = line.unwrap_or_else(|_| "".to_owned());
+
+                        if line.starts_with("Font=") {
+                            let fields: Vec<&str> = line.split('=').collect();
+                            if let Some(font) = fields.get(1) {
+                                let font_fields: Vec<&str> = font.split(',').collect();
+                                if let Some(font_name) = font_fields.first() {
+                                    term_font = font_name.trim().to_owned();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
 
                 &_ => {}
             }
@@ -690,7 +889,8 @@ impl Infos {
         term_font.replace('\n', "")
     }
     pub fn get_de(&self) -> (String, String) {
-        if std::env::consts::OS == "windows" && env_exist("distro") {
+        #[cfg(target_os = "windows")]
+        if env_exist("distro") {
             let system: System = System::default();
 
             let windows_version: String = system
@@ -706,9 +906,13 @@ impl Infos {
             } else {
                 ("Aero".to_owned(), "".to_owned())
             }
-        } else if std::env::consts::OS == "macos" {
-            ("Aqua".to_owned(), "".to_owned())
-        } else {
+        }
+
+        #[cfg(target_os = "macos")]
+        return ("Aqua".to_owned(), "".to_owned());
+
+        #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+        {
             let mut de_name: String = "".to_owned();
             if env_exist("DESKTOP_SESSION") && get_env("DESKTOP_SESSION") == "regolith" {
                 de_name = "Regolith".to_owned();
