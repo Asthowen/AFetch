@@ -39,7 +39,7 @@ Now switch to project folder and compile a release:
 cd AFetch && cargo build --release
 ```
 
-Your executable will be in the `target/release/` folder, it is named `afetch`.3
+Your executable will be in the `target/release/` folder, it is named `afetch`.
 
 ## Configuration
 ### Locations of the configuration file
