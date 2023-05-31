@@ -142,8 +142,8 @@ impl Infos {
         {
             let os_logos_list: std::collections::HashMap<&'static str, &'static str> =
                 logos::logos_list();
-            let system: System = System::default();
-            let windows_version: String = system
+            let windows_version: String = self
+                .sysinfo_obj
                 .os_version()
                 .unwrap_or_default()
                 .split(' ')
@@ -896,21 +896,22 @@ impl Infos {
     pub fn get_de(&self) -> (String, String) {
         #[cfg(target_os = "windows")]
         if env_exist("distro") {
-            let system: System = System::default();
-
-            let windows_version: String = system
+            let windows_version: String = self
+                .sysinfo_obj
                 .os_version()
                 .unwrap_or_default()
                 .split(' ')
                 .collect::<Vec<&str>>()[0]
                 .to_owned();
-            if windows_version == "10" {
+            return if windows_version == "10" {
                 ("Fluent".to_owned(), "".to_owned())
             } else if windows_version == "8" {
                 ("Metro".to_owned(), "".to_owned())
             } else {
                 ("Aero".to_owned(), "".to_owned())
-            }
+            };
+        } else {
+            return ("".to_owned(), "".to_owned());
         }
 
         #[cfg(target_os = "macos")]
