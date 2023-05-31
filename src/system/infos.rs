@@ -12,6 +12,7 @@ use sysinfo::{System, SystemExt};
 pub struct Infos {
     pub sysinfo_obj: System,
     pub custom_logo: Option<String>,
+    pub home_dir: String,
 }
 
 impl Infos {
@@ -24,6 +25,7 @@ impl Infos {
         Self {
             sysinfo_obj,
             custom_logo,
+            home_dir: dirs::home_dir().unwrap().display().to_string(),
         }
     }
 
@@ -537,7 +539,7 @@ impl Infos {
         )
     }
     pub fn get_terminal_font(&self) -> String {
-        let mut term_font = String::new();
+        let mut term_font = String::default();
 
         let terminal_name = if env_exist("TERM") && !get_env("TERM").starts_with("xterm") {
             get_env("TERM")
@@ -549,17 +551,15 @@ impl Infos {
             match terminal_name.to_lowercase().as_str() {
                 "alacritty" => {
                     let xdg_config_home = get_env("XDG_CONFIG_HOME");
-                    let home = get_env("HOME");
                     let confs = vec![
                         format!("{}/alacritty.yml", xdg_config_home),
-                        format!("{}/alacritty.yml", home),
+                        format!("{}/alacritty.yml", self.home_dir),
                         format!("{}/.alacritty.yml", xdg_config_home),
-                        format!("{}/.alacritty.yml", home),
+                        format!("{}/.alacritty.yml", self.home_dir),
                     ];
 
                     for conf in confs {
                         if let Ok(contents) = std::fs::read_to_string(&conf) {
-                            println!("ok");
                             if let Some(line) = contents
                                 .lines()
                                 .find(|line| line.contains("normal:") && line.contains("family:"))
@@ -588,7 +588,7 @@ impl Infos {
 
                     let font_file = format!(
                         "{}/Library/Preferences/com.googlecode.iterm2.plist",
-                        env!("HOME")
+                        self.home_dir
                     );
 
                     let profiles_count =
@@ -654,7 +654,7 @@ impl Infos {
                     let config_file = format!(
                         "{}/deepin/deepin-terminal/config.conf",
                         std::env::var("XDG_CONFIG_HOME")
-                            .unwrap_or_else(|_| format!("{}/.config", get_env("HOME")))
+                            .unwrap_or_else(|_| format!("{}/.config", self.home_dir))
                     );
 
                     for line in get_file_content(&config_file).lines() {
@@ -671,7 +671,7 @@ impl Infos {
                 "gnustep_terminal" => {
                     let file_content = get_file_content(&format!(
                         "{}/GNUstep/Defaults/Terminal.plist",
-                        get_env("HOME")
+                        self.home_dir
                     ));
                     term_font = file_content
                         .lines()
@@ -683,7 +683,7 @@ impl Infos {
                         .join(" ");
                 }
                 "hyper" => {
-                    let content = get_file_content(&format!("{}/.hyper.js", get_env("HOME")));
+                    let content = get_file_content(&format!("{}/.hyper.js", self.home_dir));
 
                     let temp_term_font: Option<&str> = match content.split("fontFamily\":").nth(1) {
                         Some(s) => s.split(',').next(),
@@ -713,7 +713,7 @@ impl Infos {
                     };
                     let qt_bindir_output = String::from_utf8_lossy(&qt_bindir.stdout);
                     let qt_bindir_path = qt_bindir_output.trim();
-                    let mut path = std::env::var("PATH").unwrap_or_else(|_| String::new());
+                    let mut path = std::env::var("PATH").unwrap_or_default();
                     path.push(':');
                     path.push_str(qt_bindir_path);
                     std::env::set_var("PATH", path);
@@ -734,7 +734,7 @@ impl Infos {
                         .map(|line| line.split_whitespace().next().unwrap())
                         .collect::<Vec<&str>>();
 
-                    let mut profile = String::new();
+                    let mut profile = String::default();
 
                     for i in &konsole_instances {
                         let konsole_sessions_output_result = Command::new("qdbus").arg(i).output();
@@ -786,8 +786,9 @@ impl Infos {
                                 let profile_name = environment_output_str
                                     .lines()
                                     .find(|line| line.starts_with("KONSOLE_PROFILE_NAME="))
-                                    .map(|line| line.trim_start_matches("KONSOLE_PROFILE_NAME="))
-                                    .unwrap_or("");
+                                    .map_or("", |line| {
+                                        line.trim_start_matches("KONSOLE_PROFILE_NAME=")
+                                    });
 
                                 profile = if profile_name.is_empty() {
                                     let profile_output_result = Command::new("qdbus")
@@ -820,6 +821,10 @@ impl Infos {
 
                     if profile.is_empty() {
                         return "".to_owned();
+                    }
+
+                    if profile == "Built-in" {
+                        return "Monospace".to_owned();
                     }
 
                     let profile_filename_result = std::fs::read_dir(Path::new(&format!(
