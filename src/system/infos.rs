@@ -1,4 +1,4 @@
-use crate::system::logos;
+use crate::logos;
 use crate::system::pid::get_ppid;
 use crate::utils::{command_exist, env_exist, get_env, get_file_content, return_str_from_command};
 use std::fs::File;
@@ -105,43 +105,18 @@ impl Infos {
         distribution_name
     }
 
-    pub fn get_os_logo(&self) -> &str {
-        if let Some(logo) = &self.custom_logo {
-            for (os_name, os_logo) in logos::logos_list() {
-                if &os_name.to_lowercase() == logo {
-                    return os_logo;
-                }
-            }
-        }
-
-        #[cfg(target_os = "macos")]
-        return logos::logos_list()["MacOS"];
-
-        #[cfg(target_os = "linux")]
-        {
-            let current_os_id: String = self
-                .get_linux_distribution()
+    pub fn get_os_logo(&self) -> Option<[&str; 4]> {
+        let os: String = if let Some(logo) = &self.custom_logo {
+            logo.to_owned()
+        } else if std::env::consts::OS == "linux" {
+            self.get_linux_distribution()
                 .to_lowercase()
-                .replace(' ', "");
-
-            for (os_name, os_logo) in logos::logos_list() {
-                if os_name.to_lowercase() == current_os_id {
-                    return os_logo;
-                }
-            }
-        }
-
-        #[cfg(target_os = "freebsd")]
-        {
-            let os_logos_list: std::collections::HashMap<&'static str, &'static str> =
-                logos::logos_list();
-            return os_logos_list["FreeBSD"];
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            let os_logos_list: std::collections::HashMap<&'static str, &'static str> =
-                logos::logos_list();
+                .replace(' ', "")
+        } else if std::env::consts::OS == "freebsd" {
+            "FreeBSD".to_owned()
+        } else if std::env::consts::OS == "macos" {
+            "MacOS".to_owned()
+        } else if std::env::consts::OS == "windows" {
             let windows_version: String = self
                 .sysinfo_obj
                 .os_version()
@@ -149,7 +124,7 @@ impl Infos {
                 .split(' ')
                 .collect::<Vec<&str>>()[0]
                 .to_owned();
-            return os_logos_list[format!(
+            format!(
                 "Windows{}",
                 if !windows_version.is_empty() {
                     windows_version
@@ -157,10 +132,42 @@ impl Infos {
                     String::from("11")
                 }
             )
-            .as_str()];
+        } else {
+            "".to_owned()
         }
+        .replace(" ", "")
+        .to_owned();
 
-        ""
+        match os.as_str() {
+            "windows11" => Some(logos::windows_11::WINDOWS11),
+            "windows10" => Some(logos::windows_10::WINDOWS10),
+            "windows7" => Some(logos::windows_7::WINDOWS7),
+            "linux" => Some(logos::linux::LINUX),
+            "manjaro" => Some(logos::manjaro::MANJARO),
+            "ubuntu" => Some(logos::ubuntu::UBUNTU),
+            "archlinux" => Some(logos::arch_linux::ARCH_LINUX),
+            "gentoo" => Some(logos::gentoo::GENTOO),
+            "fedora" => Some(logos::fedora::FEDORA),
+            "zorinos" => Some(logos::zorin_os::ZORIN_OS),
+            "linuxmint" => Some(logos::linux_mint::LINUX_MINT),
+            "macos" | "apple" | "osx" => Some(logos::mac_os::MAC_OS),
+            "opensuse" => Some(logos::open_suse::OPEN_SUSE),
+            "freebsd" => Some(logos::freebsd::FREEBSD),
+            "kubuntu" => Some(logos::kubuntu::KUBUNTU),
+            "lubuntu" => Some(logos::lubuntu::LUBUNTU),
+            "xubuntu" => Some(logos::xubuntu::XUBUNTU),
+            "raspbian" => Some(logos::raspbian::RASPBIAN),
+            "popos" => Some(logos::pop_os::POP_OS),
+            "endeavour" => Some(logos::endeavour::ENDEAVOUR),
+            "centos" => Some(logos::cent_os::CENT_OS),
+            "rhel" => Some(logos::rhel::RHEL),
+            "mageia" => Some(logos::mageia::MAGEIA),
+            "ubuntumate" => Some(logos::ubuntu_mate::UBUNTU_MATE),
+            "elementaryos" => Some(logos::elementary_os::ELEMENTARY_OS),
+            "solaris" => Some(logos::solaris::SOLARIS),
+            "alpine" => Some(logos::alpine::ALPINE),
+            _ => None,
+        }
     }
 
     pub fn get_host(&self) -> String {

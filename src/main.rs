@@ -105,7 +105,11 @@ async fn main() {
         2
     };
     let logo: Option<Vec<&str>> = if logo_type == 0 {
-        Option::from(shared_infos.get_os_logo().lines().collect::<Vec<&str>>())
+        if let Some(infos) = shared_infos.get_os_logo() {
+            Some(infos[3].lines().collect::<Vec<&str>>())
+        } else {
+            None
+        }
     } else {
         None
     };
@@ -322,20 +326,20 @@ async fn main() {
 
         for (i, info) in infos_to_print.into_iter().enumerate() {
             if logo.len() > i {
-                output += &format!("{}{}   {}\n", logo[i], "".white(), info);
+                output += &format!("   {}{}   {}\n", logo[i], "".white(), info);
             } else {
-                output += &format!("{}{}\n", " ".repeat(45), info);
+                output += &format!("{}{}\n", " ".repeat(48), info);
             }
             last_index += 1;
         }
 
         if last_index < logo.len() {
             for logo_line in &logo[last_index..] {
-                output += &format!("{}\n", logo_line);
+                output += &format!("   {}   \n", logo_line);
             }
         }
 
-        println!("{}", output);
+        println!("\n{}", output);
     } else if logo_type == 1 {
         println!();
         for info in &infos_to_print {

@@ -12,6 +12,7 @@
 )]
 #![deny(clippy::needless_return, clippy::str_to_string)]
 
+pub mod logos;
 pub mod system;
 pub mod translations;
 pub mod utils;
