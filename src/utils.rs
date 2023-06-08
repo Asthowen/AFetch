@@ -13,7 +13,7 @@ pub struct Config {
     pub language: String,
     pub logo: LogoConfig,
     pub text_color: Vec<u8>,
-    pub text_color_header: Vec<u8>,
+    pub text_color_header: Option<Vec<u8>>,
     pub disabled_entries: Vec<String>,
 }
 

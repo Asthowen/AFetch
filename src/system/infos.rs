@@ -105,7 +105,7 @@ impl Infos {
         distribution_name
     }
 
-    pub fn get_os_logo(&self) -> Option<[&str; 4]> {
+    pub fn get_os_logo(&self) -> Option<[&str; 2]> {
         let os: String = if let Some(logo) = &self.custom_logo {
             logo.to_owned()
         } else if std::env::consts::OS == "linux" {
@@ -135,8 +135,7 @@ impl Infos {
         } else {
             "".to_owned()
         }
-        .replace(" ", "")
-        .to_owned();
+        .replace(' ', "");
 
         match os.as_str() {
             "windows11" => Some(logos::windows_11::WINDOWS11),

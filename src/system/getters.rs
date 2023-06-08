@@ -2,15 +2,15 @@ use crate::system::infos::Infos;
 use crate::utils;
 use crate::utils::convert_to_readable_unity;
 use crate::utils::Config;
-use afetch_colored::Colorize;
 use afetch_colored::CustomColor;
+use afetch_colored::{AnsiOrCustom, Colorize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use sysinfo::{Cpu, CpuExt, DiskExt, NetworkExt, SystemExt};
 
 pub async fn get_os(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -19,10 +19,13 @@ pub async fn get_os(
         let system_name: String = infos.sysinfo_obj.name().unwrap_or_else(|| "".to_owned());
         if !system_name.is_empty() {
             if system_name.to_lowercase().contains("windows") {
-                return Option::from(
+                return Option::from(format!(
+                    "{}{}",
+                    language["label-os"]
+                        .bold()
+                        .custom_color_or_ansi_color_code(*header_color),
                     format!(
-                        "{}{} {}",
-                        language["label-os"].bold().custom_color(*header_color),
+                        "{} {}",
                         system_name,
                         infos
                             .sysinfo_obj
@@ -32,18 +35,15 @@ pub async fn get_os(
                             .collect::<Vec<&str>>()[0]
                     )
                     .custom_color(*logo_color)
-                    .to_string(),
-                );
+                ));
             } else {
-                return Option::from(
-                    format!(
-                        "{}{}",
-                        language["label-os"].bold().custom_color(*header_color),
-                        system_name
-                    )
-                    .custom_color(*logo_color)
-                    .to_string(),
-                );
+                return Option::from(format!(
+                    "{}{}",
+                    language["label-os"]
+                        .bold()
+                        .custom_color_or_ansi_color_code(*header_color),
+                    system_name.custom_color(*logo_color)
+                ));
             }
         }
     }
@@ -51,7 +51,7 @@ pub async fn get_os(
 }
 pub async fn get_host(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -61,7 +61,9 @@ pub async fn get_host(
         if !host.is_empty() {
             return Option::from(format!(
                 "{}{}",
-                language["label-host"].bold().custom_color(*header_color),
+                language["label-host"]
+                    .bold()
+                    .custom_color_or_ansi_color_code(*header_color),
                 host.custom_color(*logo_color)
             ));
         }
@@ -71,7 +73,7 @@ pub async fn get_host(
 
 pub async fn get_kernel(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -79,7 +81,9 @@ pub async fn get_kernel(
     if !yaml.disabled_entries.contains(&"kernel".to_owned()) {
         return Option::from(format!(
             "{}{}",
-            language["label-kernel"].bold().custom_color(*header_color),
+            language["label-kernel"]
+                .bold()
+                .custom_color_or_ansi_color_code(*header_color),
             infos
                 .sysinfo_obj
                 .kernel_version()
@@ -93,7 +97,7 @@ pub async fn get_kernel(
 
 pub async fn get_uptime(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -101,7 +105,9 @@ pub async fn get_uptime(
     if !yaml.disabled_entries.contains(&"uptime".to_owned()) {
         return Option::from(format!(
             "{}{}",
-            language["label-uptime"].bold().custom_color(*header_color),
+            language["label-uptime"]
+                .bold()
+                .custom_color_or_ansi_color_code(*header_color),
             utils::format_time(infos.sysinfo_obj.uptime(), &language).custom_color(*logo_color)
         ));
     }
@@ -110,7 +116,7 @@ pub async fn get_uptime(
 
 pub async fn get_packages(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -120,7 +126,7 @@ pub async fn get_packages(
             "{}{}",
             language["label-packages"]
                 .bold()
-                .custom_color(*header_color),
+                .custom_color_or_ansi_color_code(*header_color),
             infos.get_packages_number().custom_color(*logo_color)
         ));
     }
@@ -129,7 +135,7 @@ pub async fn get_packages(
 
 pub async fn get_resolution(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -141,7 +147,7 @@ pub async fn get_resolution(
                 "{}{}",
                 language["label-resolution"]
                     .bold()
-                    .custom_color(*header_color),
+                    .custom_color_or_ansi_color_code(*header_color),
                 screens_resolution.custom_color(*logo_color)
             ));
         }
@@ -151,7 +157,7 @@ pub async fn get_resolution(
 
 pub async fn get_desktop(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -161,7 +167,9 @@ pub async fn get_desktop(
         if !de_infos.0.is_empty() {
             return Option::from(format!(
                 "{}{}",
-                language["label-desktop"].bold().custom_color(*header_color),
+                language["label-desktop"]
+                    .bold()
+                    .custom_color_or_ansi_color_code(*header_color),
                 format!(
                     "{} {}",
                     de_infos.0,
@@ -183,7 +191,7 @@ pub async fn get_desktop(
 
 pub async fn get_shell(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -191,7 +199,9 @@ pub async fn get_shell(
     if !yaml.disabled_entries.contains(&"shell".to_owned()) {
         return Option::from(format!(
             "{}{}",
-            language["label-shell"].bold().custom_color(*header_color),
+            language["label-shell"]
+                .bold()
+                .custom_color_or_ansi_color_code(*header_color),
             infos.get_shell().custom_color(*logo_color)
         ));
     }
@@ -200,7 +210,7 @@ pub async fn get_shell(
 
 pub async fn get_terminal(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -212,7 +222,7 @@ pub async fn get_terminal(
                 "{}{}",
                 language["label-terminal"]
                     .bold()
-                    .custom_color(*header_color),
+                    .custom_color_or_ansi_color_code(*header_color),
                 terminal.custom_color(*logo_color)
             ));
         }
@@ -222,7 +232,7 @@ pub async fn get_terminal(
 
 pub async fn get_terminal_font(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -234,7 +244,7 @@ pub async fn get_terminal_font(
                 "{}{}",
                 language["label-terminal-font"]
                     .bold()
-                    .custom_color(*header_color),
+                    .custom_color_or_ansi_color_code(*header_color),
                 terminal.custom_color(*logo_color)
             ));
         }
@@ -244,7 +254,7 @@ pub async fn get_terminal_font(
 
 pub async fn get_memory(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -252,7 +262,9 @@ pub async fn get_memory(
     if !yaml.disabled_entries.contains(&"memory".to_owned()) {
         return Option::from(format!(
             "{}{}",
-            language["label-memory"].bold().custom_color(*header_color),
+            language["label-memory"]
+                .bold()
+                .custom_color_or_ansi_color_code(*header_color),
             format!(
                 "{}/{}",
                 convert_to_readable_unity(infos.sysinfo_obj.used_memory() as f64),
@@ -266,7 +278,7 @@ pub async fn get_memory(
 
 pub async fn get_cpu(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -284,13 +296,17 @@ pub async fn get_cpu(
         if cpu_name.is_empty() {
             return Option::from(format!(
                 "{}{:.5}%",
-                language["label-cpu"].bold().custom_color(*header_color),
+                language["label-cpu"]
+                    .bold()
+                    .custom_color_or_ansi_color_code(*header_color),
                 cpu_infos.cpu_usage().to_string().custom_color(*logo_color)
             ));
         } else {
             return Option::from(format!(
                 "{}{}",
-                language["label-cpu"].bold().custom_color(*header_color),
+                language["label-cpu"]
+                    .bold()
+                    .custom_color_or_ansi_color_code(*header_color),
                 format!("{} - {:.1}%", cpu_name, cpu_infos.cpu_usage()).custom_color(*logo_color)
             ));
         }
@@ -300,7 +316,7 @@ pub async fn get_cpu(
 
 pub async fn get_network(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -313,7 +329,9 @@ pub async fn get_network(
         }
         return Option::from(format!(
             "{}{}",
-            language["label-network"].bold().custom_color(*header_color),
+            language["label-network"]
+                .bold()
+                .custom_color_or_ansi_color_code(*header_color),
             format!(
                 "{}/s ↘  {}/s ↗",
                 convert_to_readable_unity(network_sent as f64),
@@ -327,7 +345,7 @@ pub async fn get_network(
 
 pub async fn get_disks(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -346,9 +364,11 @@ pub async fn get_disks(
                 if print_disk {
                     disks.push(format!(
                         "{}{}{}",
-                        language["label-disk"].bold().custom_color(*header_color),
+                        language["label-disk"]
+                            .bold()
+                            .custom_color_or_ansi_color_code(*header_color),
                         format!("({})", disk.mount_point().to_str().unwrap_or(""),)
-                            .custom_color(*header_color),
+                            .custom_color_or_ansi_color_code(*header_color),
                         format!(
                             "{}{}/{}",
                             language["label-disk-1"],
@@ -365,7 +385,9 @@ pub async fn get_disks(
         if print_disks {
             disks.push(format!(
                 "{}{}",
-                language["label-disks"].bold().custom_color(*header_color),
+                language["label-disks"]
+                    .bold()
+                    .custom_color_or_ansi_color_code(*header_color),
                 format!(
                     "{}/{}",
                     convert_to_readable_unity(total_disk_used as f64),
@@ -384,7 +406,7 @@ pub async fn get_disks(
 
 pub async fn get_public_ip(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
@@ -394,7 +416,7 @@ pub async fn get_public_ip(
             "{}{}",
             language["label-public-ip"]
                 .bold()
-                .custom_color(*header_color),
+                .custom_color_or_ansi_color_code(*header_color),
             infos.get_public_ip().custom_color(*logo_color)
         ));
     }
@@ -403,7 +425,7 @@ pub async fn get_public_ip(
 
 pub async fn get_battery(
     yaml: Arc<Config>,
-    header_color: Arc<CustomColor>,
+    header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
 ) -> Option<String> {
@@ -415,7 +437,9 @@ pub async fn get_battery(
                 if let Some(Ok(battery_infos)) = batteries_infos.next() {
                     return Option::from(format!(
                         "{}{:.4}%",
-                        language["label-battery"].bold().custom_color(*header_color),
+                        language["label-battery"]
+                            .bold()
+                            .custom_color_or_ansi_color_code(*header_color),
                         (battery_infos.state_of_charge().value * 100.0)
                             .to_string()
                             .custom_color(*logo_color)

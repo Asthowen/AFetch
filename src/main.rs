@@ -6,13 +6,14 @@ use afetch::system::getters::{
 use afetch::system::infos::Infos;
 use afetch::translations::list::{language_code_list, language_list};
 use afetch::utils::Config;
-use afetch_colored::{Colorize, CustomColor};
+use afetch_colored::{AnsiOrCustom, Colorize, CustomColor};
 use image::GenericImageView;
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
+use unicode_segmentation::UnicodeSegmentation;
 use viuer::Config as ViuerConfig;
 use whoami::{hostname, username};
 
@@ -37,7 +38,7 @@ async fn main() {
     let yaml_to_parse: String = if afetch_config_path.exists() {
         std::fs::read_to_string(afetch_config_path).unwrap_or_default()
     } else {
-        let to_write: String = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\ntext_color_header:\n  - 133 # r\n  - 218 # g\n  - 249 # b\ndisabled_entries:\n  - battery\n  - public-ip\n  - network".to_owned();
+        let to_write: String = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\n# text_color_header:\n#   - 133 # r\n#   - 218 # g\n#   - 249 # b\ndisabled_entries:\n  - battery\n  - public-ip\n  - network".to_owned();
         if let Err(e) = std::fs::write(afetch_config_path, &to_write) {
             println!(
                 "An error occurred while creating the configuration file: {}",
@@ -51,12 +52,7 @@ async fn main() {
         println!("Your configuration is malformed ({})", e);
         exit(9);
     });
-    let header_color: CustomColor = CustomColor::new(
-        yaml.text_color_header[0],
-        yaml.text_color_header[1],
-        yaml.text_color_header[2],
-    );
-    let logo_color = CustomColor::new(yaml.text_color[0], yaml.text_color[1], yaml.text_color[2]);
+    let text_color = CustomColor::new(yaml.text_color[0], yaml.text_color[1], yaml.text_color[2]);
 
     let language: HashMap<&'static str, &'static str> = if yaml.language == "auto" {
         let locale_value_base: String = sys_locale::get_locale()
@@ -94,8 +90,7 @@ async fn main() {
     let infos: Infos = Infos::init(custom_logo);
 
     let shared_yaml = Arc::new(yaml.clone());
-    let shared_header_color = Arc::new(header_color);
-    let shared_logo_color = Arc::new(logo_color);
+    let shared_logo_color = Arc::new(text_color);
     let shared_language = Arc::new(language.clone());
     let shared_infos = Arc::new(infos);
 
@@ -104,30 +99,44 @@ async fn main() {
     } else {
         2
     };
-    let logo: Option<Vec<&str>> = if logo_type == 0 {
-        if let Some(infos) = shared_infos.get_os_logo() {
-            Some(infos[3].lines().collect::<Vec<&str>>())
-        } else {
-            None
-        }
+    let logo: Option<[&str; 2]> = if logo_type == 0 {
+        shared_infos.get_os_logo()
     } else {
         None
     };
+    let logo_lines_option: Option<Vec<&str>> =
+        logo.map(|logo| logo[1].lines().collect::<Vec<&str>>());
+
+    let header_color: AnsiOrCustom = if let Some(text_color_header) = yaml.text_color_header {
+        AnsiOrCustom::Custom(CustomColor::new(
+            text_color_header[0],
+            text_color_header[1],
+            text_color_header[2],
+        ))
+    } else if let Some(logo) = logo {
+        AnsiOrCustom::Ansi(logo[0].parse::<u8>().unwrap())
+    } else {
+        AnsiOrCustom::Ansi(6)
+    };
+
+    let shared_header_color = Arc::new(header_color);
 
     let (username, host): (String, String) = (username(), hostname());
     let mut infos_to_print: Vec<String> = Vec::new();
     let mut output: String = "".to_owned();
     infos_to_print.push(format!(
         "{}{}{}",
-        username.custom_color(header_color).bold(),
-        "@".custom_color(logo_color),
-        host.custom_color(header_color).bold()
+        username
+            .custom_color_or_ansi_color_code(header_color)
+            .bold(),
+        "@".custom_color(text_color),
+        host.custom_color_or_ansi_color_code(header_color).bold()
     ));
     infos_to_print.push(format!(
         "{}",
         "─"
             .repeat(username.len() + host.len() + 1)
-            .custom_color(logo_color)
+            .custom_color(text_color)
     ));
 
     let (
@@ -321,20 +330,32 @@ async fn main() {
         ]);
     }
 
-    if let Some(logo) = logo {
-        let mut last_index: usize = 0;
+    if let Some(logo_lines) = logo_lines_option {
+        let logo_escape_u8: Vec<u8> =
+            strip_ansi_escapes::strip(logo.unwrap_or_default()[1]).unwrap();
+        let logo_escape = String::from_utf8_lossy(&logo_escape_u8);
+        let logo_escape_lines: Vec<&str> = logo_escape.lines().collect::<Vec<&str>>();
+        let mut max_line_length: usize = 0;
 
+        for line in logo_escape_lines {
+            let line_length: usize = line.graphemes(true).count() + 6;
+            if line_length > max_line_length {
+                max_line_length = line_length;
+            }
+        }
+
+        let mut last_index: usize = 0;
         for (i, info) in infos_to_print.into_iter().enumerate() {
-            if logo.len() > i {
-                output += &format!("   {}{}   {}\n", logo[i], "".white(), info);
+            if logo_lines.len() > i {
+                output += &format!("   {}{}   {}\n", logo_lines[i], "".white(), info);
             } else {
-                output += &format!("{}{}\n", " ".repeat(48), info);
+                output += &format!("{}{}\n", " ".repeat(max_line_length), info);
             }
             last_index += 1;
         }
 
-        if last_index < logo.len() {
-            for logo_line in &logo[last_index..] {
+        if last_index < logo_lines.len() {
+            for logo_line in &logo_lines[last_index..] {
                 output += &format!("   {}   \n", logo_line);
             }
         }
