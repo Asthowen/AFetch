@@ -47,6 +47,7 @@ pub fn get_pid_names(pids: Vec<u32>) -> Result<Vec<String>, String> {
             Ok(output.trim().to_owned())
         })
         .collect::<Result<Vec<String>, String>>()?;
+
     Ok(pid_names)
 }
 

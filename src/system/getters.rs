@@ -16,7 +16,7 @@ pub async fn get_os(
     infos: Arc<Infos>,
 ) -> Option<String> {
     if !yaml.disabled_entries.contains(&"os".to_owned()) {
-        let system_name: String = infos.sysinfo_obj.name().unwrap_or_else(|| "".to_owned());
+        let system_name: String = infos.sysinfo_obj.name().unwrap_or_default();
         if !system_name.is_empty() {
             if system_name.to_lowercase().contains("windows") {
                 return Option::from(format!(
@@ -87,7 +87,7 @@ pub async fn get_kernel(
             infos
                 .sysinfo_obj
                 .kernel_version()
-                .unwrap_or_else(|| "".to_owned())
+                .unwrap_or_default()
                 .replace('\n', "")
                 .custom_color(*logo_color)
         ));
@@ -179,7 +179,7 @@ pub async fn get_desktop(
                     {
                         de_infos.1
                     } else {
-                        "".to_owned()
+                        String::default()
                     }
                 )
                 .custom_color(*logo_color)
@@ -290,10 +290,10 @@ pub async fn get_cpu(
         } else if !infos.sysinfo_obj.global_cpu_info().vendor_id().is_empty() {
             cpu_infos.vendor_id().to_owned()
         } else {
-            "".to_owned()
+            String::default()
         };
 
-        if cpu_name.is_empty() {
+        if cpu_name.is_empty() && !yaml.disabled_entries.contains(&"cpu-usage".to_owned()) {
             return Option::from(format!(
                 "{}{:.5}%",
                 language["label-cpu"]
@@ -302,12 +302,19 @@ pub async fn get_cpu(
                 cpu_infos.cpu_usage().to_string().custom_color(*logo_color)
             ));
         } else {
+            let cpu_percentage: String = if yaml.disabled_entries.contains(&"cpu-usage".to_owned())
+            {
+                String::default()
+            } else {
+                format!(" - {:.1}%", cpu_infos.cpu_usage())
+            };
+
             return Option::from(format!(
                 "{}{}",
                 language["label-cpu"]
                     .bold()
                     .custom_color_or_ansi_color_code(*header_color),
-                format!("{} - {:.1}%", cpu_name, cpu_infos.cpu_usage()).custom_color(*logo_color)
+                format!("{}{}", cpu_name, cpu_percentage).custom_color(*logo_color)
             ));
         }
     }
@@ -419,6 +426,28 @@ pub async fn get_public_ip(
                 .custom_color_or_ansi_color_code(*header_color),
             infos.get_public_ip().custom_color(*logo_color)
         ));
+    }
+    None
+}
+
+pub async fn get_wm(
+    yaml: Arc<Config>,
+    header_color: Arc<AnsiOrCustom>,
+    logo_color: Arc<CustomColor>,
+    language: Arc<HashMap<&'static str, &'static str>>,
+    infos: Arc<Infos>,
+) -> Option<String> {
+    if !yaml.disabled_entries.contains(&"wm".to_owned()) {
+        let wm: String = infos.get_wm();
+        if !wm.is_empty() {
+            return Option::from(format!(
+                "{}{}",
+                language["label-wm"]
+                    .bold()
+                    .custom_color_or_ansi_color_code(*header_color),
+                wm.custom_color(*logo_color)
+            ));
+        }
     }
     None
 }

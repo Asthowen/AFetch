@@ -1,7 +1,7 @@
 use afetch::system::getters::{
     get_battery, get_cpu, get_desktop, get_disks, get_host, get_kernel, get_memory, get_network,
     get_os, get_packages, get_public_ip, get_resolution, get_shell, get_terminal,
-    get_terminal_font, get_uptime,
+    get_terminal_font, get_uptime, get_wm,
 };
 use afetch::system::infos::Infos;
 use afetch::translations::list::{language_code_list, language_list};
@@ -38,7 +38,7 @@ async fn main() {
     let yaml_to_parse: String = if afetch_config_path.exists() {
         std::fs::read_to_string(afetch_config_path).unwrap_or_default()
     } else {
-        let to_write: String = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\n# text_color_header:\n#   - 133 # r\n#   - 218 # g\n#   - 249 # b\ndisabled_entries:\n  - battery\n  - public-ip\n  - network".to_owned();
+        let to_write: String = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\n# text_color_header:\n#   - 133 # r\n#   - 218 # g\n#   - 249 # b\ndisabled_entries:\n  - battery\n  - public-ip\n  - cpu-usage\n  - network".to_owned();
         if let Err(e) = std::fs::write(afetch_config_path, &to_write) {
             println!(
                 "An error occurred while creating the configuration file: {}",
@@ -52,7 +52,8 @@ async fn main() {
         println!("Your configuration is malformed ({})", e);
         exit(9);
     });
-    let text_color = CustomColor::new(yaml.text_color[0], yaml.text_color[1], yaml.text_color[2]);
+    let text_color: CustomColor =
+        CustomColor::new(yaml.text_color[0], yaml.text_color[1], yaml.text_color[2]);
 
     let language: HashMap<&'static str, &'static str> = if yaml.language == "auto" {
         let locale_value_base: String = sys_locale::get_locale()
@@ -75,8 +76,9 @@ async fn main() {
         language_list()["en"].clone()
     };
 
-    let cli_args: Vec<_> = std::env::args().collect();
-    let search_logo_arg_opt = cli_args.iter().position(|r| r.to_lowercase() == "--logo");
+    let cli_args: Vec<String> = std::env::args().collect();
+    let search_logo_arg_opt: Option<usize> =
+        cli_args.iter().position(|r| r.to_lowercase() == "--logo");
     let custom_logo: Option<String> = if let Some(search_logo_arg) = search_logo_arg_opt {
         if let Some(logo) = cli_args.get(search_logo_arg + 1) {
             Option::from(logo.to_lowercase())
@@ -89,10 +91,10 @@ async fn main() {
 
     let infos: Infos = Infos::init(custom_logo);
 
-    let shared_yaml = Arc::new(yaml.clone());
-    let shared_logo_color = Arc::new(text_color);
+    let shared_yaml: Arc<Config> = Arc::new(yaml.clone());
+    let shared_logo_color: Arc<CustomColor> = Arc::new(text_color);
     let shared_language = Arc::new(language.clone());
-    let shared_infos = Arc::new(infos);
+    let shared_infos: Arc<Infos> = Arc::new(infos);
 
     let logo_type: i8 = if yaml.logo.status == "enable" {
         i8::from(yaml.logo.char_type != "braille")
@@ -123,7 +125,7 @@ async fn main() {
 
     let (username, host): (String, String) = (username(), hostname());
     let mut infos_to_print: Vec<String> = Vec::new();
-    let mut output: String = "".to_owned();
+    let mut output: String = String::default();
     infos_to_print.push(format!(
         "{}{}{}",
         username
@@ -145,13 +147,14 @@ async fn main() {
         kernel_result,
         uptime_result,
         packages_result,
+        shell_result,
         resolution_result,
         desktop_result,
-        shell_result,
+        wm_result,
         terminal_result,
         terminal_font_result,
-        memory_result,
         cpu_result,
+        memory_result,
         network_result,
         disks_result,
         public_ip_result,
@@ -192,6 +195,13 @@ async fn main() {
             Arc::clone(&shared_language),
             Arc::clone(&shared_infos)
         ),
+        get_shell(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
         get_resolution(
             Arc::clone(&shared_yaml),
             Arc::clone(&shared_header_color),
@@ -206,7 +216,7 @@ async fn main() {
             Arc::clone(&shared_language),
             Arc::clone(&shared_infos)
         ),
-        get_shell(
+        get_wm(
             Arc::clone(&shared_yaml),
             Arc::clone(&shared_header_color),
             Arc::clone(&shared_logo_color),
@@ -227,14 +237,14 @@ async fn main() {
             Arc::clone(&shared_language),
             Arc::clone(&shared_infos)
         ),
-        get_memory(
+        get_cpu(
             Arc::clone(&shared_yaml),
             Arc::clone(&shared_header_color),
             Arc::clone(&shared_logo_color),
             Arc::clone(&shared_language),
             Arc::clone(&shared_infos)
         ),
-        get_cpu(
+        get_memory(
             Arc::clone(&shared_yaml),
             Arc::clone(&shared_header_color),
             Arc::clone(&shared_logo_color),
@@ -285,14 +295,17 @@ async fn main() {
     if let Some(packages) = packages_result {
         infos_to_print.push(packages);
     }
+    if let Some(shell) = shell_result {
+        infos_to_print.push(shell);
+    }
     if let Some(resolution) = resolution_result {
         infos_to_print.push(resolution);
     }
     if let Some(desktop) = desktop_result {
         infos_to_print.push(desktop);
     }
-    if let Some(shell) = shell_result {
-        infos_to_print.push(shell);
+    if let Some(wm) = wm_result {
+        infos_to_print.push(wm);
     }
     if let Some(terminal) = terminal_result {
         infos_to_print.push(terminal);
@@ -300,11 +313,11 @@ async fn main() {
     if let Some(terminal_font) = terminal_font_result {
         infos_to_print.push(terminal_font);
     }
-    if let Some(memory) = memory_result {
-        infos_to_print.push(memory);
-    }
     if let Some(cpu) = cpu_result {
         infos_to_print.push(cpu);
+    }
+    if let Some(memory) = memory_result {
+        infos_to_print.push(memory);
     }
     if let Some(network) = network_result {
         infos_to_print.push(network);
@@ -323,8 +336,8 @@ async fn main() {
         let first_colors: String = (0..8).map(|i| format!("\x1b[4{}m   \x1b[0m", i)).collect();
         let second_colors: String = (0..8).map(|i| format!("\x1b[10{}m   \x1b[0m", i)).collect();
         infos_to_print.extend(vec![
-            "".to_owned(),
-            "".to_owned(),
+            String::default(),
+            String::default(),
             first_colors,
             second_colors,
         ]);
@@ -347,16 +360,16 @@ async fn main() {
         let mut last_index: usize = 0;
         for (i, info) in infos_to_print.into_iter().enumerate() {
             if logo_lines.len() > i {
-                output += &format!("   {}{}   {}\n", logo_lines[i], "".white(), info);
+                writeln!(output, "   {}{}   {}", logo_lines[i], "".white(), info).ok();
             } else {
-                output += &format!("{}{}\n", " ".repeat(max_line_length), info);
+                writeln!(output, "{}{}", " ".repeat(max_line_length), info).ok();
             }
             last_index += 1;
         }
 
         if last_index < logo_lines.len() {
             for logo_line in &logo_lines[last_index..] {
-                output += &format!("   {}   \n", logo_line);
+                writeln!(output, "   {}   ", logo_line).ok();
             }
         }
 
@@ -364,7 +377,7 @@ async fn main() {
     } else if logo_type == 1 {
         println!();
         for info in &infos_to_print {
-            output += &format!("{}{}\n", " ".repeat(47), info);
+            writeln!(output, "{}{}", " ".repeat(47), info).ok();
         }
         print!("{}\x1b[{}A", output, infos_to_print.len());
 

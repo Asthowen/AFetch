@@ -23,16 +23,20 @@ pub const fn div_mod(dividend: u64, divisor: u64) -> (u64, u64) {
 
 pub fn return_str_from_command(command: &mut std::process::Command) -> String {
     if let Ok(output) = command.output() {
-        String::from_utf8(output.stdout).unwrap_or_else(|_| "".to_owned())
+        String::from_utf8(output.stdout).unwrap_or_default()
     } else {
-        "".to_owned()
+        String::default()
     }
 }
 
-pub fn get_file_content(file_path: &str) -> String {
+pub fn get_file_content_without_lines(file_path: &str) -> String {
     std::fs::read_to_string(file_path)
-        .unwrap_or_else(|_| "".to_owned())
+        .unwrap_or_default()
         .replace('\n', "")
+}
+
+pub fn get_file_content(file_path: &str) -> String {
+    std::fs::read_to_string(file_path).unwrap_or_default()
 }
 
 pub fn command_exist(program: &str) -> bool {
@@ -63,7 +67,7 @@ pub fn format_time(time_to_format: u64, language: &HashMap<&'static str, &'stati
         _ => time_formatted.push(format!("{} {}", minutes, language["minutes"])),
     }
 
-    if seconds > 0 && hours == 0 {
+    if seconds > 0 && minutes == 0 && hours == 0 {
         match minutes {
             0 => (),
             1 => time_formatted.push(format!("{} {}", seconds, language["second"])),
@@ -93,5 +97,5 @@ pub fn env_exist(env_var: &str) -> bool {
 }
 
 pub fn get_env(env_var: &str) -> String {
-    std::env::var(env_var).unwrap_or_else(|_| "".to_owned())
+    std::env::var(env_var).unwrap_or_default()
 }

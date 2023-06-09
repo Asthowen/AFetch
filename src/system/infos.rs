@@ -1,6 +1,8 @@
 use crate::logos;
 use crate::system::pid::get_ppid;
-use crate::utils::{command_exist, env_exist, get_env, get_file_content, return_str_from_command};
+use crate::utils::{
+    command_exist, env_exist, get_env, get_file_content_without_lines, return_str_from_command,
+};
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -74,7 +76,7 @@ impl Infos {
         } else if Path::new("/etc/GoboLinuxVersion").exists() {
             "GoboLinux".to_owned()
         } else if Path::new("/etc/SDE-VERSION").exists() {
-            get_file_content("/etc/SDE-VERSION")
+            get_file_content_without_lines("/etc/SDE-VERSION")
         } else if command_exist("tazpkg") {
             "SliTaz".to_owned()
         } else if command_exist("kpt") && command_exist("kpm") {
@@ -82,7 +84,7 @@ impl Infos {
         } else if Path::new("/system/app/").exists() && Path::new("/system/priv-app").exists() {
             "Android".to_owned()
         } else {
-            "".to_owned()
+            String::default()
         };
 
         if distribution_name == "Ubuntu" && env_exist("XDG_CONFIG_DIRS") {
@@ -133,7 +135,7 @@ impl Infos {
                 }
             )
         } else {
-            "".to_owned()
+            String::default()
         }
         .replace(' ', "");
 
@@ -174,31 +176,36 @@ impl Infos {
         match std::env::consts::OS {
             "linux" => {
                 if Path::new("/system/app/").exists() && Path::new("/system/priv-app").exists() {
-                    host = return_str_from_command(Command::new("getprop").arg("ro.product.brand"));
-                    host +=
+                    host = format!(
+                        "{}{}",
+                        return_str_from_command(Command::new("getprop").arg("ro.product.brand")),
                         return_str_from_command(Command::new("getprop").arg("ro.product.model"))
-                            .as_str();
+                    );
                 } else if Path::new("/sys/devices/virtual/dmi/id/product_name").exists()
                     && Path::new("/sys/devices/virtual/dmi/id/product_version").exists()
                 {
-                    host = get_file_content("/sys/devices/virtual/dmi/id/product_name");
-                    host += " ";
-                    host +=
-                        get_file_content("/sys/devices/virtual/dmi/id/product_version").as_str();
+                    host = format!(
+                        "{} {}",
+                        get_file_content_without_lines("/sys/devices/virtual/dmi/id/product_name"),
+                        get_file_content_without_lines(
+                            "/sys/devices/virtual/dmi/id/product_version"
+                        )
+                    );
                 } else if Path::new("/sys/firmware/devicetree/base/model").exists() {
-                    host = get_file_content("/sys/firmware/devicetree/base/model");
+                    host = get_file_content_without_lines("/sys/firmware/devicetree/base/model");
                 } else if Path::new("/tmp/sysinfo/model").exists() {
-                    host = get_file_content("/tmp/sysinfo/model");
+                    host = get_file_content_without_lines("/tmp/sysinfo/model");
                 }
 
-                if (host.contains("System Product Name") || !host.is_empty())
+                if (host.contains("System Product Name") || host.is_empty())
                     && Path::new("/sys/devices/virtual/dmi/id/board_vendor").exists()
                     && Path::new("/sys/devices/virtual/dmi/id/board_name").exists()
                 {
                     host = format!(
                         "{} {}",
-                        get_file_content("/sys/devices/virtual/dmi/id/board_vendor"),
-                        get_file_content("/sys/devices/virtual/dmi/id/board_name").as_str(),
+                        get_file_content_without_lines("/sys/devices/virtual/dmi/id/board_vendor"),
+                        get_file_content_without_lines("/sys/devices/virtual/dmi/id/board_name")
+                            .as_str(),
                     )
                 }
 
@@ -219,7 +226,7 @@ impl Infos {
             }
             _ => {
                 // TODO - add other OS
-                "".to_owned()
+                String::default()
             }
         }
     }
@@ -271,7 +278,7 @@ impl Infos {
                 }
             };
         }
-        "".to_owned()
+        String::default()
     }
     pub fn get_screens_resolution(&self) -> String {
         match std::env::consts::OS {
@@ -327,7 +334,7 @@ impl Infos {
                     let read_dir = if let Ok(read_dir) = std::fs::read_dir("/sys/class/drm/") {
                         read_dir
                     } else {
-                        return "".to_owned();
+                        return String::default();
                     };
 
                     for path in read_dir.filter_map(Result::ok) {
@@ -386,7 +393,7 @@ impl Infos {
             }
             _ => {
                 // TODO - add other OS
-                "".to_owned()
+                String::default()
             }
         }
     }
@@ -487,14 +494,14 @@ impl Infos {
             }
             _ => {
                 // TODO - add other OS
-                "".to_owned()
+                String::default()
             }
         }
     }
     pub fn get_public_ip(&self) -> String {
         match minreq::get("http://ipinfo.io/ip").send() {
             Ok(response) => response.as_str().unwrap_or_default().to_owned(),
-            Err(_) => "".to_owned(),
+            Err(_) => String::default(),
         }
     }
     pub fn get_terminal(&self) -> String {
@@ -524,17 +531,17 @@ impl Infos {
             if let Ok(pids) = crate::system::pid::get_parent_pids(std::process::id()) {
                 pids
             } else {
-                return "".to_owned();
+                return String::default();
             };
         let pids_name: Vec<String> = if let Ok(pids_name) = crate::system::pid::get_pid_names(pids)
         {
             pids_name
         } else {
-            return "".to_owned();
+            return String::default();
         };
         let clean_pid_names: Vec<String> = crate::system::pid::clean_pid_names(pids_name);
         if clean_pid_names.len() != 1 {
-            return "".to_owned();
+            return String::default();
         }
         let terminal_name: &str = &clean_pid_names[0];
 
@@ -663,7 +670,7 @@ impl Infos {
                             .unwrap_or_else(|_| format!("{}/.config", self.home_dir))
                     );
 
-                    for line in get_file_content(&config_file).lines() {
+                    for line in get_file_content_without_lines(&config_file).lines() {
                         if line.contains("font=") {
                             term_font.push_str(line.split('=').nth(1).unwrap_or("").trim());
                             term_font.push(' ');
@@ -675,7 +682,7 @@ impl Infos {
                     }
                 }
                 "gnustep_terminal" => {
-                    let file_content = get_file_content(&format!(
+                    let file_content = get_file_content_without_lines(&format!(
                         "{}/GNUstep/Defaults/Terminal.plist",
                         self.home_dir
                     ));
@@ -689,7 +696,8 @@ impl Infos {
                         .join(" ");
                 }
                 "hyper" => {
-                    let content = get_file_content(&format!("{}/.hyper.js", self.home_dir));
+                    let content =
+                        get_file_content_without_lines(&format!("{}/.hyper.js", self.home_dir));
 
                     let temp_term_font: Option<&str> = match content.split("fontFamily\":").nth(1) {
                         Some(s) => s.split(',').next(),
@@ -698,7 +706,7 @@ impl Infos {
 
                     term_font = match temp_term_font {
                         Some(s) => s.trim_matches('"').to_owned(),
-                        None => "".to_owned(),
+                        None => String::default(),
                     };
                 }
                 "kitty" | "xterm-kitty" => {
@@ -708,14 +716,13 @@ impl Infos {
                     ));
                 }
                 "konsole" | "yakuake" => {
-                    let child = get_ppid(&format!("{}", std::process::id()))
-                        .unwrap_or_else(|| "".to_owned());
+                    let child = get_ppid(&format!("{}", std::process::id())).unwrap_or_default();
 
                     let qt_bindir_result = Command::new("qtpaths").arg("--binaries-dir").output();
                     let qt_bindir = if let Ok(qt_bindir) = qt_bindir_result {
                         qt_bindir
                     } else {
-                        return "".to_owned();
+                        return String::default();
                     };
                     let qt_bindir_output = String::from_utf8_lossy(&qt_bindir.stdout);
                     let qt_bindir_path = qt_bindir_output.trim();
@@ -729,7 +736,7 @@ impl Infos {
                         if let Ok(konsole_instances_output) = konsole_instances_output_result {
                             konsole_instances_output
                         } else {
-                            return "".to_owned();
+                            return String::default();
                         };
 
                     let konsole_instances_output_str =
@@ -748,7 +755,7 @@ impl Infos {
                             if let Ok(konsole_sessions_output) = konsole_sessions_output_result {
                                 konsole_sessions_output
                             } else {
-                                return "".to_owned();
+                                return String::default();
                             };
                         let konsole_sessions_output_str =
                             String::from_utf8_lossy(&konsole_sessions_output.stdout);
@@ -767,7 +774,7 @@ impl Infos {
                                 if let Ok(process_id_output) = process_id_output_result {
                                     process_id_output
                                 } else {
-                                    return "".to_owned();
+                                    return String::default();
                                 };
                             let process_id_output_str =
                                 String::from_utf8_lossy(&process_id_output.stdout);
@@ -784,7 +791,7 @@ impl Infos {
                                     if let Ok(environment_output) = environment_output_result {
                                         environment_output
                                     } else {
-                                        return "".to_owned();
+                                        return String::default();
                                     };
 
                                 let environment_output_str =
@@ -807,7 +814,7 @@ impl Infos {
                                         if let Ok(profile_output) = profile_output_result {
                                             profile_output
                                         } else {
-                                            return "".to_owned();
+                                            return String::default();
                                         };
                                     let profile_output_str =
                                         String::from_utf8_lossy(&profile_output.stdout);
@@ -826,7 +833,7 @@ impl Infos {
                     }
 
                     if profile.is_empty() {
-                        return "".to_owned();
+                        return String::default();
                     }
 
                     if profile == "Built-in" {
@@ -866,19 +873,19 @@ impl Infos {
                         if let Some(profile_filename) = profile_filename_result.first() {
                             profile_filename
                         } else {
-                            return "".to_owned();
+                            return String::default();
                         };
                     let profile_file_result = File::open(profile_filename);
                     let profile_file = if let Ok(profile_file) = profile_file_result {
                         profile_file
                     } else {
-                        return "".to_owned();
+                        return String::default();
                     };
 
                     let reader = BufReader::new(profile_file);
 
                     for line in reader.lines() {
-                        let line = line.unwrap_or_else(|_| "".to_owned());
+                        let line = line.unwrap_or_default();
 
                         if line.starts_with("Font=") {
                             let fields: Vec<&str> = line.split('=').collect();
@@ -910,22 +917,22 @@ impl Infos {
                 .collect::<Vec<&str>>()[0]
                 .to_owned();
             return if windows_version == "10" {
-                ("Fluent".to_owned(), "".to_owned())
+                ("Fluent".to_owned(), String::default())
             } else if windows_version == "8" {
-                ("Metro".to_owned(), "".to_owned())
+                ("Metro".to_owned(), String::default())
             } else {
-                ("Aero".to_owned(), "".to_owned())
+                ("Aero".to_owned(), String::default())
             };
         } else {
-            return ("".to_owned(), "".to_owned());
+            return (String::default(), String::default());
         }
 
         #[cfg(target_os = "macos")]
-        return ("Aqua".to_owned(), "".to_owned());
+        return ("Aqua".to_owned(), String::default());
 
         #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
         {
-            let mut de_name: String = "".to_owned();
+            let mut de_name: String = String::default();
             if env_exist("DESKTOP_SESSION") && get_env("DESKTOP_SESSION") == "regolith" {
                 de_name = "Regolith".to_owned();
             } else if env_exist("XDG_CURRENT_DESKTOP") {
@@ -953,7 +960,7 @@ impl Infos {
                 "MUFFIN" => de_name = "Cinnamon".to_owned(),
                 &_ => {}
             }
-            let mut version: String = "".to_owned();
+            let mut version: String = String::default();
             match de_name.as_str() {
                 "Plasma" | "KDE" => {
                     version = return_str_from_command(Command::new("plasmashell").arg("--version"))
@@ -971,7 +978,7 @@ impl Infos {
                         return_str_from_command(Command::new("xfce4-session").arg("--version"));
                 }
                 "Deepin" => {
-                    version = get_file_content("/etc/os-version")
+                    version = get_file_content_without_lines("/etc/os-version")
                         .lines()
                         .find(|line| line.starts_with("MajorVersion="))
                         .map(|line| line.split('=').nth(1).unwrap_or(""))
@@ -1014,5 +1021,251 @@ impl Infos {
 
             // todo hide VM if VM == WM
         }
+    }
+
+    pub fn get_wm(&self) -> String {
+        let kernel_name: String = return_str_from_command(Command::new("uname").arg("-s"));
+        let os = std::env::consts::OS;
+        let ps_flags = match kernel_name.as_str() {
+            _ if kernel_name.contains("OpenBSD") => vec!["x", "-c"],
+            _ => vec!["-e"],
+        };
+
+        let wm = if env_exist("XDG_RUNTIME_DIR") {
+            let xdg_runtime_dir = get_env("XDG_RUNTIME_DIR");
+            let wayland_display =
+                std::env::var("WAYLAND_DISPLAY").unwrap_or_else(|_| "wayland-0".to_owned());
+            let wayland_path = format!("{}/{}", xdg_runtime_dir, wayland_display);
+            let tmp_pid = Command::new("lsof")
+                .arg("-t")
+                .arg(&wayland_path)
+                .output()
+                .unwrap_or_else(|_| {
+                    Command::new("fuser")
+                        .arg(&wayland_path)
+                        .output()
+                        .expect("Failed to execute fuser command")
+                });
+
+            if let Ok(output) = String::from_utf8(tmp_pid.stdout) {
+                return if !output.is_empty() {
+                    let pid = output.trim();
+                    let wm_name = Command::new("ps")
+                        .arg("-p")
+                        .arg(pid)
+                        .arg("-ho")
+                        .arg("comm=")
+                        .output()
+                        .expect("Failed to execute ps command");
+                    String::from_utf8(wm_name.stdout).unwrap().trim().to_owned()
+                } else {
+                    let known_wms = vec![
+                        "arcan",
+                        "asc",
+                        "clayland",
+                        "dwc",
+                        "fireplace",
+                        "gnome-shell",
+                        "greenfield",
+                        "grefsen",
+                        "hikari",
+                        "kwin",
+                        "lipstick",
+                        "maynard",
+                        "mazecompositor",
+                        "motorcar",
+                        "orbital",
+                        "orbment",
+                        "perceptia",
+                        "river",
+                        "rustland",
+                        "sway",
+                        "ulubis",
+                        "velox",
+                        "wavy",
+                        "way-cooler",
+                        "wayfire",
+                        "wayhouse",
+                        "westeros",
+                        "westford",
+                        "weston",
+                    ];
+                    let ps_output = Command::new("ps")
+                        .args(&ps_flags)
+                        .output()
+                        .expect("Failed to execute ps command");
+                    let ps_result = String::from_utf8(ps_output.stdout).unwrap();
+                    for wm_name in known_wms {
+                        if let Some(line) = ps_result.lines().find(|line| line.contains(wm_name)) {
+                            let clean_line: Vec<&str> =
+                                line.trim().split(' ').collect::<Vec<&str>>();
+                            return clean_line[clean_line.len() - 1]
+                                .to_owned()
+                                .replace("_x11", "");
+                        }
+                    }
+                    String::default()
+                };
+            } else {
+                String::new()
+            }
+        } else if env_exist("DISPLAY") {
+            return if os != "macos" && os != "FreeMiNT" {
+                let non_ewmh_wms = vec![
+                    "[s]owm",
+                    "[c]atwm",
+                    "[f]vwm",
+                    "[d]wm",
+                    "[2]bwm",
+                    "[m]onsterwm",
+                    "[t]inywm",
+                    "[x]11fs",
+                    "[x]monad",
+                ];
+                let wm_name = Command::new("ps")
+                    .args(&ps_flags)
+                    .output()
+                    .expect("Failed to execute ps command")
+                    .stdout;
+                let wm_result = String::from_utf8(wm_name).unwrap();
+                for wm in non_ewmh_wms {
+                    if let Some(line) = wm_result.lines().find(|line| line.contains(wm)) {
+                        return line.trim().to_owned();
+                    }
+                }
+                if which::which("xprop").is_ok() {
+                    let id = Command::new("xprop")
+                        .arg("-root")
+                        .arg("-notype")
+                        .arg("_NET_SUPPORTING_WM_CHECK")
+                        .output()
+                        .expect("Failed to execute xprop command")
+                        .stdout;
+                    let id_result = String::from_utf8(id).unwrap();
+                    let id = id_result.split_whitespace().last().unwrap();
+                    let wm_name = Command::new("xprop")
+                        .arg("-id")
+                        .arg(id)
+                        .arg("-notype")
+                        .arg("-len")
+                        .arg("100")
+                        .arg("-f")
+                        .arg("_NET_WM_NAME")
+                        .arg("8t")
+                        .output()
+                        .expect("Failed to execute xprop command")
+                        .stdout;
+                    let wm_result = String::from_utf8(wm_name).unwrap();
+                    let wm = wm_result.trim().trim_matches(|c| c == '\"');
+                    return wm.to_owned();
+                }
+                String::default()
+            } else {
+                let ps_line = Command::new("ps")
+                    .arg("-e")
+                    .output()
+                    .expect("Failed to execute ps command")
+                    .stdout;
+                let ps_result = String::from_utf8(ps_line).unwrap();
+                let wm = match ps_result.as_str() {
+                    _ if ps_result.contains("[S]pectacle") => "Spectacle",
+                    _ if ps_result.contains("[A]methyst") => "Amethyst",
+                    _ if ps_result.contains("[k]wm") => "Kwm",
+                    _ if ps_result.contains("[c]hun[k]wm") => "ChunkWM",
+                    _ if ps_result.contains("[y]abai") => "yabai",
+                    _ if ps_result.contains("[R]ectangle") => "Rectangle",
+                    _ => "Quartz Compositor",
+                };
+                wm.to_owned()
+            };
+        } else {
+            match os {
+                "macos" => {
+                    let ps_line = Command::new("ps")
+                        .arg("-e")
+                        .output()
+                        .expect("Failed to execute ps command")
+                        .stdout;
+                    let ps_result = String::from_utf8(ps_line).unwrap();
+                    let wm = match ps_result.as_str() {
+                        _ if ps_result.contains("chunkwm") => "chunkwm",
+                        _ if ps_result.contains("kwm") => "Kwm",
+                        _ if ps_result.contains("yabai") => "yabai",
+                        _ if ps_result.contains("Amethyst") => "Amethyst",
+                        _ if ps_result.contains("Spectacle") => "Spectacle",
+                        _ if ps_result.contains("Rectangle") => "Rectangle",
+                        _ => "Quartz Compositor",
+                    };
+                    wm.to_owned()
+                }
+                "windows" => {
+                    let tasklist_output = Command::new("tasklist")
+                        .output()
+                        .expect("Failed to execute tasklist command")
+                        .stdout;
+                    let tasklist_result = String::from_utf8(tasklist_output).unwrap();
+                    let wm = if let Some(line) = tasklist_result.lines().find(|line| {
+                        line.contains("bugn")
+                            || line.contains("Windawesome")
+                            || line.contains("blackbox")
+                            || line.contains("emerge")
+                            || line.contains("litestep")
+                    }) {
+                        line.trim().to_owned()
+                    } else {
+                        String::new()
+                    };
+                    if wm == "blackbox" {
+                        return "bbLean (Blackbox)".to_owned();
+                    } else if !wm.is_empty() {
+                        return format!("{}, DWM.exe", wm);
+                    }
+                    String::new()
+                }
+                "FreeMiNT" => {
+                    let freemint_wm = std::fs::read_dir("/proc")
+                        .unwrap_or_else(|_| panic!("Failed to read /proc directory"))
+                        .filter_map(|entry| entry.ok())
+                        .map(|entry| entry.path())
+                        .collect::<Vec<_>>();
+                    let wm = if freemint_wm
+                        .iter()
+                        .any(|path| path.to_str().unwrap().contains("xaaes"))
+                        || freemint_wm
+                            .iter()
+                            .any(|path| path.to_str().unwrap().contains("xaloader"))
+                    {
+                        "XaAES"
+                    } else if freemint_wm
+                        .iter()
+                        .any(|path| path.to_str().unwrap().contains("myaes"))
+                    {
+                        "MyAES"
+                    } else if freemint_wm
+                        .iter()
+                        .any(|path| path.to_str().unwrap().contains("naes"))
+                    {
+                        "N.AES"
+                    } else if freemint_wm
+                        .iter()
+                        .any(|path| path.to_str().unwrap().contains("geneva"))
+                    {
+                        "Geneva"
+                    } else {
+                        "Atari AES"
+                    };
+                    wm.to_owned()
+                }
+                _ => String::new(),
+            }
+        };
+
+        if wm.contains("WINDOWMAKER") {
+            return "wmaker".to_owned();
+        } else if wm.contains("GNOME Shell") {
+            return "Mutter".to_owned();
+        }
+
+        wm
     }
 }
