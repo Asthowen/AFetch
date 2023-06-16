@@ -459,7 +459,7 @@ pub async fn get_battery(
     language: Arc<HashMap<&'static str, &'static str>>,
 ) -> Option<String> {
     if !yaml.disabled_entries.contains(&"battery".to_owned()) {
-        let manager_result = battery::Manager::new();
+        let manager_result = starship_battery::Manager::new();
         if let Ok(manager) = manager_result {
             let batteries_infos_result = manager.batteries();
             if let Ok(mut batteries_infos) = batteries_infos_result {
