@@ -16,10 +16,15 @@ pub async fn get_os(
     infos: Arc<Infos>,
 ) -> Option<String> {
     if !yaml.disabled_entries.contains(&"os".to_owned()) {
-        let system_name: String = infos.sysinfo_obj.name().unwrap_or_default();
+        let system_name: String = infos
+            .sysinfo_obj
+            .name()
+            .unwrap_or_default()
+            .trim()
+            .to_owned();
         if !system_name.is_empty() {
-            if system_name.to_lowercase().contains("windows") {
-                return Option::from(format!(
+            return if system_name.to_lowercase().contains("windows") {
+                Option::from(format!(
                     "{}{}",
                     language["label-os"]
                         .bold()
@@ -30,21 +35,21 @@ pub async fn get_os(
                         infos
                             .sysinfo_obj
                             .os_version()
-                            .unwrap_or_else(|| "   ".to_owned())
+                            .unwrap_or_default()
                             .split(' ')
                             .collect::<Vec<&str>>()[0]
                     )
                     .custom_color(*logo_color)
-                ));
+                ))
             } else {
-                return Option::from(format!(
+                Option::from(format!(
                     "{}{}",
                     language["label-os"]
                         .bold()
                         .custom_color_or_ansi_color_code(*header_color),
                     system_name.custom_color(*logo_color)
-                ));
-            }
+                ))
+            };
         }
     }
     None
@@ -79,18 +84,21 @@ pub async fn get_kernel(
     infos: Arc<Infos>,
 ) -> Option<String> {
     if !yaml.disabled_entries.contains(&"kernel".to_owned()) {
-        return Option::from(format!(
-            "{}{}",
-            language["label-kernel"]
-                .bold()
-                .custom_color_or_ansi_color_code(*header_color),
-            infos
-                .sysinfo_obj
-                .kernel_version()
-                .unwrap_or_default()
-                .replace('\n', "")
-                .custom_color(*logo_color)
-        ));
+        let kernel_version: String = infos
+            .sysinfo_obj
+            .kernel_version()
+            .unwrap_or_default()
+            .trim()
+            .replace('\n', "");
+        if !kernel_version.is_empty() {
+            return Option::from(format!(
+                "{}{}",
+                language["label-kernel"]
+                    .bold()
+                    .custom_color_or_ansi_color_code(*header_color),
+                kernel_version.custom_color(*logo_color)
+            ));
+        }
     }
     None
 }
@@ -103,13 +111,16 @@ pub async fn get_uptime(
     infos: Arc<Infos>,
 ) -> Option<String> {
     if !yaml.disabled_entries.contains(&"uptime".to_owned()) {
-        return Option::from(format!(
-            "{}{}",
-            language["label-uptime"]
-                .bold()
-                .custom_color_or_ansi_color_code(*header_color),
-            utils::format_time(infos.sysinfo_obj.uptime(), &language).custom_color(*logo_color)
-        ));
+        let uptime: String = utils::format_time(infos.sysinfo_obj.uptime(), &language);
+        if !uptime.is_empty() {
+            return Option::from(format!(
+                "{}{}",
+                language["label-uptime"]
+                    .bold()
+                    .custom_color_or_ansi_color_code(*header_color),
+                uptime.custom_color(*logo_color)
+            ));
+        }
     }
     None
 }
@@ -122,13 +133,16 @@ pub async fn get_packages(
     infos: Arc<Infos>,
 ) -> Option<String> {
     if !yaml.disabled_entries.contains(&"packages".to_owned()) {
-        return Option::from(format!(
-            "{}{}",
-            language["label-packages"]
-                .bold()
-                .custom_color_or_ansi_color_code(*header_color),
-            infos.get_packages_number().custom_color(*logo_color)
-        ));
+        let packages: String = infos.get_packages_number();
+        if !packages.is_empty() {
+            return Option::from(format!(
+                "{}{}",
+                language["label-packages"]
+                    .bold()
+                    .custom_color_or_ansi_color_code(*header_color),
+                packages.custom_color(*logo_color)
+            ));
+        }
     }
     None
 }
@@ -176,6 +190,7 @@ pub async fn get_desktop(
                     if !yaml
                         .disabled_entries
                         .contains(&"desktop-version".to_owned())
+                        && !de_infos.0.is_empty()
                     {
                         de_infos.1
                     } else {
@@ -197,13 +212,16 @@ pub async fn get_shell(
     infos: Arc<Infos>,
 ) -> Option<String> {
     if !yaml.disabled_entries.contains(&"shell".to_owned()) {
-        return Option::from(format!(
-            "{}{}",
-            language["label-shell"]
-                .bold()
-                .custom_color_or_ansi_color_code(*header_color),
-            infos.get_shell().custom_color(*logo_color)
-        ));
+        let shell: String = infos.get_shell();
+        if !shell.is_empty() {
+            return Option::from(format!(
+                "{}{}",
+                language["label-shell"]
+                    .bold()
+                    .custom_color_or_ansi_color_code(*header_color),
+                shell.custom_color(*logo_color)
+            ));
+        }
     }
     None
 }
@@ -292,16 +310,7 @@ pub async fn get_cpu(
         } else {
             String::default()
         };
-
-        if cpu_name.is_empty() && !yaml.disabled_entries.contains(&"cpu-usage".to_owned()) {
-            return Option::from(format!(
-                "{}{:.5}%",
-                language["label-cpu"]
-                    .bold()
-                    .custom_color_or_ansi_color_code(*header_color),
-                cpu_infos.cpu_usage().to_string().custom_color(*logo_color)
-            ));
-        } else {
+        if !cpu_name.is_empty() {
             let cpu_percentage: String = if yaml.disabled_entries.contains(&"cpu-usage".to_owned())
             {
                 String::default()
@@ -419,13 +428,16 @@ pub async fn get_public_ip(
     infos: Arc<Infos>,
 ) -> Option<String> {
     if !yaml.disabled_entries.contains(&"public-ip".to_owned()) {
-        return Option::from(format!(
-            "{}{}",
-            language["label-public-ip"]
-                .bold()
-                .custom_color_or_ansi_color_code(*header_color),
-            infos.get_public_ip().custom_color(*logo_color)
-        ));
+        let get_ip: String = infos.get_public_ip();
+        if !get_ip.is_empty() {
+            return Option::from(format!(
+                "{}{}",
+                language["label-public-ip"]
+                    .bold()
+                    .custom_color_or_ansi_color_code(*header_color),
+                infos.get_public_ip().custom_color(*logo_color)
+            ));
+        }
     }
     None
 }
@@ -464,15 +476,17 @@ pub async fn get_battery(
             let batteries_infos_result = manager.batteries();
             if let Ok(mut batteries_infos) = batteries_infos_result {
                 if let Some(Ok(battery_infos)) = batteries_infos.next() {
-                    return Option::from(format!(
-                        "{}{:.4}%",
-                        language["label-battery"]
-                            .bold()
-                            .custom_color_or_ansi_color_code(*header_color),
-                        (battery_infos.state_of_charge().value * 100.0)
-                            .to_string()
-                            .custom_color(*logo_color)
-                    ));
+                    let battery_value: String =
+                        (battery_infos.state_of_charge().value * 100.0).to_string();
+                    if !battery_value.is_empty() {
+                        return Option::from(format!(
+                            "{}{:.4}%",
+                            language["label-battery"]
+                                .bold()
+                                .custom_color_or_ansi_color_code(*header_color),
+                            battery_value.custom_color(*logo_color)
+                        ));
+                    }
                 }
             }
         }

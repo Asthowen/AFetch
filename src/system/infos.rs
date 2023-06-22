@@ -127,7 +127,7 @@ impl Infos {
                 .collect::<Vec<&str>>()[0]
                 .to_owned();
             format!(
-                "Windows{}",
+                "windows{}",
                 if !windows_version.is_empty() {
                     windows_version
                 } else {
@@ -137,7 +137,8 @@ impl Infos {
         } else {
             String::default()
         }
-        .replace(' ', "");
+        .replace(' ', "")
+        .to_lowercase();
 
         match os.as_str() {
             "windows11" => Some(logos::windows_11::WINDOWS11),
@@ -354,7 +355,8 @@ impl Infos {
                                 let first_line: String = std::fs::read_to_string(sub_path)
                                     .unwrap_or_default()
                                     .lines()
-                                    .collect::<Vec<&str>>()[0]
+                                    .next()
+                                    .unwrap_or_default()
                                     .to_owned();
 
                                 if !first_line.is_empty() {

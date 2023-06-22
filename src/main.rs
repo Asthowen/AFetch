@@ -79,15 +79,11 @@ async fn main() {
     let cli_args: Vec<String> = std::env::args().collect();
     let search_logo_arg_opt: Option<usize> =
         cli_args.iter().position(|r| r.to_lowercase() == "--logo");
-    let custom_logo: Option<String> = if let Some(search_logo_arg) = search_logo_arg_opt {
-        if let Some(logo) = cli_args.get(search_logo_arg + 1) {
-            Option::from(logo.to_lowercase())
-        } else {
-            None
-        }
-    } else {
-        None
-    };
+    let custom_logo: Option<String> = search_logo_arg_opt.and_then(|search_logo_arg| {
+        cli_args
+            .get(search_logo_arg + 1)
+            .map(|logo| logo.to_lowercase())
+    });
 
     let infos: Infos = Infos::init(custom_logo);
 

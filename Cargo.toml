@@ -11,9 +11,15 @@ keywords = ["fetch", "rust"]
 
 [profile.release]
 codegen-units = 1
+opt-level = "z"
 panic = "abort"
 strip = true
 lto = true
+
+[profile.release.package."*"]
+codegen-units = 1
+opt-level = "z"
+strip = true
 
 [dependencies]
 tokio = { version = "1.28.2", default-features = false, features = ["rt-multi-thread", "macros"] }
