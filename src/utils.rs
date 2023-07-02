@@ -1,21 +1,4 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-pub struct LogoConfig {
-    pub status: String,
-    pub char_type: String,
-    pub picture_path: String,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-pub struct Config {
-    pub language: String,
-    pub logo: LogoConfig,
-    pub text_color: Vec<u8>,
-    pub text_color_header: Option<Vec<u8>>,
-    pub disabled_entries: Vec<String>,
-}
 
 pub const fn div_mod(dividend: u64, divisor: u64) -> (u64, u64) {
     (dividend / divisor, dividend % divisor)

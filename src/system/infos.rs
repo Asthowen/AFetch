@@ -115,9 +115,9 @@ impl Infos {
                 .to_lowercase()
                 .replace(' ', "")
         } else if std::env::consts::OS == "freebsd" {
-            "FreeBSD".to_owned()
+            "freebsd".to_owned()
         } else if std::env::consts::OS == "macos" {
-            "MacOS".to_owned()
+            "macos".to_owned()
         } else if std::env::consts::OS == "windows" {
             let windows_version: String = self
                 .sysinfo_obj
@@ -128,10 +128,10 @@ impl Infos {
                 .to_owned();
             format!(
                 "windows{}",
-                if !windows_version.is_empty() {
-                    windows_version
+                if windows_version.is_empty() {
+                    "11".to_owned()
                 } else {
-                    String::from("11")
+                    windows_version
                 }
             )
         } else {
@@ -149,7 +149,7 @@ impl Infos {
             "ubuntu" => Some(logos::ubuntu::UBUNTU),
             "archlinux" => Some(logos::arch_linux::ARCH_LINUX),
             "gentoo" => Some(logos::gentoo::GENTOO),
-            "fedora" => Some(logos::fedora::FEDORA),
+            "fedora" | "fedoralinux" => Some(logos::fedora::FEDORA),
             "zorinos" => Some(logos::zorin_os::ZORIN_OS),
             "linuxmint" => Some(logos::linux_mint::LINUX_MINT),
             "macos" | "apple" | "osx" => Some(logos::mac_os::MAC_OS),
@@ -244,7 +244,7 @@ impl Infos {
 
         if !shell_name.is_empty() {
             return if env_exist("SHELL_VERSION") {
-                format!("{} {}", shell_name, get_env("SHELL_VERSION"))
+                format!("{} {}", shell_name, get_env("SHELL_VERSION")).replace('\n', "")
             } else {
                 let mut shell_version: String = String::default();
                 if shell_name == "fish" {
@@ -254,9 +254,13 @@ impl Infos {
                             .collect::<Vec<&str>>()[1]
                             .replace('\n', "");
                 } else if shell_name == "bash" {
-                    shell_version = return_str_from_command(
-                        Command::new(shell_path).arg("-c").arg("echo $BASH_VERSION"),
-                    );
+                    shell_version = if env_exist("BASH_VERSION") {
+                        get_env("BASH_VERSION")
+                    } else {
+                        return_str_from_command(
+                            Command::new(shell_path).arg("-c").arg("echo $BASH_VERSION"),
+                        )
+                    };
                 } else if shell_name == "sh" {
                     shell_version = return_str_from_command(Command::new("sh").arg("--version"))
                         .split("GNU bash, version ")
@@ -273,9 +277,9 @@ impl Infos {
                 }
 
                 if shell_version.is_empty() {
-                    shell_name
+                    shell_name.replace('\n', "")
                 } else {
-                    format!("{} {}", shell_name, shell_version)
+                    format!("{} {}", shell_name, shell_version).replace('\n', "")
                 }
             };
         }

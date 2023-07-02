@@ -1,3 +1,4 @@
+use afetch::config::Config;
 use afetch::system::getters::{
     get_battery, get_cpu, get_desktop, get_disks, get_host, get_kernel, get_memory, get_network,
     get_os, get_packages, get_public_ip, get_resolution, get_shell, get_terminal,
@@ -5,7 +6,6 @@ use afetch::system::getters::{
 };
 use afetch::system::infos::Infos;
 use afetch::translations::list::{language_code_list, language_list};
-use afetch::utils::Config;
 use afetch_colored::{AnsiOrCustom, Colorize, CustomColor};
 use image::GenericImageView;
 use std::collections::HashMap;
@@ -365,7 +365,7 @@ async fn main() {
 
         if last_index < logo_lines.len() {
             for logo_line in &logo_lines[last_index..] {
-                writeln!(output, "   {}   ", logo_line).ok();
+                writeln!(output, "   {}{}   ", logo_line, "".white()).ok();
             }
         }
 

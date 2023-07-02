@@ -1,7 +1,7 @@
+use crate::config::Config;
 use crate::system::infos::Infos;
 use crate::utils;
 use crate::utils::convert_to_readable_unity;
-use crate::utils::Config;
 use afetch_colored::CustomColor;
 use afetch_colored::{AnsiOrCustom, Colorize};
 use std::collections::HashMap;
@@ -374,28 +374,35 @@ pub async fn get_disks(
         let (mut total_disk_used, mut total_disk_total) = (0, 0);
         for disk in infos.sysinfo_obj.disks() {
             let disk_mount_point: String = disk.mount_point().to_str().unwrap().to_owned();
-            if !disk_mount_point.contains("/docker") && !disk_mount_point.contains("/boot") {
-                total_disk_used += disk.total_space() - disk.available_space();
-                total_disk_total += disk.total_space();
-                if print_disk {
-                    disks.push(format!(
-                        "{}{}{}",
-                        language["label-disk"]
-                            .bold()
-                            .custom_color_or_ansi_color_code(*header_color),
-                        format!("({})", disk.mount_point().to_str().unwrap_or(""),)
-                            .custom_color_or_ansi_color_code(*header_color),
-                        format!(
-                            "{}{}/{}",
-                            language["label-disk-1"],
-                            convert_to_readable_unity(
-                                (disk.total_space() - disk.available_space()) as f64
-                            ),
-                            convert_to_readable_unity(disk.total_space() as f64)
-                        )
-                        .custom_color(*logo_color)
-                    ));
-                }
+            if disk_mount_point.contains("/etc")
+                || disk_mount_point.contains("/boot")
+                || disk_mount_point.contains("/snapd")
+                || disk_mount_point.contains("/docker")
+            {
+                continue;
+            }
+
+            total_disk_used += disk.total_space() - disk.available_space();
+            total_disk_total += disk.total_space();
+
+            if print_disk {
+                disks.push(format!(
+                    "{}{}{}",
+                    language["label-disk"]
+                        .bold()
+                        .custom_color_or_ansi_color_code(*header_color),
+                    format!("({})", disk.mount_point().to_str().unwrap_or(""),)
+                        .custom_color_or_ansi_color_code(*header_color),
+                    format!(
+                        "{}{}/{}",
+                        language["label-disk-1"],
+                        convert_to_readable_unity(
+                            (disk.total_space() - disk.available_space()) as f64
+                        ),
+                        convert_to_readable_unity(disk.total_space() as f64)
+                    )
+                    .custom_color(*logo_color)
+                ));
             }
         }
         if print_disks {
