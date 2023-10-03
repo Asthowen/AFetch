@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::logos;
 use crate::system::pid::get_ppid;
 use crate::utils::{
@@ -8,6 +9,7 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Arc;
 use sysinfo::CpuRefreshKind;
 use sysinfo::{System, SystemExt};
 
@@ -18,11 +20,19 @@ pub struct Infos {
 }
 
 impl Infos {
-    pub fn init(custom_logo: Option<String>) -> Self {
+    pub fn init(custom_logo: Option<String>, config: Arc<Config>) -> Self {
         let mut sysinfo_obj = System::new();
-        sysinfo_obj.refresh_disks_list();
-        sysinfo_obj.refresh_memory();
-        sysinfo_obj.refresh_cpu_specifics(CpuRefreshKind::everything());
+        if !config.disabled_entries.contains(&"disk".to_owned())
+            || !config.disabled_entries.contains(&"disks".to_owned())
+        {
+            sysinfo_obj.refresh_disks_list();
+        }
+        if !config.disabled_entries.contains(&"memory".to_owned()) {
+            sysinfo_obj.refresh_memory();
+        }
+        if !config.disabled_entries.contains(&"cpu".to_owned()) {
+            sysinfo_obj.refresh_cpu_specifics(CpuRefreshKind::everything());
+        }
 
         Self {
             sysinfo_obj,
@@ -145,7 +155,7 @@ impl Infos {
             "windows10" => Some(logos::windows_10::WINDOWS10),
             "windows7" => Some(logos::windows_7::WINDOWS7),
             "linux" => Some(logos::linux::LINUX),
-            "manjaro" => Some(logos::manjaro::MANJARO),
+            "manjaro" | "manjarolinux" => Some(logos::manjaro::MANJARO),
             "ubuntu" => Some(logos::ubuntu::UBUNTU),
             "archlinux" => Some(logos::arch_linux::ARCH_LINUX),
             "gentoo" => Some(logos::gentoo::GENTOO),
@@ -1031,5 +1041,105 @@ impl Infos {
 
     pub fn get_wm(&self) -> String {
         String::default()
+    }
+
+    pub fn get_gpu(&self) -> Vec<String> {
+        let gpu_cmd: String = match Command::new("lspci").args(["-mm"]).output() {
+            Ok(output) => String::from_utf8_lossy(&output.stdout).to_string(),
+            Err(_) => return Default::default(),
+        };
+
+        let mut gpus: Vec<String> = Vec::new();
+        for line in gpu_cmd
+            .lines()
+            .filter(|line| line.contains("Display") || line.contains("3D") || line.contains("VGA"))
+        {
+            let parts: Vec<&str> = line.split(|c| c == '"' || c == '(' || c == ')').collect();
+            let part_4: &str = parts[4].trim();
+            let part_before_last: &str = parts[parts.len() - 2].trim();
+            let part_last: &str = parts[parts.len() - 1].trim();
+
+            let gpu: String = format!(
+                "{}{}{}",
+                parts[3].trim(),
+                if part_4.is_empty() {
+                    String::default()
+                } else {
+                    format!(" {}", part_4)
+                },
+                if !part_before_last.is_empty() && part_before_last != "Device" {
+                    format!(" {}", part_before_last)
+                } else if !part_last.is_empty() {
+                    format!(" {}", part_last)
+                } else {
+                    format!(" {}", part_4)
+                }
+            );
+
+            if !gpus.contains(&gpu) {
+                gpus.push(gpu);
+            }
+        }
+
+        if gpus.get(0).map_or(false, |gpu| gpu.contains("Intel"))
+            && gpus.get(1).map_or(false, |gpu| gpu.contains("Intel"))
+        {
+            gpus.remove(0);
+        }
+
+        let mut gpus_clean: Vec<String> = Vec::new();
+        for gpu in gpus {
+            gpus_clean.push(match &*gpu {
+                gpu if gpu.contains("Advanced") => {
+                    let mut gpu: String = gpu.to_owned();
+                    if let Some(start_index) = gpu.find(']') {
+                        let temp = &gpu[start_index + 1..];
+                        if let Some(end_index) = temp.find('[') {
+                            gpu = format!("{}{}", &gpu[0..start_index + 1], &temp[end_index..]);
+                        }
+                    }
+                    gpu = gpu
+                        .replace("[AMD/ATI]", "AMD ATI ")
+                        .replace("[AMD]", "AMD ")
+                        .replace("OEM ", "")
+                        .replace("Advanced Micro Devices, Inc.", "");
+
+                    if let Some(start_index) = gpu.find('[') {
+                        if let Some(end_index) = gpu.find(']') {
+                            gpu = format!(
+                                "{}{}",
+                                &gpu[..start_index],
+                                &gpu[start_index + 1..end_index]
+                            );
+                        }
+                    }
+                    gpu.trim().to_owned()
+                }
+                gpu if gpu.contains("NVIDIA") => format!(
+                    "NVIDIA {}",
+                    gpu.split('[').collect::<Vec<&str>>()[1].replace(']', "")
+                ),
+                gpu if gpu.contains("Intel") => {
+                    let gpu: String = gpu
+                        .replace("(R)", "")
+                        .replace("Corporation ", "")
+                        .split(" (")
+                        .next()
+                        .unwrap()
+                        .to_owned()
+                        .trim()
+                        .to_owned();
+                    if gpu.is_empty() {
+                        "Intel Integrated Graphics".to_owned()
+                    } else {
+                        gpu
+                    }
+                }
+                gpu if gpu.contains("MCST") => gpu.replace("MCST MGA2", "").to_owned(),
+                gpu if gpu.contains("VirtualBox") => "VirtualBox Graphics Adapter".to_owned(),
+                gpu => gpu.trim().to_owned(),
+            });
+        }
+        gpus_clean
     }
 }

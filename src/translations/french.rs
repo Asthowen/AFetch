@@ -21,6 +21,7 @@ pub fn french() -> HashMap<&'static str, &'static str> {
         ("label-terminal-font", "Police : "),
         ("label-memory", "Mémoire : "),
         ("label-cpu", "CPU : "),
+        ("label-gpu", "GPU : "),
         ("label-network", "Réseau : "),
         ("label-disk", "Disque "),
         ("label-disk-1", " : "),

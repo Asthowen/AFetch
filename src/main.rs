@@ -1,7 +1,7 @@
 use afetch::config::Config;
 use afetch::system::getters::{
-    get_battery, get_cpu, get_desktop, get_disks, get_host, get_kernel, get_memory, get_network,
-    get_os, get_packages, get_public_ip, get_resolution, get_shell, get_terminal,
+    get_battery, get_cpu, get_desktop, get_disks, get_gpus, get_host, get_kernel, get_memory,
+    get_network, get_os, get_packages, get_public_ip, get_resolution, get_shell, get_terminal,
     get_terminal_font, get_uptime, get_wm,
 };
 use afetch::system::infos::Infos;
@@ -38,15 +38,15 @@ async fn main() {
     let yaml_to_parse: String = if afetch_config_path.exists() {
         std::fs::read_to_string(afetch_config_path).unwrap_or_default()
     } else {
-        let to_write: String = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\n# text_color_header:\n#   - 133 # r\n#   - 218 # g\n#   - 249 # b\ndisabled_entries:\n  - battery\n  - public-ip\n  - cpu-usage\n  - network".to_owned();
-        if let Err(e) = std::fs::write(afetch_config_path, &to_write) {
+        const DEFAULT_CONFIG: &str = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\n# text_color_header:\n#   - 133 # r\n#   - 218 # g\n#   - 249 # b\ndisabled_entries:\n  - battery\n  - public-ip\n  - cpu-usage\n  - network";
+        if let Err(e) = std::fs::write(afetch_config_path, DEFAULT_CONFIG) {
             println!(
                 "An error occurred while creating the configuration file: {}",
                 e
             );
             exit(9);
         }
-        to_write
+        DEFAULT_CONFIG.to_owned()
     };
     let yaml: Config = serde_yaml::from_str(&yaml_to_parse).unwrap_or_else(|e| {
         println!("Your configuration is malformed ({})", e);
@@ -85,9 +85,10 @@ async fn main() {
             .map(|logo| logo.to_lowercase())
     });
 
-    let infos: Infos = Infos::init(custom_logo);
-
     let shared_yaml: Arc<Config> = Arc::new(yaml.clone());
+
+    let infos: Infos = Infos::init(custom_logo, Arc::clone(&shared_yaml));
+
     let shared_logo_color: Arc<CustomColor> = Arc::new(text_color);
     let shared_language = Arc::new(language.clone());
     let shared_infos: Arc<Infos> = Arc::new(infos);
@@ -150,6 +151,7 @@ async fn main() {
         terminal_result,
         terminal_font_result,
         cpu_result,
+        gpu_results,
         memory_result,
         network_result,
         disks_result,
@@ -240,6 +242,13 @@ async fn main() {
             Arc::clone(&shared_language),
             Arc::clone(&shared_infos)
         ),
+        get_gpus(
+            Arc::clone(&shared_yaml),
+            Arc::clone(&shared_header_color),
+            Arc::clone(&shared_logo_color),
+            Arc::clone(&shared_language),
+            Arc::clone(&shared_infos)
+        ),
         get_memory(
             Arc::clone(&shared_yaml),
             Arc::clone(&shared_header_color),
@@ -311,6 +320,9 @@ async fn main() {
     }
     if let Some(cpu) = cpu_result {
         infos_to_print.push(cpu);
+    }
+    if let Some(mut gpus) = gpu_results {
+        infos_to_print.append(&mut gpus);
     }
     if let Some(memory) = memory_result {
         infos_to_print.push(memory);

@@ -330,6 +330,32 @@ pub async fn get_cpu(
     None
 }
 
+pub async fn get_gpus(
+    yaml: Arc<Config>,
+    header_color: Arc<AnsiOrCustom>,
+    logo_color: Arc<CustomColor>,
+    language: Arc<HashMap<&'static str, &'static str>>,
+    infos: Arc<Infos>,
+) -> Option<Vec<String>> {
+    if !yaml.disabled_entries.contains(&"gpu".to_owned()) {
+        let gpu: Vec<String> = infos.get_gpu();
+        if !gpu.is_empty() {
+            let mut gpus: Vec<String> = Vec::new();
+            for gpu in gpu {
+                gpus.push(format!(
+                    "{}{}",
+                    language["label-gpu"]
+                        .bold()
+                        .custom_color_or_ansi_color_code(*header_color),
+                    gpu.custom_color(*logo_color)
+                ));
+            }
+            return Some(gpus);
+        }
+    }
+    None
+}
+
 pub async fn get_network(
     yaml: Arc<Config>,
     header_color: Arc<AnsiOrCustom>,

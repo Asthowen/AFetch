@@ -52,7 +52,7 @@ pub fn get_pid_names(pids: Vec<u32>) -> Result<Vec<String>, String> {
 }
 
 pub fn clean_pid_names(pid_names: Vec<String>) -> Vec<String> {
-    let filtered_names = vec!["bash", "fish", "sh", "ksh", "afetch"];
+    let filtered_names: [&str; 5] = ["bash", "fish", "sh", "ksh", "afetch"];
     pid_names
         .iter()
         .filter(|name| !filtered_names.contains(&name.as_str()))
