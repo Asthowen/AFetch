@@ -17,6 +17,8 @@ use unicode_segmentation::UnicodeSegmentation;
 use viuer::Config as ViuerConfig;
 use whoami::{hostname, username};
 
+const DEFAULT_CONFIG: &str = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\n# text_color_header:\n#   - 133 # r\n#   - 218 # g\n#   - 249 # b\ndisabled_entries:\n  - battery\n  - public-ip\n  - cpu-usage\n  - network";
+
 #[tokio::main]
 async fn main() {
     let afetch_config_parent_path: PathBuf = dirs::config_dir().unwrap_or_else(|| {
@@ -38,7 +40,6 @@ async fn main() {
     let yaml_to_parse: String = if afetch_config_path.exists() {
         std::fs::read_to_string(afetch_config_path).unwrap_or_default()
     } else {
-        const DEFAULT_CONFIG: &str = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\n# text_color_header:\n#   - 133 # r\n#   - 218 # g\n#   - 249 # b\ndisabled_entries:\n  - battery\n  - public-ip\n  - cpu-usage\n  - network";
         if let Err(e) = std::fs::write(afetch_config_path, DEFAULT_CONFIG) {
             println!(
                 "An error occurred while creating the configuration file: {}",
@@ -48,10 +49,20 @@ async fn main() {
         }
         DEFAULT_CONFIG.to_owned()
     };
-    let yaml: Config = serde_yaml::from_str(&yaml_to_parse).unwrap_or_else(|e| {
-        println!("Your configuration is malformed ({})", e);
-        exit(9);
-    });
+
+    let yaml: Config = match serde_yaml::from_str(&yaml_to_parse) {
+        Ok(config) => config,
+        Err(error) => match serde_yaml::from_str(DEFAULT_CONFIG) {
+            Ok(config) => {
+                println!("Your configuration is malformed ({}), I therefore use the default configuration.", error);
+                config
+            }
+            Err(error1) => {
+                println!("Your configuration is malformed ({}), unfortunately I couldn't load the default config ({}).", error, error1);
+                exit(9);
+            }
+        },
+    };
     let text_color: CustomColor =
         CustomColor::new(yaml.text_color[0], yaml.text_color[1], yaml.text_color[2]);
 

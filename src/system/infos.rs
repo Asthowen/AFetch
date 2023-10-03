@@ -33,6 +33,9 @@ impl Infos {
         if !config.disabled_entries.contains(&"cpu".to_owned()) {
             sysinfo_obj.refresh_cpu_specifics(CpuRefreshKind::everything());
         }
+        if !config.disabled_entries.contains(&"network".to_owned()) {
+            sysinfo_obj.refresh_networks();
+        }
 
         Self {
             sysinfo_obj,

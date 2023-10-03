@@ -506,8 +506,7 @@ pub async fn get_battery(
     if !yaml.disabled_entries.contains(&"battery".to_owned()) {
         let manager_result = starship_battery::Manager::new();
         if let Ok(manager) = manager_result {
-            let batteries_infos_result = manager.batteries();
-            if let Ok(mut batteries_infos) = batteries_infos_result {
+            if let Ok(mut batteries_infos) = manager.batteries() {
                 if let Some(Ok(battery_infos)) = batteries_infos.next() {
                     let battery_value: String =
                         (battery_infos.state_of_charge().value * 100.0).to_string();

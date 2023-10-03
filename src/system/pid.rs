@@ -33,22 +33,26 @@ pub fn get_parent_pids(pid: u32) -> Result<Vec<u32>, String> {
 }
 
 pub fn get_pid_names(pids: Vec<u32>) -> Result<Vec<String>, String> {
-    let pid_names = pids
-        .iter()
-        .map(|&pid| {
-            let output = std::process::Command::new("ps")
-                .arg("-p")
-                .arg(format!("{}", pid))
-                .arg("-o")
-                .arg("comm=")
-                .output()
-                .map_err(|e| e.to_string())?;
-            let output = String::from_utf8_lossy(&output.stdout);
-            Ok(output.trim().to_owned())
-        })
-        .collect::<Result<Vec<String>, String>>()?;
+    let mut args: Vec<String> = Vec::new();
+    for pid in pids {
+        args.push("-p".to_owned());
+        args.push(format!("{}", pid));
+    }
+    args.push("-o".to_owned());
+    args.push("comm=".to_owned());
 
-    Ok(pid_names)
+    let output = std::process::Command::new("ps")
+        .args(args)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    let output: Vec<String> = String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .split('\n')
+        .map(|s| s.into())
+        .collect::<Vec<String>>();
+
+    Ok(output)
 }
 
 pub fn clean_pid_names(pid_names: Vec<String>) -> Vec<String> {
