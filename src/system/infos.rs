@@ -181,6 +181,7 @@ impl Infos {
             "elementaryos" => Some(logos::elementary_os::ELEMENTARY_OS),
             "solaris" => Some(logos::solaris::SOLARIS),
             "alpine" => Some(logos::alpine::ALPINE),
+            "debian" => Some(logos::debian::DEBIAN),
             _ => None,
         }
     }

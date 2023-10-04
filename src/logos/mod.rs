@@ -25,3 +25,4 @@ pub mod windows_11;
 pub mod windows_7;
 pub mod xubuntu;
 pub mod zorin_os;
+pub mod debian;
