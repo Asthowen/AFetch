@@ -58,7 +58,7 @@ async fn main() {
                 config
             }
             Err(error1) => {
-                println!("Your configuration is malformed ({}), unfortunately I couldn't load the default config ({}).", error, error1);
+                println!("Your configuration is malformed ({}), unfortunately I couldn't load the default configuration ({}).", error, error1);
                 exit(9);
             }
         },

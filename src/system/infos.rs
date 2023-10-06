@@ -58,6 +58,7 @@ impl Infos {
             .unwrap_or_default()
     }
 
+    #[cfg(target_family = "unix")]
     pub fn get_linux_distribution(&self) -> String {
         let mut distribution_name: String = if Path::new("/etc/os-release").exists() {
             self.parse_os_release("/etc/os-release")
@@ -123,32 +124,52 @@ impl Infos {
     pub fn get_os_logo(&self) -> Option<[&str; 2]> {
         let os: String = if let Some(logo) = &self.custom_logo {
             logo.to_owned()
-        } else if std::env::consts::OS == "linux" {
-            self.get_linux_distribution()
-                .to_lowercase()
-                .replace(' ', "")
-        } else if std::env::consts::OS == "freebsd" {
-            "freebsd".to_owned()
-        } else if std::env::consts::OS == "macos" {
-            "macos".to_owned()
-        } else if std::env::consts::OS == "windows" {
-            let windows_version: String = self
-                .sysinfo_obj
-                .os_version()
-                .unwrap_or_default()
-                .split(' ')
-                .collect::<Vec<&str>>()[0]
-                .to_owned();
-            format!(
-                "windows{}",
-                if windows_version.is_empty() {
-                    "11".to_owned()
-                } else {
-                    windows_version
-                }
-            )
         } else {
-            String::default()
+            #[cfg(target_os = "linux")]
+            {
+                self.get_linux_distribution()
+                    .to_lowercase()
+                    .replace(' ', "")
+            }
+
+            #[cfg(target_os = "freebsd")]
+            {
+                "freebsd".to_owned()
+            }
+
+            #[cfg(target_os = "macos")]
+            {
+                "macos".to_owned()
+            }
+
+            #[cfg(target_os = "windows")]
+            {
+                let windows_version: String = self
+                    .sysinfo_obj
+                    .os_version()
+                    .unwrap_or_default()
+                    .split(' ')
+                    .collect::<Vec<&str>>()[0]
+                    .to_owned();
+                format!(
+                    "windows{}",
+                    if windows_version.is_empty() {
+                        "11".to_owned()
+                    } else {
+                        windows_version
+                    }
+                )
+            }
+
+            #[cfg(not(any(
+                target_os = "windows",
+                target_os = "macos",
+                target_os = "freebsd",
+                target_os = "linux"
+            )))]
+            {
+                String::default()
+            }
         }
         .replace(' ', "")
         .to_lowercase();
@@ -188,61 +209,62 @@ impl Infos {
 
     pub fn get_host(&self) -> String {
         let mut host = String::default();
-        match std::env::consts::OS {
-            "linux" => {
-                if Path::new("/system/app/").exists() && Path::new("/system/priv-app").exists() {
-                    host = format!(
-                        "{}{}",
-                        return_str_from_command(Command::new("getprop").arg("ro.product.brand")),
-                        return_str_from_command(Command::new("getprop").arg("ro.product.model"))
-                    );
-                } else if Path::new("/sys/devices/virtual/dmi/id/product_name").exists()
-                    && Path::new("/sys/devices/virtual/dmi/id/product_version").exists()
-                {
-                    host = format!(
-                        "{} {}",
-                        get_file_content_without_lines("/sys/devices/virtual/dmi/id/product_name"),
-                        get_file_content_without_lines(
-                            "/sys/devices/virtual/dmi/id/product_version"
-                        )
-                    );
-                } else if Path::new("/sys/firmware/devicetree/base/model").exists() {
-                    host = get_file_content_without_lines("/sys/firmware/devicetree/base/model");
-                } else if Path::new("/tmp/sysinfo/model").exists() {
-                    host = get_file_content_without_lines("/tmp/sysinfo/model");
-                }
-
-                if (host.contains("System Product Name") || host.is_empty())
-                    && Path::new("/sys/devices/virtual/dmi/id/board_vendor").exists()
-                    && Path::new("/sys/devices/virtual/dmi/id/board_name").exists()
-                {
-                    host = format!(
-                        "{} {}",
-                        get_file_content_without_lines("/sys/devices/virtual/dmi/id/board_vendor"),
-                        get_file_content_without_lines("/sys/devices/virtual/dmi/id/board_name")
-                            .as_str(),
-                    )
-                }
-
-                host
+        #[cfg(target_os = "linux")]
+        {
+            if Path::new("/system/app/").exists() && Path::new("/system/priv-app").exists() {
+                host = format!(
+                    "{}{}",
+                    return_str_from_command(Command::new("getprop").arg("ro.product.brand")),
+                    return_str_from_command(Command::new("getprop").arg("ro.product.model"))
+                );
+            } else if Path::new("/sys/devices/virtual/dmi/id/product_name").exists()
+                && Path::new("/sys/devices/virtual/dmi/id/product_version").exists()
+            {
+                host = format!(
+                    "{} {}",
+                    get_file_content_without_lines("/sys/devices/virtual/dmi/id/product_name"),
+                    get_file_content_without_lines("/sys/devices/virtual/dmi/id/product_version")
+                );
+            } else if Path::new("/sys/firmware/devicetree/base/model").exists() {
+                host = get_file_content_without_lines("/sys/firmware/devicetree/base/model");
+            } else if Path::new("/tmp/sysinfo/model").exists() {
+                host = get_file_content_without_lines("/tmp/sysinfo/model");
             }
-            "windows" => {
-                host = return_str_from_command(
-                    Command::new("wmic")
-                        .arg("computersystem")
-                        .arg("get")
-                        .arg("manufacturer,model"),
+
+            if (host.contains("System Product Name") || host.is_empty())
+                && Path::new("/sys/devices/virtual/dmi/id/board_vendor").exists()
+                && Path::new("/sys/devices/virtual/dmi/id/board_name").exists()
+            {
+                host = format!(
+                    "{} {}",
+                    get_file_content_without_lines("/sys/devices/virtual/dmi/id/board_vendor"),
+                    get_file_content_without_lines("/sys/devices/virtual/dmi/id/board_name")
+                        .as_str(),
                 )
-                .replace("Manufacturer  Model", "")
-                .replace("     ", " ")
-                .trim()
-                .to_owned();
-                host
             }
-            _ => {
-                // TODO - add other OS
-                String::default()
-            }
+
+            host
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            host = return_str_from_command(
+                Command::new("wmic")
+                    .arg("computersystem")
+                    .arg("get")
+                    .arg("manufacturer,model"),
+            )
+            .replace("Manufacturer  Model", "")
+            .replace("     ", " ")
+            .trim()
+            .to_owned();
+            host
+        }
+
+        #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+        {
+            // TODO - add other OS
+            String::default()
         }
     }
 
@@ -300,121 +322,122 @@ impl Infos {
         String::default()
     }
     pub fn get_screens_resolution(&self) -> String {
-        match std::env::consts::OS {
-            "linux" => {
-                let mut resolution: String = String::default();
-                if command_exist("xrandr") && env_exist("DISPLAY") && !env_exist("WAYLAND_DISPLAY")
+        #[cfg(target_os = "linux")]
+        {
+            let mut resolution: String = String::default();
+            if command_exist("xrandr") && env_exist("DISPLAY") && !env_exist("WAYLAND_DISPLAY") {
+                let mut last_line: bool = false;
+                let mut temp_resolution: Vec<String> = Vec::new();
+                for line in
+                    return_str_from_command(Command::new("xrandr").arg("--nograb").arg("--current"))
+                        .lines()
                 {
-                    let mut last_line: bool = false;
-                    let mut temp_resolution: Vec<String> = Vec::new();
-                    for line in return_str_from_command(
-                        Command::new("xrandr").arg("--nograb").arg("--current"),
-                    )
-                    .lines()
-                    {
-                        if last_line {
-                            temp_resolution
-                                .push(line.trim().split(' ').collect::<Vec<&str>>()[0].to_owned());
-                            last_line = false;
-                        } else if line.contains(" connected") {
-                            last_line = true;
-                        }
+                    if last_line {
+                        temp_resolution
+                            .push(line.trim().split(' ').collect::<Vec<&str>>()[0].to_owned());
+                        last_line = false;
+                    } else if line.contains(" connected") {
+                        last_line = true;
                     }
-                    resolution = temp_resolution.join(" ");
-                } else if command_exist("xwininfo")
-                    && env_exist("DISPLAY")
-                    && !env_exist("WAYLAND_DISPLAY")
-                {
-                    let command: String =
-                        return_str_from_command(Command::new("xwininfo").arg("-root"));
-                    resolution = format!(
-                        "{}x{}",
-                        command.split("Width: ").collect::<Vec<&str>>()[1]
-                            .lines()
-                            .collect::<Vec<&str>>()[0],
-                        command.split("Height: ").collect::<Vec<&str>>()[1]
-                            .lines()
-                            .collect::<Vec<&str>>()[0]
-                    );
-                } else if command_exist("xdpyinfo")
-                    && env_exist("DISPLAY")
-                    && !env_exist("WAYLAND_DISPLAY")
-                {
-                    resolution = return_str_from_command(&mut Command::new("xdpyinfo"))
-                        .split("dimensions: ")
-                        .collect::<Vec<&str>>()[1]
-                        .trim()
-                        .split(' ')
+                }
+                resolution = temp_resolution.join(" ");
+            } else if command_exist("xwininfo")
+                && env_exist("DISPLAY")
+                && !env_exist("WAYLAND_DISPLAY")
+            {
+                let command: String =
+                    return_str_from_command(Command::new("xwininfo").arg("-root"));
+                resolution = format!(
+                    "{}x{}",
+                    command.split("Width: ").collect::<Vec<&str>>()[1]
+                        .lines()
+                        .collect::<Vec<&str>>()[0],
+                    command.split("Height: ").collect::<Vec<&str>>()[1]
+                        .lines()
                         .collect::<Vec<&str>>()[0]
-                        .to_owned();
-                } else if Path::new("/sys/class/drm").exists() {
-                    let mut temp_resolution: Vec<String> = Vec::new();
+                );
+            } else if command_exist("xdpyinfo")
+                && env_exist("DISPLAY")
+                && !env_exist("WAYLAND_DISPLAY")
+            {
+                resolution = return_str_from_command(&mut Command::new("xdpyinfo"))
+                    .split("dimensions: ")
+                    .collect::<Vec<&str>>()[1]
+                    .trim()
+                    .split(' ')
+                    .collect::<Vec<&str>>()[0]
+                    .to_owned();
+            } else if Path::new("/sys/class/drm").exists() {
+                let mut temp_resolution: Vec<String> = Vec::new();
 
-                    let read_dir = if let Ok(read_dir) = std::fs::read_dir("/sys/class/drm/") {
-                        read_dir
-                    } else {
-                        return String::default();
-                    };
+                let read_dir = if let Ok(read_dir) = std::fs::read_dir("/sys/class/drm/") {
+                    read_dir
+                } else {
+                    return String::default();
+                };
 
-                    for path in read_dir.filter_map(Result::ok) {
-                        let path: PathBuf = path.path();
-                        if !path.is_dir() {
-                            continue;
-                        }
+                for path in read_dir.filter_map(Result::ok) {
+                    let path: PathBuf = path.path();
+                    if !path.is_dir() {
+                        continue;
+                    }
 
-                        for sub_path in std::fs::read_dir(path).unwrap().filter_map(Result::ok) {
-                            let sub_path = sub_path.path();
-                            if sub_path
-                                .file_name()
+                    for sub_path in std::fs::read_dir(path).unwrap().filter_map(Result::ok) {
+                        let sub_path = sub_path.path();
+                        if sub_path
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .contains("modes")
+                        {
+                            let first_line: String = std::fs::read_to_string(sub_path)
                                 .unwrap_or_default()
-                                .to_string_lossy()
-                                .contains("modes")
-                            {
-                                let first_line: String = std::fs::read_to_string(sub_path)
-                                    .unwrap_or_default()
-                                    .lines()
-                                    .next()
-                                    .unwrap_or_default()
-                                    .to_owned();
+                                .lines()
+                                .next()
+                                .unwrap_or_default()
+                                .to_owned();
 
-                                if !first_line.is_empty() {
-                                    temp_resolution.push(first_line);
-                                }
+                            if !first_line.is_empty() {
+                                temp_resolution.push(first_line);
                             }
                         }
                     }
-                    resolution = temp_resolution.join(", ");
                 }
+                resolution = temp_resolution.join(", ");
+            }
 
-                resolution
-            }
-            "windows" => {
-                let width: String = return_str_from_command(
-                    Command::new("wmic")
-                        .arg("path")
-                        .arg("Win32_VideoController")
-                        .arg("get")
-                        .arg("CurrentHorizontalResolution"),
-                )
-                .replace("CurrentHorizontalResolution", "")
-                .trim()
-                .to_owned();
-                let height: String = return_str_from_command(
-                    Command::new("wmic")
-                        .arg("path")
-                        .arg("Win32_VideoController")
-                        .arg("get")
-                        .arg("CurrentVerticalResolution"),
-                )
-                .replace("CurrentVerticalResolution", "")
-                .trim()
-                .to_owned();
-                format!("{}x{}", width, height)
-            }
-            _ => {
-                // TODO - add other OS
-                String::default()
-            }
+            resolution
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            let width: String = return_str_from_command(
+                Command::new("wmic")
+                    .arg("path")
+                    .arg("Win32_VideoController")
+                    .arg("get")
+                    .arg("CurrentHorizontalResolution"),
+            )
+            .replace("CurrentHorizontalResolution", "")
+            .trim()
+            .to_owned();
+            let height: String = return_str_from_command(
+                Command::new("wmic")
+                    .arg("path")
+                    .arg("Win32_VideoController")
+                    .arg("get")
+                    .arg("CurrentVerticalResolution"),
+            )
+            .replace("CurrentVerticalResolution", "")
+            .trim()
+            .to_owned();
+            format!("{}x{}", width, height)
+        }
+
+        #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+        {
+            // TODO - add other OS
+            String::default()
         }
     }
     fn count_lines_in_output(&self, output: String) -> usize {
@@ -424,98 +447,99 @@ impl Infos {
     pub fn get_packages_number(&self) -> String {
         let mut packages_string: Vec<String> = Vec::new();
 
-        match std::env::consts::OS {
-            "linux" | "freebsd" | "solaris" => {
-                let package_managers = [
-                    ("pacman", vec!["pacman", "-Qq", "--color", "never"]),
-                    ("kiss", vec!["kiss", "l"]),
-                    ("cpt", vec!["cpt-list"]),
-                    ("dpkg", vec!["dpkg-query", "-f", "'.\n'", "-W"]),
-                    ("xbps-query", vec!["xbps-query", "-l"]),
-                    ("apk", vec!["apk", "info"]),
-                    ("opkg", vec!["opkg", "list-installed"]),
-                    ("pacman-g2", vec!["pacman-g2", "-Q"]),
-                    ("lvu", vec!["lvu", "installed"]),
-                    ("tce", vec!["tce-status", "-i"]),
-                    ("pkg", vec!["pkg_info"]),
-                    ("pkg", vec!["pkg", "info"]),
-                    ("pkgin", vec!["pkgin", "list"]),
-                    (
-                        "tazpkg",
-                        vec!["pkgs_h=6", "tazpkg", "list", "&&", "((packages-=6))"],
-                    ),
-                    ("sorcery", vec!["gaze", "installed"]),
-                    ("alps", vec!["alps", "showinstalled"]),
-                    ("butch", vec!["butch", "list"]),
-                    ("swupd", vec!["swupd", "bundle-list", "--quiet"]),
-                    ("pisi", vec!["pisi", "li"]),
-                    ("pacstall", vec!["pacstall", "-L"]),
-                    ("flatpak", vec!["flatpak", "list"]),
-                    ("spm", vec!["spm", "list", "-i"]),
-                    ("snap", vec!["snap", "list"]),
-                    ("snap", vec!["mine", "-q"]),
-                ];
+        #[cfg(target_family = "unix")]
+        {
+            let package_managers = [
+                ("pacman", vec!["pacman", "-Qq", "--color", "never"]),
+                ("kiss", vec!["kiss", "l"]),
+                ("cpt", vec!["cpt-list"]),
+                ("dpkg", vec!["dpkg-query", "-f", "'.\n'", "-W"]),
+                ("xbps-query", vec!["xbps-query", "-l"]),
+                ("apk", vec!["apk", "info"]),
+                ("opkg", vec!["opkg", "list-installed"]),
+                ("pacman-g2", vec!["pacman-g2", "-Q"]),
+                ("lvu", vec!["lvu", "installed"]),
+                ("tce", vec!["tce-status", "-i"]),
+                ("pkg", vec!["pkg_info"]),
+                ("pkg", vec!["pkg", "info"]),
+                ("pkgin", vec!["pkgin", "list"]),
+                (
+                    "tazpkg",
+                    vec!["pkgs_h=6", "tazpkg", "list", "&&", "((packages-=6))"],
+                ),
+                ("sorcery", vec!["gaze", "installed"]),
+                ("alps", vec!["alps", "showinstalled"]),
+                ("butch", vec!["butch", "list"]),
+                ("swupd", vec!["swupd", "bundle-list", "--quiet"]),
+                ("pisi", vec!["pisi", "li"]),
+                ("pacstall", vec!["pacstall", "-L"]),
+                ("flatpak", vec!["flatpak", "list"]),
+                ("spm", vec!["spm", "list", "-i"]),
+                ("snap", vec!["snap", "list"]),
+                ("snap", vec!["mine", "-q"]),
+            ];
 
-                for (name, mut args) in package_managers {
-                    let command_name = args[0];
-                    if command_exist(command_name) {
-                        args.remove(0);
-                        packages_string.push(format!(
-                            "{} ({})",
-                            self.count_lines_in_output(return_str_from_command(
-                                Command::new(command_name).args(args)
-                            )),
-                            name
-                        ));
-                    }
-                }
-
-                if command_exist("dnf")
-                    && command_exist("sqlite3")
-                    && Path::new("/var/cache/dnf/packages.db").exists()
-                {
+            for (name, mut args) in package_managers {
+                let command_name = args[0];
+                if command_exist(command_name) {
+                    args.remove(0);
                     packages_string.push(format!(
-                        "{} (dnf)",
+                        "{} ({})",
                         self.count_lines_in_output(return_str_from_command(
-                            Command::new("sqlite3")
-                                .arg("/var/cache/dnf/packages.db")
-                                .arg(r#""SELECT count(pkg) FROM installed""#),
-                        ))
-                    ));
-                } else if command_exist("rpm") {
-                    packages_string.push(format!(
-                        "{} (dnf)",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new("rpm").arg("-qa"),
-                        ))
+                            Command::new(command_name).args(args)
+                        )),
+                        name
                     ));
                 }
+            }
 
-                packages_string.join(" ")
+            if command_exist("dnf")
+                && command_exist("sqlite3")
+                && Path::new("/var/cache/dnf/packages.db").exists()
+            {
+                packages_string.push(format!(
+                    "{} (dnf)",
+                    self.count_lines_in_output(return_str_from_command(
+                        Command::new("sqlite3")
+                            .arg("/var/cache/dnf/packages.db")
+                            .arg(r#""SELECT count(pkg) FROM installed""#),
+                    ))
+                ));
+            } else if command_exist("rpm") {
+                packages_string.push(format!(
+                    "{} (dnf)",
+                    self.count_lines_in_output(return_str_from_command(
+                        Command::new("rpm").arg("-qa"),
+                    ))
+                ));
             }
-            #[cfg(target_os = "windows")]
-            "windows" => {
-                if command_exist("choco") {
-                    let choco_output: String = return_str_from_command(
-                        Command::new("choco").arg("list").arg("--localonly"),
-                    );
-                    let choco_output_split: Vec<&str> = choco_output
-                        .split(" packages installed")
-                        .collect::<Vec<&str>>()[0]
-                        .lines()
-                        .collect::<Vec<&str>>();
-                    packages_string.push(format!(
-                        "{} (chocolatey)",
-                        choco_output_split[choco_output_split.len() - 1],
-                    ));
-                }
 
-                packages_string.join(" ")
+            packages_string.join(" ")
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            if command_exist("choco") {
+                let choco_output: String =
+                    return_str_from_command(Command::new("choco").arg("list").arg("--localonly"));
+                let choco_output_split: Vec<&str> = choco_output
+                    .split(" packages installed")
+                    .collect::<Vec<&str>>()[0]
+                    .lines()
+                    .collect::<Vec<&str>>();
+                packages_string.push(format!(
+                    "{} (chocolatey)",
+                    choco_output_split[choco_output_split.len() - 1],
+                ));
             }
-            _ => {
-                // TODO - add other OS
-                String::default()
-            }
+
+            packages_string.join(" ")
+        }
+
+        #[cfg(not(any(target_os = "windows", target_family = "unix")))]
+        {
+            // TODO - add other OS
+            String::default()
         }
     }
     pub fn get_public_ip(&self) -> String {
