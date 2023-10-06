@@ -1,6 +1,7 @@
 pub mod alpine;
 pub mod arch_linux;
 pub mod cent_os;
+pub mod debian;
 pub mod elementary_os;
 pub mod endeavour;
 pub mod fedora;
@@ -25,4 +26,3 @@ pub mod windows_11;
 pub mod windows_7;
 pub mod xubuntu;
 pub mod zorin_os;
-pub mod debian;

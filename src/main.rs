@@ -103,8 +103,9 @@ async fn main() {
     let shared_logo_color: Arc<CustomColor> = Arc::new(text_color);
     let shared_language = Arc::new(language.clone());
     let shared_infos: Arc<Infos> = Arc::new(infos);
-
-    let logo_type: i8 = if yaml.logo.status == "enable" {
+    let logo_type: i8 = if !supports_unicode::on(supports_unicode::Stream::Stdout) {
+        3
+    } else if yaml.logo.status == "enable" {
         i8::from(yaml.logo.char_type != "braille")
     } else {
         2
@@ -363,8 +364,7 @@ async fn main() {
     }
 
     if let Some(logo_lines) = logo_lines_option {
-        let logo_escape_u8: Vec<u8> =
-            strip_ansi_escapes::strip(logo.unwrap_or_default()[1]).unwrap();
+        let logo_escape_u8: Vec<u8> = strip_ansi_escapes::strip(logo.unwrap_or_default()[1]);
         let logo_escape = String::from_utf8_lossy(&logo_escape_u8);
         let logo_escape_lines: Vec<&str> = logo_escape.lines().collect::<Vec<&str>>();
         let mut max_line_length: usize = 0;
@@ -417,7 +417,7 @@ async fn main() {
             x: 0,
             width: Some(new_width),
             absolute_offset: false,
-            ..Default::default()
+            ..ViuerConfig::default()
         };
         viuer::print_from_file(yaml.logo.picture_path, &viuer_config).ok();
 

@@ -48,7 +48,7 @@ pub fn get_pid_names(pids: Vec<u32>) -> Result<Vec<String>, String> {
 
     let output: Vec<String> = String::from_utf8_lossy(&output.stdout)
         .trim()
-        .split('\n')
+        .lines()
         .map(|s| s.into())
         .collect::<Vec<String>>();
 
