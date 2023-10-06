@@ -80,10 +80,6 @@ jobs:
           - armv7-unknown-linux-gnueabihf
           - i586-unknown-linux-gnu
           - i686-unknown-linux-gnu
-          - mips-unknown-linux-gnu
-          - mips64-unknown-linux-gnuabi64
-          - mips64el-unknown-linux-gnuabi64
-          - mipsel-unknown-linux-gnu
           - powerpc-unknown-linux-gnu
           - powerpc64-unknown-linux-gnu
           - powerpc64le-unknown-linux-gnu
@@ -99,7 +95,7 @@ jobs:
         run: rustup update ${{ matrix.rust }} && rustup default ${{ matrix.rust }}
 
       - name: Install cross-compilation tools
-        uses: Asthowen/setup-cross-toolchain-action@main
+        uses: taiki-e/setup-cross-toolchain-action@v1
         with:
           target: ${{ matrix.target }}
         if: matrix.target != 'i686-unknown-linux-musl' && matrix.target != 'x86_64-unknown-linux-musl'

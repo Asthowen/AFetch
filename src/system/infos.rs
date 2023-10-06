@@ -1046,6 +1046,9 @@ impl Infos {
     }
 
     pub fn get_gpu(&self) -> Vec<String> {
+        #[cfg(target_os = "macos")]
+        return Vec::default();
+
         #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
         {
             let gpu_cmd: String = match Command::new("lspci").args(["-mm"]).output() {
