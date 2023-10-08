@@ -421,7 +421,7 @@ pub async fn get_disks(
                         .custom_color_or_ansi_color_code(*header_color),
                     format!(
                         "{}{}/{}",
-                        language["label-disk-1"],
+                        language["label-disk-1"].custom_color_or_ansi_color_code(*header_color),
                         convert_to_readable_unity(
                             (disk.total_space() - disk.available_space()) as f64
                         ),

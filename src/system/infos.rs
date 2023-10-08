@@ -1005,8 +1005,25 @@ impl Infos {
             let mut version: String = String::default();
             match de_name.as_str() {
                 "Plasma" | "KDE" => {
-                    version = return_str_from_command(Command::new("plasmashell").arg("--version"))
-                        .replace("plasmashell", "");
+                    if command_exist("qdbus") {
+                        let file_to_parse: String = return_str_from_command(
+                            Command::new("qdbus")
+                                .arg("org.kde.KWin")
+                                .arg("/KWin")
+                                .arg("supportInformation"),
+                        );
+                        for line in file_to_parse.lines() {
+                            if line.contains("KWin version: ") {
+                                version = line.replace("KWin version:", "").trim().to_owned();
+                                break;
+                            }
+                        }
+                    }
+                    if version.is_empty() {
+                        version =
+                            return_str_from_command(Command::new("plasmashell").arg("--version"))
+                                .replace("plasmashell", "");
+                    }
                 }
                 "Mate" => {
                     version =
