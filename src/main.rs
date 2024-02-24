@@ -50,19 +50,16 @@ async fn main() {
         DEFAULT_CONFIG.to_owned()
     };
 
-    let yaml: Config = match serde_yaml::from_str(&yaml_to_parse) {
-        Ok(config) => config,
-        Err(error) => match serde_yaml::from_str(DEFAULT_CONFIG) {
-            Ok(config) => {
-                println!("Your configuration is malformed ({}), I therefore use the default configuration.", error);
-                config
-            }
-            Err(error1) => {
-                println!("Your configuration is malformed ({}), unfortunately I couldn't load the default configuration ({}).", error, error1);
-                exit(9);
-            }
-        },
-    };
+    let yaml: Config = serde_yaml::from_str(&yaml_to_parse).unwrap_or_else(|error| match serde_yaml::from_str(DEFAULT_CONFIG) {
+        Ok(config) => {
+            println!("Your configuration is malformed ({}), I therefore use the default configuration.", error);
+            config
+        }
+        Err(error1) => {
+            println!("Your configuration is malformed ({}), unfortunately I couldn't load the default configuration ({}).", error, error1);
+            exit(9);
+        }
+    });
     let text_color: CustomColor =
         CustomColor::new(yaml.text_color[0], yaml.text_color[1], yaml.text_color[2]);
 
@@ -175,7 +172,6 @@ async fn main() {
             Arc::clone(&shared_header_color),
             Arc::clone(&shared_logo_color),
             Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
         ),
         get_host(
             Arc::clone(&shared_yaml),
@@ -189,14 +185,12 @@ async fn main() {
             Arc::clone(&shared_header_color),
             Arc::clone(&shared_logo_color),
             Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
         ),
         get_uptime(
             Arc::clone(&shared_yaml),
             Arc::clone(&shared_header_color),
             Arc::clone(&shared_logo_color),
             Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
         ),
         get_packages(
             Arc::clone(&shared_yaml),
@@ -273,14 +267,12 @@ async fn main() {
             Arc::clone(&shared_header_color),
             Arc::clone(&shared_logo_color),
             Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
         ),
         get_disks(
             Arc::clone(&shared_yaml),
             Arc::clone(&shared_header_color),
             Arc::clone(&shared_logo_color),
             Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
         ),
         get_public_ip(
             Arc::clone(&shared_yaml),
@@ -353,8 +345,21 @@ async fn main() {
     }
 
     if !yaml.disabled_entries.contains(&"color-blocks".to_owned()) {
-        let first_colors: String = (0..8).map(|i| format!("\x1b[4{}m   \x1b[0m", i)).collect();
-        let second_colors: String = (0..8).map(|i| format!("\x1b[10{}m   \x1b[0m", i)).collect();
+        let first_colors: String = (0..8).fold(String::default(), |mut acc, i| {
+            write!(&mut acc, "\x1b[4{}m   \x1b[0m", i).unwrap_or_else(|error| {
+                println!("Failed to write to string for color blocks: {}.", error);
+                exit(9);
+            });
+            acc
+        });
+
+        let second_colors: String = (0..8).fold(String::default(), |mut acc, i| {
+            write!(&mut acc, "\x1b[10{}m   \x1b[0m", i).unwrap_or_else(|error| {
+                println!("Failed to write to string for color blocks: {}.", error);
+                exit(9);
+            });
+            acc
+        });
         infos_to_print.extend(vec![
             String::default(),
             String::default(),

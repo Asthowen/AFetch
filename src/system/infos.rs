@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 use sysinfo::CpuRefreshKind;
-use sysinfo::{System, SystemExt};
+use sysinfo::System;
 
 pub struct Infos {
     pub sysinfo_obj: System,
@@ -22,19 +22,11 @@ pub struct Infos {
 impl Infos {
     pub fn init(custom_logo: Option<String>, config: Arc<Config>) -> Self {
         let mut sysinfo_obj = System::new();
-        if !config.disabled_entries.contains(&"disk".to_owned())
-            || !config.disabled_entries.contains(&"disks".to_owned())
-        {
-            sysinfo_obj.refresh_disks_list();
-        }
         if !config.disabled_entries.contains(&"memory".to_owned()) {
             sysinfo_obj.refresh_memory();
         }
         if !config.disabled_entries.contains(&"cpu".to_owned()) {
             sysinfo_obj.refresh_cpu_specifics(CpuRefreshKind::everything());
-        }
-        if !config.disabled_entries.contains(&"network".to_owned()) {
-            sysinfo_obj.refresh_networks();
         }
 
         Self {
@@ -450,46 +442,45 @@ impl Infos {
         #[cfg(target_family = "unix")]
         {
             let package_managers = [
-                ("pacman", vec!["pacman", "-Qq", "--color", "never"]),
-                ("kiss", vec!["kiss", "l"]),
-                ("cpt", vec!["cpt-list"]),
-                ("dpkg", vec!["dpkg-query", "-f", "'.\n'", "-W"]),
-                ("xbps-query", vec!["xbps-query", "-l"]),
-                ("apk", vec!["apk", "info"]),
-                ("opkg", vec!["opkg", "list-installed"]),
-                ("pacman-g2", vec!["pacman-g2", "-Q"]),
-                ("lvu", vec!["lvu", "installed"]),
-                ("tce", vec!["tce-status", "-i"]),
-                ("pkg", vec!["pkg_info"]),
-                ("pkg", vec!["pkg", "info"]),
-                ("pkgin", vec!["pkgin", "list"]),
+                ("pacman", "pacman", vec!["-Qq", "--color", "never"]),
+                ("kiss", "kiss", vec!["l"]),
+                ("cpt", "cpt-list", Vec::new()),
+                ("dpkg", "dpkg-query", vec!["-f", "'.\n'", "-W"]),
+                ("xbps-query", "xbps-query", vec!["-l"]),
+                ("apk", "apk", vec!["info"]),
+                ("opkg", "opkg", vec!["list-installed"]),
+                ("pacman-g2", "pacman-g2", vec!["-Q"]),
+                ("lvu", "lvu", vec!["installed"]),
+                ("tce", "tce-status", vec!["-i"]),
+                ("pkg", "pkg_info", Vec::new()),
+                ("pkg", "pkg", vec!["info"]),
+                ("pkgin", "pkgin", vec!["list"]),
                 (
                     "tazpkg",
+                    "",
                     vec!["pkgs_h=6", "tazpkg", "list", "&&", "((packages-=6))"],
                 ),
-                ("sorcery", vec!["gaze", "installed"]),
-                ("alps", vec!["alps", "showinstalled"]),
-                ("butch", vec!["butch", "list"]),
-                ("swupd", vec!["swupd", "bundle-list", "--quiet"]),
-                ("pisi", vec!["pisi", "li"]),
-                ("pacstall", vec!["pacstall", "-L"]),
-                ("flatpak", vec!["flatpak", "list"]),
-                ("spm", vec!["spm", "list", "-i"]),
-                ("snap", vec!["snap", "list"]),
-                ("snap", vec!["mine", "-q"]),
+                ("sorcery", "gaze", vec!["installed"]),
+                ("alps", "alps", vec!["showinstalled"]),
+                ("butch", "butch", vec!["list"]),
+                ("swupd", "swupd", vec!["bundle-list", "--quiet"]),
+                ("pisi", "pisi", vec!["li"]),
+                ("pacstall", "pacstall", vec!["-L"]),
+                ("flatpak", "flatpak", vec!["list"]),
+                ("spm", "spm", vec!["list", "-i"]),
+                ("snap", "snap", vec!["list"]),
+                ("snap", "mine", vec!["-q"]),
             ];
 
-            for (name, mut args) in package_managers {
-                let command_name = args[0];
-                if command_exist(command_name) {
-                    args.remove(0);
-                    packages_string.push(format!(
-                        "{} ({})",
-                        self.count_lines_in_output(return_str_from_command(
-                            Command::new(command_name).args(args)
-                        )),
-                        name
+            for (name, command, args) in package_managers {
+                if command_exist(command) {
+                    let packages_count = self.count_lines_in_output(return_str_from_command(
+                        Command::new(command).args(args),
                     ));
+
+                    if packages_count != 0 {
+                        packages_string.push(format!("{} ({})", packages_count, name));
+                    }
                 }
             }
 
@@ -497,21 +488,20 @@ impl Infos {
                 && command_exist("sqlite3")
                 && Path::new("/var/cache/dnf/packages.db").exists()
             {
-                packages_string.push(format!(
-                    "{} (dnf)",
-                    self.count_lines_in_output(return_str_from_command(
-                        Command::new("sqlite3")
-                            .arg("/var/cache/dnf/packages.db")
-                            .arg(r#""SELECT count(pkg) FROM installed""#),
-                    ))
+                let packages_count = self.count_lines_in_output(return_str_from_command(
+                    Command::new("sqlite3")
+                        .arg("/var/cache/dnf/packages.db")
+                        .arg(r#""SELECT count(pkg) FROM installed""#),
                 ));
+                if packages_count != 0 {
+                    packages_string.push(format!("{} (dnf)", packages_count));
+                }
             } else if command_exist("rpm") {
-                packages_string.push(format!(
-                    "{} (dnf)",
-                    self.count_lines_in_output(return_str_from_command(
-                        Command::new("rpm").arg("-qa"),
-                    ))
-                ));
+                let packages_count = self
+                    .count_lines_in_output(return_str_from_command(Command::new("rpm").arg("-qa")));
+                if packages_count != 0 {
+                    packages_string.push(format!("{} (dnf)", packages_count));
+                }
             }
 
             packages_string.join(" ")
@@ -1086,7 +1076,7 @@ impl Infos {
         String::default()
     }
 
-    pub fn get_gpu(&self) -> Vec<String> {
+    pub fn get_gpus(&self) -> Vec<String> {
         #[cfg(target_os = "macos")]
         return Vec::default();
 

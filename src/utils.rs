@@ -1,14 +1,14 @@
 use std::collections::HashMap;
+use std::process::Command;
 
 pub const fn div_mod(dividend: u64, divisor: u64) -> (u64, u64) {
     (dividend / divisor, dividend % divisor)
 }
 
-pub fn return_str_from_command(command: &mut std::process::Command) -> String {
-    if let Ok(output) = command.output() {
-        String::from_utf8(output.stdout).unwrap_or_default()
-    } else {
-        String::default()
+pub fn return_str_from_command(command: &mut Command) -> String {
+    match command.output() {
+        Ok(output) => String::from_utf8_lossy(&output.stdout).to_string(),
+        Err(_) => String::default(),
     }
 }
 

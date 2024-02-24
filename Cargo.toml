@@ -22,19 +22,19 @@ opt-level = "z"
 strip = true
 
 [dependencies]
-tokio = { version = "1.32.0", default-features = false, features = ["rt-multi-thread", "macros"] }
-serde = { version = "1.0.188", features = ["derive"] }
-unicode-segmentation = "1.10.1"
+tokio = { version = "1.36.0", default-features = false, features = ["rt-multi-thread", "macros"] }
+serde = { version = "1.0.197", features = ["derive"] }
+unicode-segmentation = "1.11.0"
 strip-ansi-escapes = "0.2.0"
-supports-unicode = "2.0.0"
-starship-battery = "0.8.1"
+supports-unicode = "3.0.0"
+starship-battery = "0.8.2"
 afetch-colored = "2.0.3"
-serde_yaml = "0.9.25"
+serde_yaml = "0.9.32"
 sys-locale = "0.3.1"
-sysinfo = "0.29.10"
-minreq = "2.10.0"
+sysinfo = "0.30.5"
+minreq = "2.11.0"
 whoami = "1.4.1"
-image = "0.24.7"
-which = "4.4.2"
-viuer = "0.6.2"
+image = "0.24.9"
+which = "6.0.0"
+viuer = "0.7.1"
 dirs = "5.0.1"

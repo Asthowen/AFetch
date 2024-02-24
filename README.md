@@ -1,7 +1,7 @@
 <!--suppress HtmlDeprecatedAttribute -->
 <div align="center">
     <br>
-    <img src="https://raw.githubusercontent.com/Asthowen/AFetch/main/.github/resources/banner.svg" align="center">
+    <img src="https://raw.githubusercontent.com/Asthowen/AFetch/main/.github/resources/banner.svg" align="center" alt="AFetch banner">
     <br>
     <br>
     <div>
