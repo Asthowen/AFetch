@@ -561,17 +561,12 @@ impl Infos {
             return "Windows Terminal".to_owned();
         }
 
-        let pids: Vec<u32> =
-            if let Ok(pids) = crate::system::pid::get_parent_pids(std::process::id()) {
-                pids
-            } else {
+        let pids_name: Vec<String> = match crate::system::pid::get_parent_pid_names() {
+            Ok(pids) => pids,
+            Err(error) => {
+                println!("{error}");
                 return String::default();
-            };
-        let pids_name: Vec<String> = if let Ok(pids_name) = crate::system::pid::get_pid_names(pids)
-        {
-            pids_name
-        } else {
-            return String::default();
+            }
         };
         let clean_pid_names: Vec<String> = crate::system::pid::clean_pid_names(pids_name);
         if clean_pid_names.len() != 1 {

@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::Path;
-use std::str::FromStr;
+use sysinfo::{Pid, System};
 
 pub fn get_ppid(pid: &str) -> Option<String> {
     let status_path = Path::new("/proc").join(pid).join("status");
@@ -17,46 +17,48 @@ pub fn get_ppid(pid: &str) -> Option<String> {
     None
 }
 
-pub fn get_parent_pids(pid: u32) -> Result<Vec<u32>, String> {
-    let output = std::process::Command::new("ps")
-        .arg("-o")
-        .arg(format!("ppid={}", pid))
-        .output()
-        .map_err(|e| e.to_string())?;
-    let output = String::from_utf8_lossy(&output.stdout);
+pub fn get_parent_pid_names() -> Result<Vec<String>, String> {
+    let process_pid: Pid = Pid::from_u32(std::process::id());
 
-    let parent_pids = output
-        .lines()
-        .filter_map(|line| u32::from_str(line.trim()).ok())
-        .collect();
-    Ok(parent_pids)
-}
+    let mut system = System::new();
+    system.refresh_process(process_pid);
 
-pub fn get_pid_names(pids: Vec<u32>) -> Result<Vec<String>, String> {
-    let mut args: Vec<String> = Vec::new();
-    for pid in pids {
-        args.push("-p".to_owned());
-        args.push(format!("{}", pid));
+    let process = system
+        .process(process_pid)
+        .ok_or_else(|| format!("Process with PID {} not found", std::process::id()))?;
+
+    let mut parent_names = Vec::new();
+    let mut current_pid = process.parent();
+
+    while let Some(parent) = current_pid {
+        if parent_names.len() == 5 {
+            break;
+        }
+
+        system.refresh_process(parent);
+
+        let parent_process = system
+            .process(parent)
+            .ok_or_else(|| format!("Parent process with PID {} not found", parent.as_u32()))?;
+
+        parent_names.push(parent_process.name().to_owned());
+        current_pid = parent_process.parent();
     }
-    args.push("-o".to_owned());
-    args.push("comm=".to_owned());
 
-    let output = std::process::Command::new("ps")
-        .args(args)
-        .output()
-        .map_err(|e| e.to_string())?;
-
-    let output: Vec<String> = String::from_utf8_lossy(&output.stdout)
-        .trim()
-        .lines()
-        .map(|s| s.into())
-        .collect::<Vec<String>>();
-
-    Ok(output)
+    Ok(parent_names)
 }
 
 pub fn clean_pid_names(pid_names: Vec<String>) -> Vec<String> {
-    let filtered_names: [&str; 5] = ["bash", "fish", "sh", "ksh", "afetch"];
+    let filtered_names: [&str; 8] = [
+        "bash",
+        "fish",
+        "sh",
+        "ksh",
+        "afetch",
+        "systemd",
+        "plasmashell",
+        "java",
+    ];
     pid_names
         .iter()
         .filter(|name| !filtered_names.contains(&name.as_str()))
