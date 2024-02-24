@@ -136,9 +136,7 @@ impl Infos {
 
             #[cfg(target_os = "windows")]
             {
-                let windows_version: String = self
-                    .sysinfo_obj
-                    .os_version()
+                let windows_version: String = System::os_version()
                     .unwrap_or_default()
                     .split(' ')
                     .collect::<Vec<&str>>()[0]
@@ -938,9 +936,7 @@ impl Infos {
     pub fn get_de(&self) -> (String, String) {
         #[cfg(target_os = "windows")]
         {
-            let windows_version: String = self
-                .sysinfo_obj
-                .os_version()
+            let windows_version: String = System::os_version()
                 .unwrap_or_default()
                 .split(' ')
                 .collect::<Vec<&str>>()[0]
