@@ -134,7 +134,7 @@ pub async fn get_packages(
         return None;
     }
 
-    match infos.get_packages_number().as_str() {
+    match infos.get_packages_number().await.as_str() {
         "" => None,
         packages_number => Some(format!(
             "{}{}",

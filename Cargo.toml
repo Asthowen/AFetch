@@ -1,6 +1,6 @@
 [package]
 name = "afetch"
-version = "0.0.5"
+version = "0.0.6"
 authors = ["Asthowen<contact@asthowen.fr>"]
 edition = "2021"
 description = "A CLI system information tool written in Rust."

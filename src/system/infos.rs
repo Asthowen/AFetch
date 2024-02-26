@@ -12,6 +12,7 @@ use std::process::Command;
 use std::sync::Arc;
 use sysinfo::CpuRefreshKind;
 use sysinfo::System;
+use tokio::task;
 
 pub struct Infos {
     pub sysinfo_obj: System,
@@ -430,11 +431,11 @@ impl Infos {
             String::default()
         }
     }
-    fn count_lines_in_output(&self, output: String) -> usize {
+    fn count_lines_in_output(output: String) -> usize {
         output.lines().count()
     }
 
-    pub fn get_packages_number(&self) -> String {
+    pub async fn get_packages_number(&self) -> String {
         let mut packages_string: Vec<String> = Vec::new();
 
         #[cfg(target_family = "unix")]
@@ -470,35 +471,56 @@ impl Infos {
                 ("snap", "mine", vec!["-q"]),
             ];
 
+            let mut handles = Vec::new();
             for (name, command, args) in package_managers {
                 if command_exist(command) {
-                    let packages_count = self.count_lines_in_output(return_str_from_command(
-                        Command::new(command).args(args),
-                    ));
+                    let handle = task::spawn(async move {
+                        let packages_count: usize = Self::count_lines_in_output(
+                            return_str_from_command(Command::new(command).args(args)),
+                        );
 
-                    if packages_count != 0 {
-                        packages_string.push(format!("{} ({})", packages_count, name));
-                    }
+                        if packages_count != 0 {
+                            return Some(format!("{} ({})", packages_count, name));
+                        }
+                        None
+                    });
+                    handles.push(handle);
                 }
             }
 
-            if command_exist("dnf")
-                && command_exist("sqlite3")
-                && Path::new("/var/cache/dnf/packages.db").exists()
-            {
-                let packages_count = self.count_lines_in_output(return_str_from_command(
-                    Command::new("sqlite3")
-                        .arg("/var/cache/dnf/packages.db")
-                        .arg(r#""SELECT count(pkg) FROM installed""#),
-                ));
-                if packages_count != 0 {
-                    packages_string.push(format!("{} (dnf)", packages_count));
+            let handle_rpm = task::spawn(async move {
+                if command_exist("dnf")
+                    && command_exist("sqlite3")
+                    && Path::new("/var/cache/dnf/packages.db").exists()
+                {
+                    let packages_count = Self::count_lines_in_output(return_str_from_command(
+                        Command::new("sqlite3")
+                            .arg("/var/cache/dnf/packages.db")
+                            .arg(r#""SELECT count(pkg) FROM installed""#),
+                    ));
+                    if packages_count != 0 {
+                        return Some(format!("{} (dnf)", packages_count));
+                    }
+                } else if command_exist("rpm") {
+                    let packages_count = Self::count_lines_in_output(return_str_from_command(
+                        Command::new("rpm").arg("-qa"),
+                    ));
+                    if packages_count != 0 {
+                        return Some(format!("{} (dnf)", packages_count));
+                    }
                 }
-            } else if command_exist("rpm") {
-                let packages_count = self
-                    .count_lines_in_output(return_str_from_command(Command::new("rpm").arg("-qa")));
-                if packages_count != 0 {
-                    packages_string.push(format!("{} (dnf)", packages_count));
+
+                None
+            });
+            handles.push(handle_rpm);
+
+            for handle in handles {
+                match handle.await {
+                    Ok(Some(formatted)) => packages_string.push(formatted),
+                    Err(error) => {
+                        println!("Error while fetching packages number: {}", error);
+                    }
+                    _ => {}
                 }
             }
 
