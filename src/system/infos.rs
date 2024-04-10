@@ -558,6 +558,39 @@ impl Infos {
             Err(_) => String::default(),
         }
     }
+
+    fn get_qt_bindir_path() -> String {
+        let mut path = std::env::var("PATH").unwrap_or_default();
+        path.push(':');
+
+        if let Ok(qt_bindir_path) = Command::new("qtpaths").arg("--binaries-dir").output() {
+            if let Ok(qt_bindir_output) = String::from_utf8(qt_bindir_path.stdout) {
+                path.push_str(qt_bindir_output.trim());
+                return path;
+            }
+        }
+        String::default()
+    }
+
+    fn get_konsole_instances() -> Vec<String> {
+        if let Ok(konsole_instances_output) = Command::new("qdbus")
+            .env("PATH", Self::get_qt_bindir_path())
+            .output()
+        {
+            if let Ok(konsole_instances_output_str) =
+                String::from_utf8(konsole_instances_output.stdout)
+            {
+                return konsole_instances_output_str
+                    .lines()
+                    .filter(|line| {
+                        line.contains("org.kde.konsole") || line.contains("org.kde.yakuake")
+                    })
+                    .map(|line| line.split_whitespace().next().unwrap().to_owned())
+                    .collect();
+            }
+        }
+        Vec::new()
+    }
     pub fn get_terminal(&self) -> String {
         if env_exist("TERM_PROGRAM") {
             return match get_env("TERM_PROGRAM").trim() {
@@ -580,25 +613,46 @@ impl Infos {
         if env_exist("WT_SESSION") {
             return "Windows Terminal".to_owned();
         }
-
-        let pids_name: Vec<String> = match crate::system::pid::get_parent_pid_names() {
+        let pids_names: Vec<String> = match crate::system::pid::get_parent_pid_names() {
             Ok(pids) => pids,
             Err(error) => {
                 println!("{error}");
                 return String::default();
             }
         };
-        let clean_pid_names: Vec<String> = crate::system::pid::clean_pid_names(pids_name);
-        if clean_pid_names.len() != 1 {
+        let mut term: String = String::default();
+        let shell: String = get_env("SHELL");
+        for name in pids_names {
+            match name.as_str() {
+                name if shell == name => {}
+                "sh" | "screen" | "su" => {}
+                "login" | "Login" | "init" | "(init)" => {
+                    term = return_str_from_command(&mut Command::new("tty"));
+                }
+                "ruby" | "1" | "tmux" | "systemd" | "sshd" | "python" | "USER" | "PID"
+                | "kdeinit" | "launchd" | "ksmserver" => break,
+                _ if name.starts_with("plasma") => break,
+                "gnome-terminal-" => term = "gnome-terminal".to_owned(),
+                "urxvtd" => term = "urxvt".to_owned(),
+                _ if name.contains("nvim") => term = "Neovim Terminal".to_owned(),
+                _ if name.contains("NeoVimServer") => term = "VimR Terminal".to_owned(),
+                _ => {
+                    term = if term.starts_with('.') && term.ends_with("-wrapped") {
+                        term.trim_start_matches('.')
+                            .trim_end_matches("-wrapped")
+                            .to_owned()
+                    } else {
+                        name.clone()
+                    };
+                }
+            }
+        }
+
+        if term.is_empty() {
             return String::default();
         }
-        let terminal_name: &str = &clean_pid_names[0];
 
-        format!(
-            "{}{}",
-            &terminal_name[..1].to_uppercase(),
-            &terminal_name[1..]
-        )
+        format!("{}{}", &term[..1].to_uppercase(), &term[1..])
     }
     pub fn get_terminal_font(&self) -> String {
         let mut term_font = String::default();
@@ -767,35 +821,7 @@ impl Infos {
                 "konsole" | "yakuake" => {
                     let child = get_ppid(&format!("{}", std::process::id())).unwrap_or_default();
 
-                    let qt_bindir_result = Command::new("qtpaths").arg("--binaries-dir").output();
-                    let qt_bindir = if let Ok(qt_bindir) = qt_bindir_result {
-                        qt_bindir
-                    } else {
-                        return String::default();
-                    };
-                    let qt_bindir_output = String::from_utf8_lossy(&qt_bindir.stdout);
-                    let qt_bindir_path = qt_bindir_output.trim();
-                    let mut path = std::env::var("PATH").unwrap_or_default();
-                    path.push(':');
-                    path.push_str(qt_bindir_path);
-                    std::env::set_var("PATH", path);
-
-                    let konsole_instances_output_result = Command::new("qdbus").output();
-                    let konsole_instances_output =
-                        if let Ok(konsole_instances_output) = konsole_instances_output_result {
-                            konsole_instances_output
-                        } else {
-                            return String::default();
-                        };
-
-                    let konsole_instances_output_str =
-                        String::from_utf8_lossy(&konsole_instances_output.stdout);
-                    let konsole_instances = konsole_instances_output_str
-                        .lines()
-                        .filter(|line| line.contains(&format!("org.kde.{}", get_env("term"))))
-                        .map(|line| line.split_whitespace().next().unwrap())
-                        .collect::<Vec<&str>>();
-
+                    let konsole_instances = Self::get_konsole_instances();
                     let mut profile = String::default();
 
                     for i in &konsole_instances {

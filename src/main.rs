@@ -15,7 +15,7 @@ use std::process::exit;
 use std::sync::Arc;
 use unicode_segmentation::UnicodeSegmentation;
 use viuer::Config as ViuerConfig;
-use whoami::{hostname, username};
+use whoami::{fallible::hostname, username};
 
 const DEFAULT_CONFIG: &str = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\n# text_color_header:\n#   - 133 # r\n#   - 218 # g\n#   - 249 # b\ndisabled_entries:\n  - battery\n  - public-ip\n  - cpu-usage\n  - network";
 
@@ -129,7 +129,7 @@ async fn main() {
 
     let shared_header_color = Arc::new(header_color);
 
-    let (username, host): (String, String) = (username(), hostname());
+    let (username, host): (String, String) = (username(), hostname().unwrap_or_default());
     let mut infos_to_print: Vec<String> = Vec::new();
     let mut output: String = String::default();
     infos_to_print.push(format!(

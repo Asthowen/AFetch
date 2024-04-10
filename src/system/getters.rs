@@ -254,7 +254,7 @@ pub async fn get_terminal_font(
     language: Arc<HashMap<&'static str, &'static str>>,
     infos: Arc<Infos>,
 ) -> Option<String> {
-    if yaml.disabled_entries.contains(&"terminal_font".to_owned()) {
+    if yaml.disabled_entries.contains(&"terminal-font".to_owned()) {
         return None;
     }
 
@@ -306,7 +306,8 @@ pub async fn get_cpu(
         return None;
     }
 
-    let cpu_infos: &Cpu = infos.sysinfo_obj.global_cpu_info();
+    let cpu_infos: &Cpu = &infos.sysinfo_obj.cpus()[0];
+
     let cpu_name: String = if !cpu_infos.brand().is_empty() {
         cpu_infos.brand().to_owned()
     } else if !infos.sysinfo_obj.global_cpu_info().vendor_id().is_empty() {

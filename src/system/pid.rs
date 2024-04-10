@@ -47,21 +47,3 @@ pub fn get_parent_pid_names() -> Result<Vec<String>, String> {
 
     Ok(parent_names)
 }
-
-pub fn clean_pid_names(pid_names: Vec<String>) -> Vec<String> {
-    let filtered_names: [&str; 8] = [
-        "bash",
-        "fish",
-        "sh",
-        "ksh",
-        "afetch",
-        "systemd",
-        "plasmashell",
-        "java",
-    ];
-    pid_names
-        .iter()
-        .filter(|name| !filtered_names.contains(&name.as_str()))
-        .map(|name| name.to_owned())
-        .collect()
-}

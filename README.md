@@ -64,7 +64,7 @@ Your executable will be in the `target/release/` folder, it is named `afetch`.
 <br>
 **Description**: List of entries to be deactivated.
 <br>
-**Available**: os / host / kernel / uptime / packages / resolution / desktop / desktop-version / shell / terminal / memory / cpu / cpu-usage / network / disk / disks / public-ip / battery / color-blocks
+**Available**: os / host / kernel / uptime / packages / resolution / desktop / desktop-version / shell / terminal / terminal-font / memory / cpu / cpu-usage / network / disk / disks / public-ip / battery / color-blocks
 <br>
 **Default**: network, battery, cpu-usage & public-ip
 <br>

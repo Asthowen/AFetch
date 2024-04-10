@@ -1,6 +1,6 @@
 [package]
 name = "afetch"
-version = "0.0.6"
+version = "0.0.7"
 authors = ["Asthowen<contact@asthowen.fr>"]
 edition = "2021"
 description = "A CLI system information tool written in Rust."
@@ -22,19 +22,19 @@ opt-level = "z"
 strip = true
 
 [dependencies]
-tokio = { version = "1.36.0", default-features = false, features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.37.0", default-features = false, features = ["rt-multi-thread", "macros"] }
 serde = { version = "1.0.197", features = ["derive"] }
 unicode-segmentation = "1.11.0"
 strip-ansi-escapes = "0.2.0"
 supports-unicode = "3.0.0"
-starship-battery = "0.8.2"
-afetch-colored = "2.0.3"
-serde_yaml = "0.9.32"
+starship-battery = "0.8.3"
+afetch-colored = "2.0.4"
+serde_yaml = "0.9.33"
 sys-locale = "0.3.1"
-sysinfo = "0.30.5"
-minreq = "2.11.0"
-whoami = "1.4.1"
-image = "0.24.9"
-which = "6.0.0"
+sysinfo = "0.30.9"
+minreq = "2.11.1"
+whoami = "1.5.1"
+image = "0.25.1"
+which = "6.0.1"
 viuer = "0.7.1"
 dirs = "5.0.1"
