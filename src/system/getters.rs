@@ -306,35 +306,32 @@ pub async fn get_cpu(
         return None;
     }
 
-    let cpu_infos: &Cpu = &infos.sysinfo_obj.cpus()[0];
+    let cpu_infos: &Cpu = match infos.sysinfo_obj.cpus().first() {
+        None => return None,
+        Some(cpu) => cpu,
+    };
 
     let cpu_name: String = if !cpu_infos.brand().is_empty() {
         cpu_infos.brand().to_owned()
     } else if !infos.sysinfo_obj.global_cpu_info().vendor_id().is_empty() {
         cpu_infos.vendor_id().to_owned()
     } else {
-        String::default()
+        return None;
     };
 
-    match cpu_name.as_str() {
-        "" => None,
-        cpu_name => {
-            let cpu_percentage: String = if yaml.disabled_entries.contains(&"cpu-usage".to_owned())
-            {
-                String::default()
-            } else {
-                format!(" - {:.1}%", cpu_infos.cpu_usage())
-            };
+    let cpu_percentage: String = if yaml.disabled_entries.contains(&"cpu-usage".to_owned()) {
+        String::default()
+    } else {
+        format!(" - {:.1}%", cpu_infos.cpu_usage())
+    };
 
-            Some(format!(
-                "{}{}",
-                language["label-cpu"]
-                    .bold()
-                    .custom_color_or_ansi_color_code(*header_color),
-                format!("{}{}", cpu_name, cpu_percentage).custom_color(*logo_color)
-            ))
-        }
-    }
+    Some(format!(
+        "{}{}",
+        language["label-cpu"]
+            .bold()
+            .custom_color_or_ansi_color_code(*header_color),
+        format!("{}{}", cpu_name, cpu_percentage).custom_color(*logo_color)
+    ))
 }
 
 pub async fn get_gpus(

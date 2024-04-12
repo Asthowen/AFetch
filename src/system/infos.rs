@@ -2,38 +2,47 @@ use crate::config::Config;
 use crate::logos;
 use crate::system::pid::get_ppid;
 use crate::utils::{
-    command_exist, env_exist, get_env, get_file_content_without_lines, return_str_from_command,
+    command_exist, env_exist, get_env, get_file_content, get_file_content_without_lines,
+    return_str_from_command,
 };
 use std::fs::File;
-use std::io::BufRead;
 use std::io::BufReader;
+use std::io::{BufRead, Read};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
-use sysinfo::CpuRefreshKind;
 use sysinfo::System;
 use tokio::task;
 
 pub struct Infos {
     pub sysinfo_obj: System,
     pub custom_logo: Option<String>,
-    pub home_dir: String,
+    pub home_dir: PathBuf,
+    pub config_dir: PathBuf,
+    pub local_dir: PathBuf,
 }
 
 impl Infos {
-    pub fn init(custom_logo: Option<String>, config: Arc<Config>) -> Self {
+    pub async fn init(custom_logo: Option<String>, config: Arc<Config>) -> Self {
         let mut sysinfo_obj = System::new();
         if !config.disabled_entries.contains(&"memory".to_owned()) {
             sysinfo_obj.refresh_memory();
         }
         if !config.disabled_entries.contains(&"cpu".to_owned()) {
-            sysinfo_obj.refresh_cpu_specifics(CpuRefreshKind::everything());
+            sysinfo_obj.refresh_cpu();
+
+            if !config.disabled_entries.contains(&"cpu-usage".to_owned()) {
+                tokio::time::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL).await;
+                sysinfo_obj.refresh_cpu_usage();
+            }
         }
 
         Self {
             sysinfo_obj,
             custom_logo,
-            home_dir: dirs::home_dir().unwrap().display().to_string(),
+            home_dir: dirs::home_dir().unwrap(),
+            config_dir: dirs::config_dir().unwrap(),
+            local_dir: dirs::data_local_dir().unwrap(),
         }
     }
 
@@ -625,7 +634,7 @@ impl Infos {
         for name in pids_names {
             match name.as_str() {
                 name if shell == name => {}
-                "sh" | "screen" | "su" => {}
+                "sh" | "screen" | "su" | "dolphin" | "nautilus" => {}
                 "login" | "Login" | "init" | "(init)" => {
                     term = return_str_from_command(&mut Command::new("tty"));
                 }
@@ -663,320 +672,313 @@ impl Infos {
             self.get_terminal()
         };
 
-        if !terminal_name.is_empty() {
-            match terminal_name.to_lowercase().as_str() {
-                "alacritty" => {
-                    let xdg_config_home = get_env("XDG_CONFIG_HOME");
-                    let confs = vec![
-                        format!("{}/alacritty.yml", xdg_config_home),
-                        format!("{}/alacritty.yml", self.home_dir),
-                        format!("{}/.alacritty.yml", xdg_config_home),
-                        format!("{}/.alacritty.yml", self.home_dir),
-                    ];
+        if terminal_name.is_empty() {
+            return String::default();
+        }
 
-                    for conf in confs {
-                        if let Ok(contents) = std::fs::read_to_string(&conf) {
-                            if let Some(line) = contents
-                                .lines()
-                                .find(|line| line.contains("normal:") && line.contains("family:"))
-                            {
-                                term_font = line
-                                    .chars()
-                                    .skip_while(|c| c != &'\"')
-                                    .skip(1)
-                                    .take_while(|c| c != &'\"')
-                                    .collect();
-                                break;
+        match terminal_name.to_lowercase().as_str() {
+            "alacritty" => {
+                let mut config_path = Path::new(&self.config_dir)
+                    .join("alacritty")
+                    .join("alacritty.yml");
+                if !config_path.exists() {
+                    config_path = Path::new(&self.home_dir).join(".alacritty.yml");
+                    if !config_path.exists() {
+                        config_path = Path::new(&self.config_dir)
+                            .join("alacritty")
+                            .join("alacritty.toml");
+                        if !config_path.exists() {
+                            config_path = Path::new(&self.home_dir).join(".alacritty.toml");
+                            if !config_path.exists() {
+                                return String::default();
                             }
                         }
                     }
                 }
-                "apple_terminal" => {
-                    term_font =
-                        return_str_from_command(Command::new("osascript").arg("-e").arg(
-                            r#"tell application "Terminal" to font name of window frontmost"#,
-                        ));
+
+                if let Ok(contents) = std::fs::read_to_string(config_path) {
+                    if let Some(line) = contents
+                        .lines()
+                        .find(|line| line.contains("family:") || line.contains("family = "))
+                    {
+                        term_font = line
+                            .chars()
+                            .skip_while(|c| c != &'\"')
+                            .skip(1)
+                            .take_while(|c| c != &'\"')
+                            .collect();
+                    }
                 }
-                "iterm2" => {
-                    let current_profile_name = return_str_from_command(Command::new("osascript")
+            }
+            "apple_terminal" => {
+                term_font = return_str_from_command(
+                    Command::new("osascript")
+                        .arg("-e")
+                        .arg(r#"tell application "Terminal" to font name of window frontmost"#),
+                );
+            }
+            "iterm2" => {
+                let current_profile_name = return_str_from_command(Command::new("osascript")
                         .arg("-e")
                         .arg(r#"tell application "iTerm2" to profile name of current session of current window"#)).trim().to_owned();
 
-                    let font_file = format!(
-                        "{}/Library/Preferences/com.googlecode.iterm2.plist",
-                        self.home_dir
-                    );
+                let font_file = Path::new(&self.home_dir)
+                    .join("Library")
+                    .join("Preferences")
+                    .join("com.googlecode.iterm2.plist");
 
-                    let profiles_count =
-                        return_str_from_command(Command::new("PlistBuddy").args([
-                            "-c",
-                            "Print ':New Bookmarks:'",
-                            &font_file,
-                        ]))
-                        .split("Guid")
-                        .count()
-                            - 1;
+                let profiles_count = return_str_from_command(Command::new("PlistBuddy").args([
+                    "-c",
+                    "Print ':New Bookmarks:'",
+                    &font_file.display().to_string(),
+                ]))
+                .split("Guid")
+                .count()
+                    - 1;
 
-                    for i in 0..profiles_count {
-                        let profile_name =
+                for i in 0..profiles_count {
+                    let profile_name = return_str_from_command(Command::new("PlistBuddy").args([
+                        "-c",
+                        &format!("Print ':New Bookmarks:{}:Name:'", i),
+                        &font_file.display().to_string(),
+                    ]))
+                    .trim()
+                    .to_owned();
+
+                    if profile_name == current_profile_name {
+                        let temp_term_font: String =
                             return_str_from_command(Command::new("PlistBuddy").args([
                                 "-c",
-                                &format!("Print ':New Bookmarks:{}:Name:'", i),
-                                &font_file,
+                                &format!("Print ':New Bookmarks:{}:Normal Font:'", i),
+                                &font_file.display().to_string(),
                             ]))
                             .trim()
                             .to_owned();
 
-                        if profile_name == current_profile_name {
-                            let temp_term_font: String =
+                        let diff_font: String =
+                            return_str_from_command(Command::new("PlistBuddy").args([
+                                "-c",
+                                &format!("Print ':New Bookmarks:{}:Use Non-ASCII Font:'", i),
+                                &font_file.display().to_string(),
+                            ]))
+                            .trim()
+                            .to_owned();
+
+                        if diff_font == "true" {
+                            let non_ascii: String =
                                 return_str_from_command(Command::new("PlistBuddy").args([
                                     "-c",
-                                    &format!("Print ':New Bookmarks:{}:Normal Font:'", i),
-                                    &font_file,
+                                    &format!("Print ':New Bookmarks:{}:Non Ascii Font:'", i),
+                                    &font_file.display().to_string(),
                                 ]))
                                 .trim()
                                 .to_owned();
 
-                            let diff_font: String =
-                                return_str_from_command(Command::new("PlistBuddy").args([
-                                    "-c",
-                                    &format!("Print ':New Bookmarks:{}:Use Non-ASCII Font:'", i),
-                                    &font_file,
-                                ]))
-                                .trim()
-                                .to_owned();
-
-                            if diff_font == "true" {
-                                let non_ascii: String =
-                                    return_str_from_command(Command::new("PlistBuddy").args([
-                                        "-c",
-                                        &format!("Print ':New Bookmarks:{}:Non Ascii Font:'", i),
-                                        &font_file,
-                                    ]))
-                                    .trim()
-                                    .to_owned();
-
-                                if temp_term_font != non_ascii {
-                                    term_font = format!(
-                                        "{} (normal) / {} (non-ascii)",
-                                        temp_term_font, non_ascii
-                                    );
-                                }
+                            if temp_term_font != non_ascii {
+                                term_font = format!(
+                                    "{} (normal) / {} (non-ascii)",
+                                    temp_term_font, non_ascii
+                                );
                             }
                         }
                     }
                 }
-                "deepin-terminal" => {
-                    let config_file = format!(
-                        "{}/deepin/deepin-terminal/config.conf",
-                        std::env::var("XDG_CONFIG_HOME")
-                            .unwrap_or_else(|_| format!("{}/.config", self.home_dir))
+            }
+            "deepin-terminal" => {
+                let config_file = Path::new(&self.config_dir)
+                    .join("deepin")
+                    .join("deepin-terminal")
+                    .join("config.conf");
+                if !config_file.exists() {
+                    return String::default();
+                }
+
+                let mut is_next = false;
+                for line in get_file_content(config_file).lines() {
+                    if line.contains("[basic.interface.font]") {
+                        is_next = true;
+                    } else if is_next && line.contains("value=") {
+                        term_font.push_str(line.split('=').nth(1).unwrap_or_default().trim());
+                        break;
+                    }
+                }
+            }
+            "gnustep_terminal" => {
+                let config_file = Path::new(&self.home_dir)
+                    .join("GNUstep")
+                    .join("Defaults")
+                    .join("Terminal.plist");
+                if !config_file.exists() {
+                    return String::default();
+                }
+
+                let file_content = get_file_content_without_lines(config_file);
+                term_font = file_content
+                    .lines()
+                    .filter(|line| {
+                        line.contains("TerminalFont") || line.contains("TerminalFontSize")
+                    })
+                    .map(|line| line.trim_matches(|c| c == '<' || c == '>' || c == '/'))
+                    .collect::<Vec<&str>>()
+                    .join(" ");
+            }
+            "hyper" => {
+                let config_file = Path::new(&self.home_dir).join(".hyper.js");
+                if !config_file.exists() {
+                    return String::default();
+                }
+
+                let file_content = get_file_content_without_lines(config_file);
+
+                let temp_term_font: Option<&str> = match file_content.split("fontFamily\":").nth(1)
+                {
+                    Some(s) => s.split(',').next(),
+                    None => None,
+                };
+
+                term_font = match temp_term_font {
+                    Some(s) => s.trim_matches('"').to_owned(),
+                    None => String::default(),
+                };
+            }
+            "kitty" | "xterm-kitty" => {
+                term_font = return_str_from_command(Command::new("kitty").arg("+runpy").arg(
+                    "from kitty.cli import *; o = create_default_opts(); \
+                print(f'{o.font_family} {o.font_size}')",
+                ));
+            }
+            "konsole" | "yakuake" => {
+                let child = get_ppid(&format!("{}", std::process::id())).unwrap_or_default();
+
+                let konsole_instances = Self::get_konsole_instances();
+
+                let instance_infos = konsole_instances.iter().find_map(|i| {
+                    let konsole_sessions = Command::new("qdbus").arg(i).output().ok().map_or_else(
+                        Vec::default,
+                        |output| {
+                            String::from_utf8_lossy(&output.stdout)
+                                .lines()
+                                .filter(|line| line.contains("/Sessions/"))
+                                .map(ToOwned::to_owned)
+                                .collect::<Vec<String>>()
+                        },
                     );
 
-                    for line in get_file_content_without_lines(&config_file).lines() {
-                        if line.contains("font=") {
-                            term_font.push_str(line.split('=').nth(1).unwrap_or("").trim());
-                            term_font.push(' ');
-                        }
-                        if line.contains("font_size=") {
-                            term_font.push_str(line.split('=').nth(1).unwrap_or("").trim());
-                            break;
-                        }
-                    }
-                }
-                "gnustep_terminal" => {
-                    let file_content = get_file_content_without_lines(&format!(
-                        "{}/GNUstep/Defaults/Terminal.plist",
-                        self.home_dir
-                    ));
-                    term_font = file_content
-                        .lines()
-                        .filter(|line| {
-                            line.contains("TerminalFont") || line.contains("TerminalFontSize")
-                        })
-                        .map(|line| line.trim_matches(|c| c == '<' || c == '>' || c == '/'))
-                        .collect::<Vec<&str>>()
-                        .join(" ");
-                }
-                "hyper" => {
-                    let content =
-                        get_file_content_without_lines(&format!("{}/.hyper.js", self.home_dir));
+                    konsole_sessions.iter().find_map(|session| {
+                        let session_process_id = Command::new("qdbus")
+                            .arg(i)
+                            .arg(session)
+                            .arg("processId")
+                            .output()
+                            .ok()
+                            .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned())
+                            .unwrap_or_default();
 
-                    let temp_term_font: Option<&str> = match content.split("fontFamily\":").nth(1) {
-                        Some(s) => s.split(',').next(),
-                        None => None,
-                    };
-
-                    term_font = match temp_term_font {
-                        Some(s) => s.trim_matches('"').to_owned(),
-                        None => String::default(),
-                    };
-                }
-                "kitty" | "xterm-kitty" => {
-                    term_font = return_str_from_command(Command::new("kitty").arg("+runpy").arg(
-                        "from kitty.cli import *; o = create_default_opts(); \
-                print(f'{o.font_family} {o.font_size}')",
-                    ));
-                }
-                "konsole" | "yakuake" => {
-                    let child = get_ppid(&format!("{}", std::process::id())).unwrap_or_default();
-
-                    let konsole_instances = Self::get_konsole_instances();
-                    let mut profile = String::default();
-
-                    for i in &konsole_instances {
-                        let konsole_sessions_output_result = Command::new("qdbus").arg(i).output();
-                        let konsole_sessions_output =
-                            if let Ok(konsole_sessions_output) = konsole_sessions_output_result {
-                                konsole_sessions_output
-                            } else {
-                                return String::default();
-                            };
-                        let konsole_sessions_output_str =
-                            String::from_utf8_lossy(&konsole_sessions_output.stdout);
-                        let konsole_sessions = konsole_sessions_output_str
-                            .lines()
-                            .filter(|line| line.contains("/Sessions/"))
-                            .collect::<Vec<&str>>();
-
-                        for session in &konsole_sessions {
-                            let process_id_output_result = Command::new("qdbus")
-                                .arg(i)
-                                .arg(session)
-                                .arg("processId")
-                                .output();
-                            let process_id_output =
-                                if let Ok(process_id_output) = process_id_output_result {
-                                    process_id_output
-                                } else {
-                                    return String::default();
-                                };
-                            let process_id_output_str =
-                                String::from_utf8_lossy(&process_id_output.stdout);
-                            let session_process_id = process_id_output_str.trim();
-
-                            if child == session_process_id {
-                                let environment_output_result = Command::new("qdbus")
-                                    .arg(i)
-                                    .arg(session)
-                                    .arg("environment")
-                                    .output();
-
-                                let environment_output =
-                                    if let Ok(environment_output) = environment_output_result {
-                                        environment_output
-                                    } else {
-                                        return String::default();
-                                    };
-
-                                let environment_output_str =
-                                    String::from_utf8_lossy(&environment_output.stdout);
-                                let profile_name = environment_output_str
-                                    .lines()
-                                    .find(|line| line.starts_with("KONSOLE_PROFILE_NAME="))
-                                    .map_or("", |line| {
-                                        line.trim_start_matches("KONSOLE_PROFILE_NAME=")
-                                    });
-
-                                profile = if profile_name.is_empty() {
-                                    let profile_output_result = Command::new("qdbus")
-                                        .arg(i)
-                                        .arg(session)
-                                        .arg("profile")
-                                        .output();
-
-                                    let profile_output =
-                                        if let Ok(profile_output) = profile_output_result {
-                                            profile_output
-                                        } else {
-                                            return String::default();
-                                        };
-                                    let profile_output_str =
-                                        String::from_utf8_lossy(&profile_output.stdout);
-                                    profile_output_str.trim().to_owned()
-                                } else {
-                                    profile_name.to_owned()
-                                };
-
-                                break;
-                            }
-                        }
-
-                        if !profile.is_empty() {
-                            break;
-                        }
-                    }
-
-                    if profile.is_empty() {
-                        return String::default();
-                    }
-
-                    if profile == "Built-in" {
-                        return "Monospace".to_owned();
-                    }
-
-                    let profile_filename_result = std::fs::read_dir(Path::new(&format!(
-                        "{}/.local/share/konsole/",
-                        dirs::home_dir().unwrap().display()
-                    )))
-                    .expect("Failed to read profile directory")
-                    .filter_map(|entry| {
-                        if let Ok(entry) = entry {
-                            let path = entry.path();
-                            if let Some(file_name) = path.file_name().and_then(|name| name.to_str())
-                            {
-                                if file_name.ends_with(".profile") {
-                                    Some(path)
-                                } else {
-                                    None
-                                }
-                            } else {
-                                None
-                            }
+                        if child == session_process_id {
+                            Some((session.clone(), i.clone()))
                         } else {
                             None
                         }
                     })
-                    .filter(|path| {
-                        let file_contents =
-                            std::fs::read_to_string(path).expect("Failed to read profile file");
-                        file_contents.contains(&format!("Name={}", profile))
+                });
+                let instance_infos = match instance_infos {
+                    None => return String::default(),
+                    Some(instance_infos) => instance_infos,
+                };
+
+                let mut profile_name = Command::new("qdbus")
+                    .arg(&instance_infos.1)
+                    .arg(&instance_infos.0)
+                    .arg("profile")
+                    .output()
+                    .ok()
+                    .map_or_else(String::default, |output| {
+                        String::from_utf8_lossy(&output.stdout).trim().to_owned()
+                    });
+
+                if profile_name.is_empty() {
+                    profile_name = Command::new("qdbus")
+                        .arg(instance_infos.1)
+                        .arg(instance_infos.0)
+                        .arg("environment")
+                        .output()
+                        .ok()
+                        .map_or_else(String::default, |output| {
+                            String::from_utf8_lossy(&output.stdout)
+                                .lines()
+                                .find_map(|line| {
+                                    if line.starts_with("KONSOLE_PROFILE_NAME=") {
+                                        Some(
+                                            line.trim_start_matches("KONSOLE_PROFILE_NAME=")
+                                                .to_owned(),
+                                        )
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .unwrap_or_default()
+                        });
+                }
+
+                if profile_name.is_empty() {
+                    return String::default();
+                }
+
+                if profile_name == "Built-in" {
+                    return "Monospace".to_owned();
+                }
+
+                let konsole_directory = Path::new(&self.local_dir).join("konsole");
+                if !konsole_directory.exists() {
+                    return String::default();
+                }
+                let profile_filename = std::fs::read_dir(konsole_directory)
+                    .expect("Failed to read profile directory")
+                    .filter_map(|entry| {
+                        entry.ok().and_then(|e| {
+                            let path = e.path();
+                            if path.extension().map_or(false, |ext| ext == "profile") {
+                                Some(path)
+                            } else {
+                                None
+                            }
+                        })
                     })
-                    .collect::<Vec<_>>();
+                    .find(|path| {
+                        let mut contents = String::new();
+                        File::open(path)
+                            .and_then(|mut file| file.read_to_string(&mut contents))
+                            .map(|_| contents.contains(&format!("Name={}", profile_name)))
+                            .unwrap_or(false)
+                    })
+                    .unwrap_or_default();
 
-                    let profile_filename =
-                        if let Some(profile_filename) = profile_filename_result.first() {
-                            profile_filename
-                        } else {
-                            return String::default();
-                        };
-                    let profile_file_result = File::open(profile_filename);
-                    let profile_file = if let Ok(profile_file) = profile_file_result {
-                        profile_file
-                    } else {
-                        return String::default();
-                    };
+                let profile_file_result = File::open(profile_filename);
+                let profile_file = if let Ok(profile_file) = profile_file_result {
+                    profile_file
+                } else {
+                    return String::default();
+                };
 
-                    let reader = BufReader::new(profile_file);
+                let reader = BufReader::new(profile_file);
 
-                    for line in reader.lines() {
-                        let line = line.unwrap_or_default();
+                for line in reader.lines() {
+                    let line = line.unwrap_or_default();
 
-                        if line.starts_with("Font=") {
-                            let fields: Vec<&str> = line.split('=').collect();
-                            if let Some(font) = fields.get(1) {
-                                let font_fields: Vec<&str> = font.split(',').collect();
-                                if let Some(font_name) = font_fields.first() {
-                                    term_font = font_name.trim().to_owned();
-                                    break;
-                                }
+                    if line.starts_with("Font=") {
+                        let fields: Vec<&str> = line.split('=').collect();
+                        if let Some(font) = fields.get(1) {
+                            let font_fields: Vec<&str> = font.split(',').collect();
+                            if let Some(font_name) = font_fields.first() {
+                                term_font = font_name.trim().to_owned();
+                                break;
                             }
                         }
                     }
                 }
-
-                &_ => {}
             }
+
+            &_ => {}
         }
 
         term_font.replace('\n', "")
@@ -1125,31 +1127,23 @@ impl Infos {
                 Ok(output) => String::from_utf8_lossy(&output.stdout).to_string(),
                 Err(_) => return Vec::default(),
             };
-
             let mut gpus: Vec<String> = Vec::new();
             for line in gpu_cmd.lines().filter(|line| {
                 line.contains("Display") || line.contains("3D") || line.contains("VGA")
             }) {
-                let parts: Vec<&str> = line.split(|c| c == '"' || c == '(' || c == ')').collect();
-                let part_4: &str = parts[4].trim();
-                let part_before_last: &str = parts[parts.len() - 2].trim();
-                let part_last: &str = parts[parts.len() - 1].trim();
-
+                let parts: Vec<&str> = line
+                    .split(|c| c == '"' || c == '(' || c == ')')
+                    .filter(|&s| !s.trim().is_empty())
+                    .map(|s| s.trim())
+                    .collect();
                 let gpu: String = format!(
-                    "{}{}{}",
-                    parts[3].trim(),
-                    if part_4.is_empty() {
+                    "{}{}",
+                    parts[2].trim(),
+                    if parts[3].is_empty() {
                         String::default()
                     } else {
-                        format!(" {}", part_4)
+                        format!(" {}", parts[3])
                     },
-                    if !part_before_last.is_empty() && part_before_last != "Device" {
-                        format!(" {}", part_before_last)
-                    } else if !part_last.is_empty() {
-                        format!(" {}", part_last)
-                    } else {
-                        format!(" {}", part_4)
-                    }
                 );
 
                 if !gpus.contains(&gpu) {

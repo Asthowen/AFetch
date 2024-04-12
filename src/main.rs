@@ -5,8 +5,9 @@ use afetch::system::getters::{
     get_terminal_font, get_uptime, get_wm,
 };
 use afetch::system::infos::Infos;
-use afetch::translations::list::{language_code_list, language_list};
+use afetch::translations::{get_language, language_code_list};
 use afetch_colored::{AnsiOrCustom, Colorize, CustomColor};
+#[cfg(feature = "image")]
 use image::GenericImageView;
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -14,6 +15,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::sync::Arc;
 use unicode_segmentation::UnicodeSegmentation;
+#[cfg(feature = "image")]
 use viuer::Config as ViuerConfig;
 use whoami::{fallible::hostname, username};
 
@@ -67,21 +69,19 @@ async fn main() {
         let locale_value_base: String = sys_locale::get_locale()
             .unwrap_or_else(|| String::from("en-US"))
             .replace('_', "-");
-        let locale_value_split: Vec<&str> = locale_value_base.split('-').collect::<Vec<&str>>();
-        let locale_value: String = if locale_value_split.is_empty() {
-            locale_value_base
+        let locale_value: &str = locale_value_base
+            .split('-')
+            .next()
+            .unwrap_or(&locale_value_base);
+        if language_code_list().contains(&locale_value) {
+            get_language(locale_value)
         } else {
-            locale_value_split[0].to_owned()
-        };
-        if language_code_list().contains(&locale_value.as_str()) {
-            language_list()[locale_value.as_str()].clone()
-        } else {
-            language_list()["en"].clone()
+            get_language("en")
         }
     } else if language_code_list().contains(&yaml.language.as_str()) {
-        language_list()[yaml.language.as_str()].clone()
+        get_language(yaml.language.as_str())
     } else {
-        language_list()["en"].clone()
+        get_language("en")
     };
 
     let cli_args: Vec<String> = std::env::args().collect();
@@ -95,15 +95,20 @@ async fn main() {
 
     let shared_yaml: Arc<Config> = Arc::new(yaml.clone());
 
-    let infos: Infos = Infos::init(custom_logo, Arc::clone(&shared_yaml));
+    let infos: Infos = Infos::init(custom_logo, Arc::clone(&shared_yaml)).await;
 
     let shared_logo_color: Arc<CustomColor> = Arc::new(text_color);
     let shared_language = Arc::new(language.clone());
     let shared_infos: Arc<Infos> = Arc::new(infos);
     let logo_type: i8 = if !supports_unicode::on(supports_unicode::Stream::Stdout) {
         3
+    } else if yaml.logo.status == "enable"
+        && cfg!(feature = "image")
+        && yaml.logo.char_type != "braille"
+    {
+        1
     } else if yaml.logo.status == "enable" {
-        i8::from(yaml.logo.char_type != "braille")
+        0
     } else {
         2
     };
@@ -112,9 +117,6 @@ async fn main() {
     } else {
         None
     };
-    let logo_lines_option: Option<Vec<&str>> =
-        logo.map(|logo| logo[1].lines().collect::<Vec<&str>>());
-
     let header_color: AnsiOrCustom = if let Some(text_color_header) = yaml.text_color_header {
         AnsiOrCustom::Custom(CustomColor::new(
             text_color_header[0],
@@ -368,6 +370,9 @@ async fn main() {
         ]);
     }
 
+    let logo_lines_option: Option<Vec<&str>> =
+        logo.map(|logo| logo[1].lines().collect::<Vec<&str>>());
+
     if let Some(logo_lines) = logo_lines_option {
         let logo_escape_u8: Vec<u8> = strip_ansi_escapes::strip(logo.unwrap_or_default()[1]);
         let logo_escape = String::from_utf8_lossy(&logo_escape_u8);
@@ -398,7 +403,11 @@ async fn main() {
         }
 
         println!("\n{}", output);
-    } else if logo_type == 1 {
+        return;
+    }
+
+    #[cfg(feature = "image")]
+    if logo_type == 1 {
         println!();
         for info in &infos_to_print {
             writeln!(output, "{}{}", " ".repeat(47), info).ok();
@@ -427,10 +436,11 @@ async fn main() {
         viuer::print_from_file(yaml.logo.picture_path, &viuer_config).ok();
 
         println!();
-    } else {
-        for info in &infos_to_print {
-            writeln!(output, " {}", info).ok();
-        }
-        println!("\n{}", output);
+        return;
     }
+
+    for info in &infos_to_print {
+        writeln!(output, " {}", info).ok();
+    }
+    println!("\n{}", output);
 }

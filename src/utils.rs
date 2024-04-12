@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::Path;
 use std::process::Command;
 
 pub const fn div_mod(dividend: u64, divisor: u64) -> (u64, u64) {
@@ -12,13 +13,12 @@ pub fn return_str_from_command(command: &mut Command) -> String {
     }
 }
 
-pub fn get_file_content_without_lines(file_path: &str) -> String {
+pub fn get_file_content_without_lines(file_path: impl AsRef<Path>) -> String {
     std::fs::read_to_string(file_path)
         .unwrap_or_default()
         .replace('\n', "")
 }
-
-pub fn get_file_content(file_path: &str) -> String {
+pub fn get_file_content(file_path: impl AsRef<Path>) -> String {
     std::fs::read_to_string(file_path).unwrap_or_default()
 }
 
