@@ -1,11 +1,11 @@
-use std::fs;
+use crate::utils::get_file_content;
 use std::path::Path;
 use sysinfo::{Pid, System};
 
-pub fn get_ppid(pid: &str) -> Option<String> {
+pub async fn get_ppid(pid: &str) -> Option<String> {
     let status_path = Path::new("/proc").join(pid).join("status");
 
-    if let Ok(status_content) = fs::read_to_string(status_path) {
+    if let Ok(status_content) = get_file_content(status_path).await {
         for line in status_content.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 2 && parts[0] == "PPid:" {

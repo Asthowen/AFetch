@@ -1,10 +1,7 @@
 use afetch::config::Config;
-use afetch::system::getters::{
-    get_battery, get_cpu, get_desktop, get_disks, get_gpus, get_host, get_kernel, get_memory,
-    get_network, get_os, get_packages, get_public_ip, get_resolution, get_shell, get_terminal,
-    get_terminal_font, get_uptime, get_wm,
-};
-use afetch::system::infos::Infos;
+use afetch::error::FetchInfosError;
+use afetch::system::futures::{create_futures, FutureResultType};
+use afetch::system::infos::os_logo::get_os_logo;
 use afetch::translations::{get_language, language_code_list};
 use afetch_colored::{AnsiOrCustom, Colorize, CustomColor};
 #[cfg(feature = "image")]
@@ -19,10 +16,10 @@ use unicode_segmentation::UnicodeSegmentation;
 use viuer::Config as ViuerConfig;
 use whoami::{fallible::hostname, username};
 
-const DEFAULT_CONFIG: &str = "language: auto # en / fr / auto \nlogo:\n  status: enable # disable / enable\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\n# text_color_header:\n#   - 133 # r\n#   - 218 # g\n#   - 249 # b\ndisabled_entries:\n  - battery\n  - public-ip\n  - cpu-usage\n  - network";
+const DEFAULT_CONFIG: &str = "language: auto # en / fr / auto \nlogo:\n  status: true\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\n# text_color_header:\n#   - 133 # r\n#   - 218 # g\n#   - 249 # b\nentries:\n  os:\n  host:\n  kernel:\n  uptime:\n  packages:\n  resolution:\n  shell:\n  desktop-environment:\n  terminal:\n  terminal-font:\n  cpu:\n  gpus:\n  memory:\n  disks:";
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), FetchInfosError> {
     let afetch_config_parent_path: PathBuf = dirs::config_dir().unwrap_or_else(|| {
         println!("An error occurred while retrieving the configuration files folder, please open an issue at: https://github.com/Asthowen/AFetch/issues/new so that we can solve your issue.");
         exit(9);
@@ -30,19 +27,23 @@ async fn main() {
     let afetch_config_path = afetch_config_parent_path.join("config.yaml");
 
     if !afetch_config_parent_path.exists() {
-        std::fs::create_dir_all(&afetch_config_parent_path).unwrap_or_else(|e| {
-            println!(
-                "An error occurred while creating the configuration files: {}",
-                e
-            );
-            exit(9);
-        });
+        tokio::fs::create_dir_all(&afetch_config_parent_path)
+            .await
+            .unwrap_or_else(|e| {
+                println!(
+                    "An error occurred while creating the configuration files: {}",
+                    e
+                );
+                exit(9);
+            });
     }
 
     let yaml_to_parse: String = if afetch_config_path.exists() {
-        std::fs::read_to_string(afetch_config_path).unwrap_or_default()
+        tokio::fs::read_to_string(afetch_config_path)
+            .await
+            .unwrap_or_default()
     } else {
-        if let Err(e) = std::fs::write(afetch_config_path, DEFAULT_CONFIG) {
+        if let Err(e) = tokio::fs::write(afetch_config_path, DEFAULT_CONFIG).await {
             println!(
                 "An error occurred while creating the configuration file: {}",
                 e
@@ -95,25 +96,19 @@ async fn main() {
 
     let shared_yaml: Arc<Config> = Arc::new(yaml.clone());
 
-    let infos: Infos = Infos::init(custom_logo, Arc::clone(&shared_yaml)).await;
-
     let shared_logo_color: Arc<CustomColor> = Arc::new(text_color);
     let shared_language = Arc::new(language.clone());
-    let shared_infos: Arc<Infos> = Arc::new(infos);
     let logo_type: i8 = if !supports_unicode::on(supports_unicode::Stream::Stdout) {
         3
-    } else if yaml.logo.status == "enable"
-        && cfg!(feature = "image")
-        && yaml.logo.char_type != "braille"
-    {
+    } else if yaml.logo.status && cfg!(feature = "image") && yaml.logo.char_type != "braille" {
         1
-    } else if yaml.logo.status == "enable" {
+    } else if yaml.logo.status {
         0
     } else {
         2
     };
     let logo: Option<[&str; 2]> = if logo_type == 0 {
-        shared_infos.get_os_logo()
+        get_os_logo(custom_logo).await?
     } else {
         None
     };
@@ -149,225 +144,19 @@ async fn main() {
             .custom_color(text_color)
     ));
 
-    let (
-        os_result,
-        host_result,
-        kernel_result,
-        uptime_result,
-        packages_result,
-        shell_result,
-        resolution_result,
-        desktop_result,
-        wm_result,
-        terminal_result,
-        terminal_font_result,
-        cpu_result,
-        gpu_results,
-        memory_result,
-        network_result,
-        disks_result,
-        public_ip_result,
-        battery_result,
-    ) = tokio::join!(
-        get_os(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-        ),
-        get_host(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
-        ),
-        get_kernel(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-        ),
-        get_uptime(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-        ),
-        get_packages(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
-        ),
-        get_shell(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
-        ),
-        get_resolution(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
-        ),
-        get_desktop(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
-        ),
-        get_wm(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
-        ),
-        get_terminal(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
-        ),
-        get_terminal_font(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
-        ),
-        get_cpu(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
-        ),
-        get_gpus(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
-        ),
-        get_memory(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
-        ),
-        get_network(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-        ),
-        get_disks(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-        ),
-        get_public_ip(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-            Arc::clone(&shared_infos)
-        ),
-        get_battery(
-            Arc::clone(&shared_yaml),
-            Arc::clone(&shared_header_color),
-            Arc::clone(&shared_logo_color),
-            Arc::clone(&shared_language),
-        )
+    let futures = create_futures(
+        Arc::clone(&shared_yaml),
+        Arc::clone(&shared_header_color),
+        Arc::clone(&shared_logo_color),
+        Arc::clone(&shared_language),
     );
 
-    if let Some(os) = os_result {
-        infos_to_print.push(os);
-    }
-    if let Some(host) = host_result {
-        infos_to_print.push(host);
-    }
-    if let Some(kernel) = kernel_result {
-        infos_to_print.push(kernel);
-    }
-    if let Some(uptime) = uptime_result {
-        infos_to_print.push(uptime);
-    }
-    if let Some(packages) = packages_result {
-        infos_to_print.push(packages);
-    }
-    if let Some(shell) = shell_result {
-        infos_to_print.push(shell);
-    }
-    if let Some(resolution) = resolution_result {
-        infos_to_print.push(resolution);
-    }
-    if let Some(desktop) = desktop_result {
-        infos_to_print.push(desktop);
-    }
-    if let Some(wm) = wm_result {
-        infos_to_print.push(wm);
-    }
-    if let Some(terminal) = terminal_result {
-        infos_to_print.push(terminal);
-    }
-    if let Some(terminal_font) = terminal_font_result {
-        infos_to_print.push(terminal_font);
-    }
-    if let Some(cpu) = cpu_result {
-        infos_to_print.push(cpu);
-    }
-    if let Some(mut gpus) = gpu_results {
-        infos_to_print.append(&mut gpus);
-    }
-    if let Some(memory) = memory_result {
-        infos_to_print.push(memory);
-    }
-    if let Some(network) = network_result {
-        infos_to_print.push(network);
-    }
-    if let Some(mut disks) = disks_result {
-        infos_to_print.append(&mut disks);
-    }
-    if let Some(public_ip) = public_ip_result {
-        infos_to_print.push(public_ip);
-    }
-    if let Some(battery) = battery_result {
-        infos_to_print.push(battery);
-    }
-
-    if !yaml.disabled_entries.contains(&"color-blocks".to_owned()) {
-        let first_colors: String = (0..8).fold(String::default(), |mut acc, i| {
-            write!(&mut acc, "\x1b[4{}m   \x1b[0m", i).unwrap_or_else(|error| {
-                println!("Failed to write to string for color blocks: {}.", error);
-                exit(9);
-            });
-            acc
-        });
-
-        let second_colors: String = (0..8).fold(String::default(), |mut acc, i| {
-            write!(&mut acc, "\x1b[10{}m   \x1b[0m", i).unwrap_or_else(|error| {
-                println!("Failed to write to string for color blocks: {}.", error);
-                exit(9);
-            });
-            acc
-        });
-        infos_to_print.extend(vec![
-            String::default(),
-            String::default(),
-            first_colors,
-            second_colors,
-        ]);
+    let results = futures::future::join_all(futures).await;
+    for result in results.into_iter().flatten().flatten().flatten() {
+        match result {
+            FutureResultType::String(result) => infos_to_print.push(result),
+            FutureResultType::List(mut result) => infos_to_print.append(&mut result),
+        }
     }
 
     let logo_lines_option: Option<Vec<&str>> =
@@ -403,7 +192,7 @@ async fn main() {
         }
 
         println!("\n{}", output);
-        return;
+        return Ok(());
     }
 
     #[cfg(feature = "image")]
@@ -436,11 +225,13 @@ async fn main() {
         viuer::print_from_file(yaml.logo.picture_path, &viuer_config).ok();
 
         println!();
-        return;
+        return Ok(());
     }
 
     for info in &infos_to_print {
         writeln!(output, " {}", info).ok();
     }
     println!("\n{}", output);
+
+    Ok(())
 }

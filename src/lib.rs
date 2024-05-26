@@ -17,3 +17,5 @@ pub mod logos;
 pub mod system;
 pub mod translations;
 pub mod utils;
+
+pub mod error;

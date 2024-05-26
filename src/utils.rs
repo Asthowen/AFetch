@@ -1,3 +1,4 @@
+use crate::error::FetchInfosError;
 use std::collections::HashMap;
 use std::path::Path;
 use std::process::Command;
@@ -6,20 +7,19 @@ pub const fn div_mod(dividend: u64, divisor: u64) -> (u64, u64) {
     (dividend / divisor, dividend % divisor)
 }
 
-pub fn return_str_from_command(command: &mut Command) -> String {
-    match command.output() {
-        Ok(output) => String::from_utf8_lossy(&output.stdout).to_string(),
-        Err(_) => String::default(),
-    }
+pub fn return_str_from_command(command: &mut Command) -> Result<String, FetchInfosError> {
+    Ok(String::from_utf8_lossy(&command.output()?.stdout).to_string())
 }
 
-pub fn get_file_content_without_lines(file_path: impl AsRef<Path>) -> String {
-    std::fs::read_to_string(file_path)
-        .unwrap_or_default()
-        .replace('\n', "")
+pub async fn get_file_content_without_lines(
+    file_path: impl AsRef<Path>,
+) -> Result<String, FetchInfosError> {
+    Ok(tokio::fs::read_to_string(file_path)
+        .await?
+        .replace('\n', ""))
 }
-pub fn get_file_content(file_path: impl AsRef<Path>) -> String {
-    std::fs::read_to_string(file_path).unwrap_or_default()
+pub async fn get_file_content(file_path: impl AsRef<Path>) -> Result<String, FetchInfosError> {
+    Ok(tokio::fs::read_to_string(file_path).await?)
 }
 
 pub fn command_exist(program: &str) -> bool {
@@ -79,6 +79,6 @@ pub fn env_exist(env_var: &str) -> bool {
     std::env::var(env_var).is_ok()
 }
 
-pub fn get_env(env_var: &str) -> String {
-    std::env::var(env_var).unwrap_or_default()
+pub fn count_lines_in_output(output: String) -> usize {
+    output.lines().count()
 }
