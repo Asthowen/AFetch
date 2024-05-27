@@ -167,24 +167,33 @@ pub async fn get_gnustep_font(home_dir: &PathBuf) -> Result<Option<String>, Fetc
 }
 
 pub async fn get_hyper_font(home_dir: &PathBuf) -> Result<Option<String>, FetchInfosError> {
-    let config_file = Path::new(&home_dir)
-        .join("GNUstep")
-        .join("Defaults")
-        .join("Terminal.plist");
+    let config_file = Path::new(&home_dir).join(".hyper.js");
     if !config_file.exists() {
         return Ok(None);
     }
 
-    let file_content = get_file_content_without_lines(config_file).await?;
+    let file_content: String = get_file_content_without_lines(config_file).await?;
 
-    Ok(Some(
-        file_content
-            .lines()
-            .filter(|line| line.contains("TerminalFont") || line.contains("TerminalFontSize"))
-            .map(|line| line.trim_matches(|c| c == '<' || c == '>' || c == '/'))
-            .collect::<Vec<&str>>()
-            .join(" "),
-    ))
+    for line in file_content.lines() {
+        if let Some(start_index) = line.find("fontFamily") {
+            if let Some(start_quote_index) = line[start_index..].find(|c| c == '\'' || c == '"') {
+                let start = start_index
+                    + start_quote_index
+                    + if line.as_bytes()[start_index + start_quote_index + 1] as char == '"' {
+                        2
+                    } else {
+                        1
+                    };
+                let end_index = start
+                    + line[start..]
+                        .find(|c| c == '\'' || c == '"' || c == ',')
+                        .unwrap_or_else(|| line.len() - start);
+                return Ok(Some(line[start..end_index].trim().to_owned()));
+            }
+        }
+    }
+
+    Ok(None)
 }
 
 fn extract_node_values(xml: String) -> Vec<String> {
@@ -332,7 +341,7 @@ pub async fn get_terminal_font(
         "gnustep_terminal" => {
             term_font = get_gnustep_font(&home_dir).await?;
         }
-        "hyper" => {
+        "hyper" | "hyperterm" => {
             term_font = get_hyper_font(&home_dir).await?;
         }
         "kitty" | "xterm-kitty" => {
