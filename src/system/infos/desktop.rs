@@ -1,13 +1,16 @@
 use crate::config::DesktopEnvironment;
 use crate::error::FetchInfosError;
 use crate::utils::{
-    command_exist, env_exist, get_file_content_without_lines, return_str_from_command,
+    env_exist, get_file_content_without_lines, return_str_from_command, DBUS_TIMEOUT,
 };
+use dbus::nonblock::{Proxy, SyncConnection};
 use std::env::var;
 use std::process::Command;
+use std::sync::Arc;
 
 pub async fn get_de(
     config: DesktopEnvironment,
+    conn: Arc<SyncConnection>,
 ) -> Result<Option<(String, Option<String>)>, FetchInfosError> {
     #[cfg(target_os = "windows")]
     {
@@ -66,28 +69,21 @@ pub async fn get_de(
         let mut version: String = match de_name.as_str() {
             "Plasma" | "KDE" => {
                 let mut version: String = String::default();
-                if command_exist("qdbus") || command_exist("qdbus6") {
-                    let command = if command_exist("qdbus") {
-                        "qdbus"
-                    } else {
-                        "qdbus6"
-                    };
 
-                    let file_to_parse: String = return_str_from_command(
-                        Command::new(command)
-                            .arg("org.kde.KWin")
-                            .arg("/KWin")
-                            .arg("supportInformation"),
-                    )?;
-                    for line in file_to_parse.lines() {
-                        if line.contains("KWin version: ") {
-                            line.replace("KWin version:", "")
-                                .trim()
-                                .clone_into(&mut version);
-                            break;
-                        }
+                let proxy = Proxy::new("org.kde.KWin", "/KWin", DBUS_TIMEOUT, conn);
+                let (support_info,): (String,) = proxy
+                    .method_call("org.kde.KWin", "supportInformation", ())
+                    .await?;
+
+                for line in support_info.lines() {
+                    if line.contains("KWin version: ") {
+                        line.replace("KWin version:", "")
+                            .trim()
+                            .clone_into(&mut version);
+                        break;
                     }
                 }
+
                 if version.is_empty() {
                     version =
                         return_str_from_command(Command::new("plasmashell").arg("--version"))?

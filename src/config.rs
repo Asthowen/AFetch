@@ -51,6 +51,10 @@ pub enum Entry {
     Disk(Disk),
     #[serde(rename = "public-ip")]
     PublicIP,
+    #[serde(rename = "color-blocks")]
+    ColorBlocks,
+    #[serde(rename = "empty-line")]
+    EmptyLine,
 }
 
 #[derive(Debug, Deserialize, Default, Clone)]

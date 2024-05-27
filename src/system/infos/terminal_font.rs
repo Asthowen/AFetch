@@ -1,10 +1,14 @@
 use crate::error::FetchInfosError;
 use crate::system::infos::terminal::get_terminal;
 use crate::system::pid::get_ppid;
-use crate::utils::{get_file_content, get_file_content_without_lines, return_str_from_command};
-use std::env::var;
+use crate::utils::{
+    get_file_content, get_file_content_without_lines, return_str_from_command, DBUS_TIMEOUT,
+};
+use dbus::nonblock::stdintf::org_freedesktop_dbus::Introspectable;
+use dbus::nonblock::{Proxy, SyncConnection};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Arc;
 
 pub async fn get_alacritty_font(
     home_dir: &PathBuf,
@@ -183,117 +187,75 @@ pub async fn get_hyper_font(home_dir: &PathBuf) -> Result<Option<String>, FetchI
     ))
 }
 
-fn get_qt_bindir_path() -> String {
-    let mut path = var("PATH").unwrap_or_default();
-    path.push(':');
-
-    if let Ok(qt_bindir_path) = Command::new("qtpaths").arg("--binaries-dir").output() {
-        if let Ok(qt_bindir_output) = String::from_utf8(qt_bindir_path.stdout) {
-            path.push_str(qt_bindir_output.trim());
-            return path;
-        }
-    }
-    String::default()
+fn extract_node_values(xml: String) -> Vec<String> {
+    xml.lines()
+        .filter_map(|line| {
+            line.split_once("<node name=\"")
+                .and_then(|(_, rest)| rest.split_once('"'))
+                .map(|(value, _)| format!("/Sessions/{}", value))
+        })
+        .collect()
 }
 
-fn get_konsole_instances() -> Vec<String> {
-    println!("{}", get_qt_bindir_path());
-    if let Ok(konsole_instances_output) = Command::new("qdbus")
-        .env("PATH", get_qt_bindir_path())
-        .output()
-    {
-        if let Ok(konsole_instances_output_str) = String::from_utf8(konsole_instances_output.stdout)
-        {
-            return konsole_instances_output_str
-                .lines()
-                .filter(|line| line.contains("org.kde.konsole") || line.contains("org.kde.yakuake"))
-                .map(|line| line.split_whitespace().next().unwrap().to_owned())
-                .collect();
-        }
-    }
-    Vec::new()
-}
-
-pub async fn get_konsole_font(local_dir: &PathBuf) -> Result<Option<String>, FetchInfosError> {
+pub async fn get_konsole_font(
+    local_dir: &PathBuf,
+    conn: Arc<SyncConnection>,
+) -> Result<Option<String>, FetchInfosError> {
     let child = get_ppid(&format!("{}", std::process::id()))
         .await
         .unwrap_or_default();
 
-    let konsole_instances = get_konsole_instances();
-    println!("{:?}", konsole_instances);
+    let proxy = Proxy::new("org.freedesktop.DBus", "/", DBUS_TIMEOUT, conn.clone());
+    let (names,): (Vec<String>,) = proxy
+        .method_call("org.freedesktop.DBus", "ListNames", ())
+        .await?;
 
-    let instance_infos = konsole_instances.iter().find_map(|i| {
-        let konsole_sessions =
-            Command::new("qdbus")
-                .arg(i)
-                .output()
-                .ok()
-                .map_or_else(Vec::default, |output| {
-                    String::from_utf8_lossy(&output.stdout)
-                        .lines()
-                        .filter(|line| line.contains("/Sessions/"))
-                        .map(ToOwned::to_owned)
-                        .collect::<Vec<String>>()
-                });
+    let konsole_instances: Vec<String> = names
+        .iter()
+        .filter(|line| line.contains("org.kde.konsole") || line.contains("org.kde.yakuake"))
+        .filter_map(|line| line.split_whitespace().next().map(|s| s.to_owned()))
+        .collect();
 
-        konsole_sessions.iter().find_map(|session| {
-            let session_process_id = Command::new("qdbus")
-                .arg(i)
-                .arg(session)
-                .arg("processId")
-                .output()
-                .ok()
-                .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned())
-                .unwrap_or_default();
+    let mut instance_infos: Option<(String, String)> = None;
+    for instance in konsole_instances {
+        let proxy = Proxy::new(&instance, "/Sessions", DBUS_TIMEOUT, conn.clone());
+        let introspect = proxy.introspect().await?;
+        let konsole_sessions = extract_node_values(introspect);
 
-            if child == session_process_id {
-                Some((session.clone(), i.clone()))
-            } else {
-                None
+        for session in konsole_sessions {
+            let proxy = Proxy::new(&instance, &session, DBUS_TIMEOUT, conn.clone());
+            let (session_process_id,): (i32,) = proxy
+                .method_call("org.kde.konsole.Session", "processId", ())
+                .await?;
+
+            if child == session_process_id.to_string() {
+                instance_infos = Some((session, instance));
+                break;
             }
-        })
-    });
+        }
+        if instance_infos.is_some() {
+            break;
+        }
+    }
     let instance_infos = match instance_infos {
         None => return Ok(None),
         Some(instance_infos) => instance_infos,
     };
-
-    let mut profile_name = Command::new("qdbus")
-        .arg(&instance_infos.1)
-        .arg(&instance_infos.0)
-        .arg("profile")
-        .output()
-        .ok()
-        .map_or_else(String::default, |output| {
-            String::from_utf8_lossy(&output.stdout).trim().to_owned()
-        });
-
-    if profile_name.is_empty() {
-        profile_name = Command::new("qdbus")
-            .arg(instance_infos.1)
-            .arg(instance_infos.0)
-            .arg("environment")
-            .output()
-            .ok()
-            .map_or_else(String::default, |output| {
-                String::from_utf8_lossy(&output.stdout)
-                    .lines()
-                    .find_map(|line| {
-                        if line.starts_with("KONSOLE_PROFILE_NAME=") {
-                            Some(line.trim_start_matches("KONSOLE_PROFILE_NAME=").to_owned())
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or_default()
-            });
-    }
+    let proxy = Proxy::new(
+        &instance_infos.1,
+        &instance_infos.0,
+        DBUS_TIMEOUT,
+        conn.clone(),
+    );
+    let (profile_name,): (String,) = proxy
+        .method_call("org.kde.konsole.Session", "profile", ())
+        .await?;
 
     if profile_name.is_empty() {
         return Ok(None);
     }
 
-    if profile_name == "Built-in" {
+    if profile_name == "Built-in" || profile_name == "Intégré" {
         return Ok(Some("Monospace".to_owned()));
     }
 
@@ -340,7 +302,9 @@ pub async fn get_konsole_font(local_dir: &PathBuf) -> Result<Option<String>, Fet
     Ok(None)
 }
 
-pub async fn get_terminal_font() -> Result<Option<String>, FetchInfosError> {
+pub async fn get_terminal_font(
+    conn: Arc<SyncConnection>,
+) -> Result<Option<String>, FetchInfosError> {
     let mut term_font: Option<String> = None;
     let home_dir = dirs::home_dir().unwrap();
     let config_dir = dirs::config_dir().unwrap();
@@ -380,7 +344,7 @@ pub async fn get_terminal_font() -> Result<Option<String>, FetchInfosError> {
             )?);
         }
         "konsole" | "yakuake" => {
-            term_font = get_konsole_font(&local_dir).await?;
+            term_font = get_konsole_font(&local_dir, conn).await?;
         }
         &_ => {}
     }

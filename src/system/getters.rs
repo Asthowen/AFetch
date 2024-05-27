@@ -5,7 +5,10 @@ use crate::utils::convert_to_readable_unity;
 use crate::{config, utils};
 use afetch_colored::CustomColor;
 use afetch_colored::{AnsiOrCustom, Colorize};
+use dbus::nonblock::SyncConnection;
 use std::collections::HashMap;
+use std::fmt::Write;
+use std::process::exit;
 use std::sync::Arc;
 use sysinfo::{Cpu, CpuRefreshKind, Disks, MemoryRefreshKind, Networks, RefreshKind, System};
 
@@ -140,8 +143,9 @@ pub async fn get_desktop(
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     config: DesktopEnvironment,
+    conn: Arc<SyncConnection>,
 ) -> Result<Option<FutureResultType>, FetchInfosError> {
-    Ok(crate::system::infos::desktop::get_de(config)
+    Ok(crate::system::infos::desktop::get_de(config, conn)
         .await?
         .map(|(name, version)| {
             FutureResultType::String(format!(
@@ -196,8 +200,9 @@ pub async fn get_terminal_font(
     header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
+    conn: Arc<SyncConnection>,
 ) -> Result<Option<FutureResultType>, FetchInfosError> {
-    Ok(crate::system::infos::terminal_font::get_terminal_font()
+    Ok(crate::system::infos::terminal_font::get_terminal_font(conn)
         .await?
         .map(|terminal_font| {
             FutureResultType::String(format!(
@@ -450,4 +455,29 @@ pub async fn get_battery(
     }
 
     Ok(None)
+}
+pub async fn get_color_blocks() -> Result<Option<FutureResultType>, FetchInfosError> {
+    let first_colors: String = (0..8).fold(String::default(), |mut acc, i| {
+        write!(&mut acc, "\x1b[4{}m   \x1b[0m", i).unwrap_or_else(|error| {
+            println!("Failed to write to string for color blocks: {}.", error);
+            exit(9);
+        });
+        acc
+    });
+
+    let second_colors: String = (0..8).fold(String::default(), |mut acc, i| {
+        write!(&mut acc, "\x1b[10{}m   \x1b[0m", i).unwrap_or_else(|error| {
+            println!("Failed to write to string for color blocks: {}.", error);
+            exit(9);
+        });
+        acc
+    });
+    Ok(Some(FutureResultType::List(vec![
+        first_colors,
+        second_colors,
+    ])))
+}
+
+pub async fn get_empty_line() -> Result<Option<FutureResultType>, FetchInfosError> {
+    Ok(Some(FutureResultType::String(String::default())))
 }

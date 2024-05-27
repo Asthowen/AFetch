@@ -25,6 +25,7 @@ strip = true
 tokio = { version = "1.37.0", default-features = false, features = ["rt-multi-thread", "macros", "time", "fs"] }
 serde_with = { version =  "3.8.1", features = ["macros"] }
 serde = { version = "1.0.203", features = ["derive"] }
+dbus = { version = "0.9.7", features=["futures"] }
 image = { version = "0.25.1", optional = true }
 viuer = { version = "0.7.1", optional = true }
 unicode-segmentation = "1.11.0"
@@ -34,6 +35,7 @@ starship-battery = "0.8.3"
 afetch-colored = "2.0.4"
 serde_yaml = "0.9.33"
 sys-locale = "0.3.1"
+dbus-tokio = "0.7.6"
 sysinfo = "0.30.12"
 futures = "0.3.30"
 minreq = "2.11.2"

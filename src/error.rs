@@ -27,6 +27,12 @@ impl From<VarError> for FetchInfosError {
     }
 }
 
+impl From<dbus::Error> for FetchInfosError {
+    fn from(error: dbus::Error) -> Self {
+        FetchInfosError::new_error(error.to_string())
+    }
+}
+
 impl From<std::io::Error> for FetchInfosError {
     fn from(error: std::io::Error) -> Self {
         match error.kind() {

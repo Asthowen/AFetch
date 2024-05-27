@@ -4,6 +4,7 @@ use afetch::system::futures::{create_futures, FutureResultType};
 use afetch::system::infos::os_logo::get_os_logo;
 use afetch::translations::{get_language, language_code_list};
 use afetch_colored::{AnsiOrCustom, Colorize, CustomColor};
+use dbus_tokio::connection;
 #[cfg(feature = "image")]
 use image::GenericImageView;
 use std::collections::HashMap;
@@ -16,7 +17,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use viuer::Config as ViuerConfig;
 use whoami::{fallible::hostname, username};
 
-const DEFAULT_CONFIG: &str = "language: auto # en / fr / auto \nlogo:\n  status: true\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\n# text_color_header:\n#   - 133 # r\n#   - 218 # g\n#   - 249 # b\nentries:\n  os:\n  host:\n  kernel:\n  uptime:\n  packages:\n  resolution:\n  shell:\n  desktop-environment:\n  terminal:\n  terminal-font:\n  cpu:\n  gpus:\n  memory:\n  disks:";
+const DEFAULT_CONFIG: &str = "language: auto # en / fr / auto \nlogo:\n  status: true\n  char_type: braille # braille / picture\n  picture_path: none # `the file path: eg: ~/pictures/some.png` / none\ntext_color:\n  - 255 # r\n  - 255 # g\n  - 255 # b\n# text_color_header:\n#   - 133 # r\n#   - 218 # g\n#   - 249 # b\nentries:\n  os:\n  host:\n  kernel:\n  uptime:\n  packages:\n  resolution:\n  shell:\n  desktop-environment:\n  terminal:\n  terminal-font:\n  cpu:\n  gpus:\n  memory:\n  disks:\n  empty-line:\n  empty-line:\n  color-blocks:";
 
 #[tokio::main]
 async fn main() -> Result<(), FetchInfosError> {
@@ -144,12 +145,18 @@ async fn main() -> Result<(), FetchInfosError> {
             .custom_color(text_color)
     ));
 
+    let (resource, conn) = connection::new_session_sync().unwrap();
     let futures = create_futures(
         Arc::clone(&shared_yaml),
         Arc::clone(&shared_header_color),
         Arc::clone(&shared_logo_color),
         Arc::clone(&shared_language),
+        Arc::clone(&conn),
     );
+    let _handle = tokio::spawn(async {
+        let err = resource.await;
+        panic!("Lost connection to D-Bus: {}", err);
+    });
 
     let results = futures::future::join_all(futures).await;
     for result in results.into_iter().flatten().flatten().flatten() {

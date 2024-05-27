@@ -2,6 +2,9 @@ use crate::error::FetchInfosError;
 use std::collections::HashMap;
 use std::path::Path;
 use std::process::Command;
+use std::time::Duration;
+
+pub const DBUS_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub const fn div_mod(dividend: u64, divisor: u64) -> (u64, u64) {
     (dividend / divisor, dividend % divisor)
