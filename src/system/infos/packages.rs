@@ -98,7 +98,7 @@ pub async fn get_packages_infos() -> Result<Option<String>, FetchInfosError> {
             }
         }
 
-        Ok(Some(packages_string.join(" ")))
+        Ok(Some(packages_string.join(", ")))
     }
 
     #[cfg(target_os = "windows")]
@@ -117,7 +117,7 @@ pub async fn get_packages_infos() -> Result<Option<String>, FetchInfosError> {
             ));
         }
 
-        Ok(Some(packages_string.join(" ")))
+        Ok(Some(packages_string.join(", ")))
     }
 
     #[cfg(not(any(target_os = "windows", target_family = "unix")))]

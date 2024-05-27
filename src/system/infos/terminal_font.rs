@@ -2,13 +2,16 @@ use crate::error::FetchInfosError;
 use crate::system::infos::terminal::get_terminal;
 use crate::system::pid::get_ppid;
 use crate::utils::{
-    get_file_content, get_file_content_without_lines, return_str_from_command, DBUS_TIMEOUT,
+    get_file_content, get_file_content_without_lines, return_str_from_command,
 };
+#[cfg(all(unix, not(target_os = "macos")))]
+use crate::utils::{DBUS_TIMEOUT, get_conn};
+#[cfg(all(unix, not(target_os = "macos")))]
 use dbus::nonblock::stdintf::org_freedesktop_dbus::Introspectable;
-use dbus::nonblock::{Proxy, SyncConnection};
+#[cfg(all(unix, not(target_os = "macos")))]
+use dbus::nonblock::Proxy;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Arc;
 
 pub async fn get_alacritty_font(
     home_dir: &PathBuf,
@@ -206,15 +209,12 @@ fn extract_node_values(xml: String) -> Vec<String> {
         .collect()
 }
 
-pub async fn get_konsole_font(
-    local_dir: &PathBuf,
-    conn: Arc<SyncConnection>,
-) -> Result<Option<String>, FetchInfosError> {
+pub async fn get_konsole_font(local_dir: &PathBuf) -> Result<Option<String>, FetchInfosError> {
     let child = get_ppid(&format!("{}", std::process::id()))
         .await
         .unwrap_or_default();
 
-    let proxy = Proxy::new("org.freedesktop.DBus", "/", DBUS_TIMEOUT, conn.clone());
+    let proxy = Proxy::new("org.freedesktop.DBus", "/", DBUS_TIMEOUT, get_conn().await);
     let (names,): (Vec<String>,) = proxy
         .method_call("org.freedesktop.DBus", "ListNames", ())
         .await?;
@@ -227,12 +227,12 @@ pub async fn get_konsole_font(
 
     let mut instance_infos: Option<(String, String)> = None;
     for instance in konsole_instances {
-        let proxy = Proxy::new(&instance, "/Sessions", DBUS_TIMEOUT, conn.clone());
+        let proxy = Proxy::new(&instance, "/Sessions", DBUS_TIMEOUT, get_conn().await);
         let introspect = proxy.introspect().await?;
         let konsole_sessions = extract_node_values(introspect);
 
         for session in konsole_sessions {
-            let proxy = Proxy::new(&instance, &session, DBUS_TIMEOUT, conn.clone());
+            let proxy = Proxy::new(&instance, &session, DBUS_TIMEOUT, get_conn().await);
             let (session_process_id,): (i32,) = proxy
                 .method_call("org.kde.konsole.Session", "processId", ())
                 .await?;
@@ -254,7 +254,7 @@ pub async fn get_konsole_font(
         &instance_infos.1,
         &instance_infos.0,
         DBUS_TIMEOUT,
-        conn.clone(),
+        get_conn().await,
     );
     let (profile_name,): (String,) = proxy
         .method_call("org.kde.konsole.Session", "profile", ())
@@ -311,17 +311,15 @@ pub async fn get_konsole_font(
     Ok(None)
 }
 
-pub async fn get_terminal_font(
-    conn: Arc<SyncConnection>,
-) -> Result<Option<String>, FetchInfosError> {
+pub async fn get_terminal_font() -> Result<Option<String>, FetchInfosError> {
     let mut term_font: Option<String> = None;
     let home_dir = dirs::home_dir().unwrap();
     let config_dir = dirs::config_dir().unwrap();
     let local_dir = dirs::data_local_dir().unwrap();
 
-    let terminal_name: String = get_terminal().await?.unwrap();
+    let terminal_name: String = get_terminal().await?.unwrap().to_lowercase();
 
-    match terminal_name.to_lowercase().as_str() {
+    match terminal_name.as_str() {
         "alacritty" => {
             term_font = get_alacritty_font(&home_dir, &config_dir).await?;
         }
@@ -334,9 +332,6 @@ pub async fn get_terminal_font(
         }
         "iterm2" => {
             term_font = get_iterm2_font(&home_dir)?;
-        }
-        "deepin-terminal" => {
-            term_font = get_deepin_font(&config_dir).await?;
         }
         "gnustep_terminal" => {
             term_font = get_gnustep_font(&home_dir).await?;
@@ -352,8 +347,16 @@ pub async fn get_terminal_font(
                 ),
             )?);
         }
+        &_ => {}
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    match terminal_name.as_str() {
         "konsole" | "yakuake" => {
-            term_font = get_konsole_font(&local_dir, conn).await?;
+            term_font = get_konsole_font(&local_dir).await?;
+        }
+        "deepin-terminal" => {
+            term_font = get_deepin_font(&config_dir).await?;
         }
         &_ => {}
     }

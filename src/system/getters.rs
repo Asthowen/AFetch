@@ -5,7 +5,6 @@ use crate::utils::convert_to_readable_unity;
 use crate::{config, utils};
 use afetch_colored::CustomColor;
 use afetch_colored::{AnsiOrCustom, Colorize};
-use dbus::nonblock::SyncConnection;
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::process::exit;
@@ -143,10 +142,9 @@ pub async fn get_desktop(
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
     config: DesktopEnvironment,
-    conn: Arc<SyncConnection>,
 ) -> Result<Option<FutureResultType>, FetchInfosError> {
     Ok(
-        crate::system::infos::desktop_environment::get_desktop_environment(config, conn)
+        crate::system::infos::desktop_environment::get_desktop_environment(config)
             .await?
             .map(|(name, version)| {
                 FutureResultType::String(format!(
@@ -202,9 +200,8 @@ pub async fn get_terminal_font(
     header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
-    conn: Arc<SyncConnection>,
 ) -> Result<Option<FutureResultType>, FetchInfosError> {
-    Ok(crate::system::infos::terminal_font::get_terminal_font(conn)
+    Ok(crate::system::infos::terminal_font::get_terminal_font()
         .await?
         .map(|terminal_font| {
             FutureResultType::String(format!(

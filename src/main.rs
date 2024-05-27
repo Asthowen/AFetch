@@ -4,7 +4,6 @@ use afetch::system::futures::{create_futures, FutureResultType};
 use afetch::system::infos::os_logo::get_os_logo;
 use afetch::translations::{get_language, language_code_list};
 use afetch_colored::{AnsiOrCustom, Colorize, CustomColor};
-use dbus_tokio::connection;
 #[cfg(feature = "image")]
 use image::GenericImageView;
 use std::collections::HashMap;
@@ -145,18 +144,12 @@ async fn main() -> Result<(), FetchInfosError> {
             .custom_color(text_color)
     ));
 
-    let (resource, conn) = connection::new_session_sync().unwrap();
     let futures = create_futures(
         Arc::clone(&shared_yaml),
         Arc::clone(&shared_header_color),
         Arc::clone(&shared_logo_color),
         Arc::clone(&shared_language),
-        Arc::clone(&conn),
     );
-    let _handle = tokio::spawn(async {
-        let err = resource.await;
-        panic!("Lost connection to D-Bus: {}", err);
-    });
 
     let results = futures::future::join_all(futures).await;
     for result in results.into_iter().flatten().flatten().flatten() {

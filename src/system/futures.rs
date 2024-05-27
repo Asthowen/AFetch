@@ -1,7 +1,6 @@
 use crate::config::{Config, Entry};
 use crate::error::FetchInfosError;
 use afetch_colored::{AnsiOrCustom, CustomColor};
-use dbus::nonblock::SyncConnection;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::task;
@@ -24,7 +23,6 @@ pub fn create_futures(
     shared_header_color: Arc<AnsiOrCustom>,
     shared_logo_color: Arc<CustomColor>,
     shared_language: Arc<HashMap<&'static str, &'static str>>,
-    conn: Arc<SyncConnection>,
 ) -> Vec<ResultFuture> {
     let mut futures: Vec<ResultFuture> = Vec::new();
 
@@ -101,7 +99,6 @@ pub fn create_futures(
                     shared_logo_color.clone(),
                     shared_language.clone(),
                     config,
-                    conn.clone(),
                 )));
             }
             Entry::WindowManager => {
@@ -123,7 +120,6 @@ pub fn create_futures(
                     shared_header_color.clone(),
                     shared_logo_color.clone(),
                     shared_language.clone(),
-                    conn.clone(),
                 )));
             }
             Entry::GPUS => {

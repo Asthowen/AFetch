@@ -1,10 +1,20 @@
 use crate::error::FetchInfosError;
+#[cfg(all(unix, not(target_os = "macos")))]
+use dbus::nonblock::SyncConnection;
+#[cfg(all(unix, not(target_os = "macos")))]
+use dbus_tokio::connection;
 use std::collections::HashMap;
 use std::path::Path;
 use std::process::Command;
+use std::sync::Arc;
 use std::time::Duration;
+#[cfg(all(unix, not(target_os = "macos")))]
+use tokio::sync::OnceCell;
 
+#[cfg(all(unix, not(target_os = "macos")))]
 pub const DBUS_TIMEOUT: Duration = Duration::from_secs(5);
+#[cfg(all(unix, not(target_os = "macos")))]
+pub static CONN: OnceCell<Arc<SyncConnection>> = OnceCell::const_new();
 
 pub const fn div_mod(dividend: u64, divisor: u64) -> (u64, u64) {
     (dividend / divisor, dividend % divisor)
@@ -84,4 +94,18 @@ pub fn env_exist(env_var: &str) -> bool {
 
 pub fn count_lines_in_output(output: String) -> usize {
     output.lines().count()
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+pub async fn get_conn() -> Arc<SyncConnection> {
+    CONN.get_or_init(|| async {
+        let (resource, conn) = connection::new_session_sync().unwrap();
+        let _handle = tokio::spawn(async {
+            let err = resource.await;
+            panic!("Lost connection to D-Bus: {}", err);
+        });
+        conn
+    })
+    .await
+    .clone()
 }

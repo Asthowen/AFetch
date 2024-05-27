@@ -1,16 +1,15 @@
 use crate::config::DesktopEnvironment;
 use crate::error::FetchInfosError;
 use crate::utils::{
-    env_exist, get_file_content_without_lines, return_str_from_command, DBUS_TIMEOUT,
+    env_exist, get_conn, get_file_content_without_lines, return_str_from_command, DBUS_TIMEOUT,
 };
-use dbus::nonblock::{Proxy, SyncConnection};
+#[cfg(all(unix, not(target_os = "macos")))]
+use dbus::nonblock::Proxy;
 use std::env::var;
 use std::process::Command;
-use std::sync::Arc;
 
 pub async fn get_desktop_environment(
     config: DesktopEnvironment,
-    conn: Arc<SyncConnection>,
 ) -> Result<Option<(String, Option<String>)>, FetchInfosError> {
     #[cfg(target_os = "windows")]
     {
@@ -72,7 +71,7 @@ pub async fn get_desktop_environment(
             "Plasma" | "KDE" => {
                 let mut version: String = String::default();
 
-                let proxy = Proxy::new("org.kde.KWin", "/KWin", DBUS_TIMEOUT, conn);
+                let proxy = Proxy::new("org.kde.KWin", "/KWin", DBUS_TIMEOUT, get_conn().await);
                 let (support_info,): (String,) = proxy
                     .method_call("org.kde.KWin", "supportInformation", ())
                     .await?;
