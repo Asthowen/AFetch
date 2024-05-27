@@ -99,8 +99,17 @@ pub async fn get_window_manager() -> Result<Option<String>, FetchInfosError> {
             "litestep0",
         ];
 
-        wm.lines()
-            .find_map(|line| PATTERNS.iter().find(|&&pattern| line.contains(pattern)));
+        let wm_name = wm
+            .lines()
+            .find_map(|line| {
+                PATTERNS
+                    .iter()
+                    .find(|&&pattern| line.contains(pattern))
+                    .map(|&s| s.to_string())
+            })
+            .or(Some("DWM".to_string()));
+
+        Ok(wm_name)
     }
 
     Ok(None)
