@@ -1,4 +1,4 @@
-pub mod desktop;
+pub mod desktop_environment;
 pub mod gpus;
 pub mod host;
 pub mod ip;
@@ -8,3 +8,4 @@ pub mod resolutions;
 pub mod shell;
 pub mod terminal;
 pub mod terminal_font;
+pub mod window_manager;

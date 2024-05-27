@@ -8,7 +8,7 @@ use std::env::var;
 use std::process::Command;
 use std::sync::Arc;
 
-pub async fn get_de(
+pub async fn get_desktop_environment(
     config: DesktopEnvironment,
     conn: Arc<SyncConnection>,
 ) -> Result<Option<(String, Option<String>)>, FetchInfosError> {
@@ -43,7 +43,9 @@ pub async fn get_de(
                 .replace("Gnome", "Budgie")
                 .replace("Budgie:GNOME", "Budgie");
         } else if let Ok(var) = var("DESKTOP_SESSION") {
-            de_name = var;
+            if var != "i3" {
+                de_name = var;
+            }
         } else if env_exist("GNOME_DESKTOP_SESSION_ID") {
             "Gnome".clone_into(&mut de_name);
         } else if env_exist("MATE_DESKTOP_SESSION_ID") {

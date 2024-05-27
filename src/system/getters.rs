@@ -145,17 +145,19 @@ pub async fn get_desktop(
     config: DesktopEnvironment,
     conn: Arc<SyncConnection>,
 ) -> Result<Option<FutureResultType>, FetchInfosError> {
-    Ok(crate::system::infos::desktop::get_de(config, conn)
-        .await?
-        .map(|(name, version)| {
-            FutureResultType::String(format!(
-                "{}{}",
-                language["label-desktop"]
-                    .bold()
-                    .custom_color_or_ansi_color_code(*header_color),
-                format!("{} {}", name, version.unwrap_or_default()).custom_color(*logo_color)
-            ))
-        }))
+    Ok(
+        crate::system::infos::desktop_environment::get_desktop_environment(config, conn)
+            .await?
+            .map(|(name, version)| {
+                FutureResultType::String(format!(
+                    "{}{}",
+                    language["label-desktop"]
+                        .bold()
+                        .custom_color_or_ansi_color_code(*header_color),
+                    format!("{} {}", name, version.unwrap_or_default()).custom_color(*logo_color)
+                ))
+            }),
+    )
 }
 
 pub async fn get_shell(
@@ -423,12 +425,22 @@ pub async fn get_public_ip(
     }))
 }
 
-pub async fn get_wm(
-    _header_color: Arc<AnsiOrCustom>,
-    _logo_color: Arc<CustomColor>,
-    _language: Arc<HashMap<&'static str, &'static str>>,
+pub async fn get_window_manager(
+    header_color: Arc<AnsiOrCustom>,
+    logo_color: Arc<CustomColor>,
+    language: Arc<HashMap<&'static str, &'static str>>,
 ) -> Result<Option<FutureResultType>, FetchInfosError> {
-    Ok(None)
+    Ok(crate::system::infos::window_manager::get_window_manager()
+        .await?
+        .map(|wm| {
+            FutureResultType::String(format!(
+                "{}{}",
+                language["label-wm"]
+                    .bold()
+                    .custom_color_or_ansi_color_code(*header_color),
+                wm.custom_color(*logo_color)
+            ))
+        }))
 }
 
 pub async fn get_battery(

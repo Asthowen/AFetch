@@ -9,7 +9,7 @@ use tokio::task;
 use crate::system::getters::{
     get_battery, get_color_blocks, get_cpu, get_desktop, get_disks, get_empty_line, get_gpus,
     get_host, get_kernel, get_memory, get_network, get_os, get_packages, get_public_ip,
-    get_resolution, get_shell, get_terminal, get_terminal_font, get_uptime, get_wm,
+    get_resolution, get_shell, get_terminal, get_terminal_font, get_uptime, get_window_manager,
 };
 
 type ResultFuture = task::JoinHandle<Result<Option<FutureResultType>, FetchInfosError>>;
@@ -104,8 +104,8 @@ pub fn create_futures(
                     conn.clone(),
                 )));
             }
-            Entry::WM => {
-                futures.push(task::spawn(get_wm(
+            Entry::WindowManager => {
+                futures.push(task::spawn(get_window_manager(
                     shared_header_color.clone(),
                     shared_logo_color.clone(),
                     shared_language.clone(),

@@ -41,7 +41,8 @@ pub enum Entry {
     Resolution,
     #[serde(rename = "desktop-environment")]
     DesktopEnvironment(DesktopEnvironment),
-    WM,
+    #[serde(rename = "window-manager")]
+    WindowManager,
     Terminal,
     #[serde(rename = "terminal-font")]
     TerminalFont,
