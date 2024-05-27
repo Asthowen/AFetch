@@ -1,7 +1,11 @@
 use crate::error::FetchInfosError;
-use crate::utils::{command_exist, env_exist, get_file_content, return_str_from_command};
-use std::path::{Path, PathBuf};
+use crate::utils::return_str_from_command;
 use std::process::Command;
+#[cfg(target_os = "linux")]
+use {
+    crate::utils::{command_exist, env_exist, get_file_content},
+    std::path::{Path, PathBuf},
+};
 
 pub async fn get_resolutions() -> Result<Option<String>, FetchInfosError> {
     #[cfg(target_os = "linux")]
@@ -106,7 +110,7 @@ pub async fn get_resolutions() -> Result<Option<String>, FetchInfosError> {
                 .arg("Win32_VideoController")
                 .arg("get")
                 .arg("CurrentHorizontalResolution"),
-        )
+        )?
         .replace("CurrentHorizontalResolution", "")
         .trim()
         .to_owned();
@@ -116,7 +120,7 @@ pub async fn get_resolutions() -> Result<Option<String>, FetchInfosError> {
                 .arg("Win32_VideoController")
                 .arg("get")
                 .arg("CurrentVerticalResolution"),
-        )
+        )?
         .replace("CurrentVerticalResolution", "")
         .trim()
         .to_owned();

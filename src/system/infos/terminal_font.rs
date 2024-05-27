@@ -1,17 +1,15 @@
 use crate::error::FetchInfosError;
 use crate::system::infos::terminal::get_terminal;
-use crate::system::pid::get_ppid;
-use crate::utils::{
-    get_file_content, get_file_content_without_lines, return_str_from_command,
-};
-#[cfg(all(unix, not(target_os = "macos")))]
-use crate::utils::{DBUS_TIMEOUT, get_conn};
-#[cfg(all(unix, not(target_os = "macos")))]
-use dbus::nonblock::stdintf::org_freedesktop_dbus::Introspectable;
-#[cfg(all(unix, not(target_os = "macos")))]
-use dbus::nonblock::Proxy;
+use crate::utils::{get_file_content, get_file_content_without_lines, return_str_from_command};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+#[cfg(all(unix, not(target_os = "macos")))]
+use {
+    crate::system::pid::get_ppid,
+    crate::utils::{get_conn, DBUS_TIMEOUT},
+    dbus::nonblock::stdintf::org_freedesktop_dbus::Introspectable,
+    dbus::nonblock::Proxy,
+};
 
 pub async fn get_alacritty_font(
     home_dir: &PathBuf,
@@ -126,6 +124,7 @@ pub fn get_iterm2_font(home_dir: &PathBuf) -> Result<Option<String>, FetchInfosE
     Ok(None)
 }
 
+#[cfg(all(unix, not(target_os = "macos")))]
 pub async fn get_deepin_font(config_dir: &PathBuf) -> Result<Option<String>, FetchInfosError> {
     let config_file = Path::new(&config_dir)
         .join("deepin")
@@ -199,6 +198,7 @@ pub async fn get_hyper_font(home_dir: &PathBuf) -> Result<Option<String>, FetchI
     Ok(None)
 }
 
+#[cfg(all(unix, not(target_os = "macos")))]
 fn extract_node_values(xml: String) -> Vec<String> {
     xml.lines()
         .filter_map(|line| {
@@ -209,6 +209,7 @@ fn extract_node_values(xml: String) -> Vec<String> {
         .collect()
 }
 
+#[cfg(all(unix, not(target_os = "macos")))]
 pub async fn get_konsole_font(local_dir: &PathBuf) -> Result<Option<String>, FetchInfosError> {
     let child = get_ppid(&format!("{}", std::process::id()))
         .await
@@ -315,7 +316,6 @@ pub async fn get_terminal_font() -> Result<Option<String>, FetchInfosError> {
     let mut term_font: Option<String> = None;
     let home_dir = dirs::home_dir().unwrap();
     let config_dir = dirs::config_dir().unwrap();
-    let local_dir = dirs::data_local_dir().unwrap();
 
     let terminal_name: String = get_terminal().await?.unwrap().to_lowercase();
 
@@ -351,14 +351,17 @@ pub async fn get_terminal_font() -> Result<Option<String>, FetchInfosError> {
     }
 
     #[cfg(all(unix, not(target_os = "macos")))]
-    match terminal_name.as_str() {
-        "konsole" | "yakuake" => {
-            term_font = get_konsole_font(&local_dir).await?;
+    {
+        let local_dir = dirs::data_local_dir().unwrap();
+        match terminal_name.as_str() {
+            "konsole" | "yakuake" => {
+                term_font = get_konsole_font(&local_dir).await?;
+            }
+            "deepin-terminal" => {
+                term_font = get_deepin_font(&config_dir).await?;
+            }
+            &_ => {}
         }
-        "deepin-terminal" => {
-            term_font = get_deepin_font(&config_dir).await?;
-        }
-        &_ => {}
     }
 
     Ok(term_font.map(|font| font.replace('\n', "")))

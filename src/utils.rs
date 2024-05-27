@@ -6,10 +6,8 @@ use dbus_tokio::connection;
 use std::collections::HashMap;
 use std::path::Path;
 use std::process::Command;
-use std::sync::Arc;
-use std::time::Duration;
 #[cfg(all(unix, not(target_os = "macos")))]
-use tokio::sync::OnceCell;
+use {std::sync::Arc, std::time::Duration, tokio::sync::OnceCell};
 
 #[cfg(all(unix, not(target_os = "macos")))]
 pub const DBUS_TIMEOUT: Duration = Duration::from_secs(5);

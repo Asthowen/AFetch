@@ -1,12 +1,13 @@
 use crate::error::FetchInfosError;
-use crate::utils::{get_file_content_without_lines, return_str_from_command};
-use std::path::Path;
+use crate::utils::return_str_from_command;
 use std::process::Command;
+#[cfg(target_os = "linux")]
+use {crate::utils::get_file_content_without_lines, std::path::Path};
 
 pub async fn get_host() -> Result<Option<String>, FetchInfosError> {
-    let mut host = String::default();
     #[cfg(target_os = "linux")]
     {
+        let mut host = String::default();
         if Path::new("/system/app/").exists() && Path::new("/system/priv-app").exists() {
             host = format!(
                 "{}{}",
@@ -46,7 +47,7 @@ pub async fn get_host() -> Result<Option<String>, FetchInfosError> {
 
     #[cfg(target_os = "windows")]
     {
-        host = return_str_from_command(
+        let host: String = return_str_from_command(
             Command::new("wmic")
                 .arg("computersystem")
                 .arg("get")
@@ -56,12 +57,13 @@ pub async fn get_host() -> Result<Option<String>, FetchInfosError> {
         .replace("     ", " ")
         .trim()
         .to_owned();
-        host
+
+        Ok(Some(host))
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     {
         // TODO - add other OS
-        String::default()
+        Ok(None)
     }
 }

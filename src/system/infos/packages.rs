@@ -1,9 +1,8 @@
 use crate::error::FetchInfosError;
-use crate::utils::{command_exist, count_lines_in_output, return_str_from_command};
-use std::path::Path;
+use crate::utils::{command_exist, return_str_from_command};
 use std::process::Command;
-use tokio::task;
-use tokio::task::JoinHandle;
+#[cfg(target_family = "unix")]
+use {crate::utils::count_lines_in_output, std::path::Path, tokio::task, tokio::task::JoinHandle};
 
 pub async fn get_packages_infos() -> Result<Option<String>, FetchInfosError> {
     let mut packages_string: Vec<String> = Vec::new();
@@ -105,7 +104,7 @@ pub async fn get_packages_infos() -> Result<Option<String>, FetchInfosError> {
     {
         if command_exist("choco") {
             let choco_output: String =
-                return_str_from_command(Command::new("choco").arg("list").arg("--localonly"));
+                return_str_from_command(Command::new("choco").arg("list").arg("--localonly"))?;
             let choco_output_split: Vec<&str> = choco_output
                 .split(" packages installed")
                 .collect::<Vec<&str>>()[0]

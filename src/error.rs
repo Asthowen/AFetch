@@ -27,6 +27,7 @@ impl From<VarError> for FetchInfosError {
     }
 }
 
+#[cfg(all(unix, not(target_os = "macos")))]
 impl From<dbus::Error> for FetchInfosError {
     fn from(error: dbus::Error) -> Self {
         FetchInfosError::new_error(error.to_string())

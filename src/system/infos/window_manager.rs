@@ -1,7 +1,12 @@
 use crate::error::FetchInfosError;
-use crate::utils::env_exist;
-use std::env::var;
-use sysinfo::{ProcessRefreshKind, RefreshKind, System};
+#[cfg(target_family = "unix")]
+use {
+    crate::utils::env_exist,
+    std::env::var,
+    sysinfo::{ProcessRefreshKind, RefreshKind, System},
+};
+#[cfg(target_family = "windows")]
+use {crate::utils::return_str_from_command, std::process::Command};
 
 pub async fn get_window_manager() -> Result<Option<String>, FetchInfosError> {
     #[cfg(target_family = "unix")]
@@ -79,6 +84,23 @@ pub async fn get_window_manager() -> Result<Option<String>, FetchInfosError> {
                 }
             }
         }
+    }
+
+    #[cfg(target_family = "windows")]
+    {
+        let wm: String = return_str_from_command(&mut Command::new("tasklist"))?;
+
+        const PATTERNS: [&str; 6] = [
+            "komorebi",
+            "bugn",
+            "Windawesome",
+            "blackbox",
+            "emerge",
+            "litestep0",
+        ];
+
+        wm.lines()
+            .find_map(|line| PATTERNS.iter().find(|&&pattern| line.contains(pattern)));
     }
 
     Ok(None)

@@ -1,12 +1,18 @@
 use crate::error::FetchInfosError;
 use crate::logos;
-use crate::utils::{
-    command_exist, env_exist, get_file_content, get_file_content_without_lines,
-    return_str_from_command,
+#[cfg(target_family = "unix")]
+use {
+    crate::utils::{
+        command_exist, env_exist, get_file_content, get_file_content_without_lines,
+        return_str_from_command,
+    },
+    std::env::var,
+    std::path::Path,
+    std::process::Command,
 };
-use std::env::var;
-use std::path::Path;
-use std::process::Command;
+
+#[cfg(target_os = "windows")]
+use sysinfo::System;
 
 #[cfg(target_family = "unix")]
 async fn parse_os_release(file_path: &str) -> Result<String, FetchInfosError> {

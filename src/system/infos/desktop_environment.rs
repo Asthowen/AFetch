@@ -1,15 +1,18 @@
 use crate::config::DesktopEnvironment;
 use crate::error::FetchInfosError;
-use crate::utils::{
-    env_exist, get_conn, get_file_content_without_lines, return_str_from_command, DBUS_TIMEOUT,
+#[cfg(target_os = "windows")]
+use sysinfo::System;
+#[cfg(all(unix, not(target_os = "windows"), not(target_os = "macos")))]
+use {
+    crate::utils::{env_exist, get_file_content_without_lines, return_str_from_command},
+    crate::utils::{get_conn, DBUS_TIMEOUT},
+    dbus::nonblock::Proxy,
+    std::env::var,
+    std::process::Command,
 };
-#[cfg(all(unix, not(target_os = "macos")))]
-use dbus::nonblock::Proxy;
-use std::env::var;
-use std::process::Command;
 
 pub async fn get_desktop_environment(
-    config: DesktopEnvironment,
+    #[cfg_attr(target_os = "windows", allow(unused_variables))] config: DesktopEnvironment,
 ) -> Result<Option<(String, Option<String>)>, FetchInfosError> {
     #[cfg(target_os = "windows")]
     {
@@ -18,17 +21,19 @@ pub async fn get_desktop_environment(
             .split(' ')
             .collect::<Vec<&str>>()[0]
             .to_owned();
-        return if windows_version == "10" {
-            ("Fluent".to_owned(), String::default())
+        if windows_version == "11" {
+            Ok(Some(("Mica".to_owned(), None)))
+        } else if windows_version == "10" {
+            Ok(Some(("Fluent".to_owned(), None)))
         } else if windows_version == "8" {
-            ("Metro".to_owned(), String::default())
+            Ok(Some(("Metro".to_owned(), None)))
         } else {
-            ("Aero".to_owned(), String::default())
-        };
+            Ok(Some(("Aero".to_owned(), None)))
+        }
     }
 
     #[cfg(target_os = "macos")]
-    return ("Aqua".to_owned(), String::default());
+    return Ok(Some(("Aqua".to_owned(), None)));
 
     #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
     {

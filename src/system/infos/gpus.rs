@@ -1,4 +1,5 @@
 use crate::error::FetchInfosError;
+use crate::utils::return_str_from_command;
 use std::process::Command;
 
 pub fn get_gpus() -> Result<Option<Vec<String>>, FetchInfosError> {
@@ -7,10 +8,7 @@ pub fn get_gpus() -> Result<Option<Vec<String>>, FetchInfosError> {
 
     #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
     {
-        let gpu_cmd: String = match Command::new("lspci").args(["-mm"]).output() {
-            Ok(output) => String::from_utf8_lossy(&output.stdout).to_string(),
-            Err(_) => return Ok(None),
-        };
+        let gpu_cmd: String = return_str_from_command(Command::new("lspci").args(["-mm"]))?;
         let mut gpus: Vec<String> = Vec::new();
         for line in gpu_cmd
             .lines()
@@ -102,19 +100,14 @@ pub fn get_gpus() -> Result<Option<Vec<String>>, FetchInfosError> {
     {
         let mut gpus: Vec<String> = Vec::new();
 
-        let wmic_output_result = std::process::Command::new("wmic")
-            .args(&["path", "Win32_VideoController", "get", "caption"])
-            .output();
-        let wmic_output = if let Ok(wmic_output) = wmic_output_result {
-            wmic_output
-        } else {
-            return Vec::new();
-        };
+        let wmic_output = return_str_from_command(Command::new("wmic").args([
+            "path",
+            "Win32_VideoController",
+            "get",
+            "caption",
+        ]))?;
 
-        let output_lines = String::from_utf8_lossy(&wmic_output.stdout);
-        let mut lines = output_lines.lines();
-
-        while let Some(line) = lines.next() {
+        for line in wmic_output.lines() {
             let line: String = line.replace('\n', "").trim().to_owned();
             if line.is_empty() || line == "Caption" {
                 continue;
@@ -122,6 +115,6 @@ pub fn get_gpus() -> Result<Option<Vec<String>>, FetchInfosError> {
             gpus.push(line);
         }
 
-        return Ok(Some(gpus));
+        Ok(Some(gpus))
     }
 }
