@@ -1,6 +1,6 @@
 use crate::error::FetchInfosError;
 use crate::logos;
-#[cfg(target_family = "unix")]
+#[cfg(target_os = "linux")]
 use {
     crate::utils::{
         command_exist, env_exist, get_file_content, get_file_content_without_lines,
