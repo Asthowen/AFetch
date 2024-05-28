@@ -93,7 +93,7 @@ pub async fn get_host() -> Result<Option<String>, FetchInfosError> {
         Ok(Some(format!("{} {}", vendor, product)))
     }
 
-    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "freebsd")))]
     {
         // TODO - add other OS
         Ok(None)
