@@ -1,7 +1,7 @@
 use crate::error::FetchInfosError;
 #[cfg(target_os = "linux")]
 use {crate::utils::get_file_content_without_lines, std::path::Path};
-#[cfg(any(target_os = "linux", target_os = "windows"))]
+#[cfg(any(target_os = "linux", target_os = "windows", target_os = "freebsd"))]
 use {crate::utils::return_str_from_command, std::process::Command};
 
 pub async fn get_host() -> Result<Option<String>, FetchInfosError> {
@@ -59,6 +59,38 @@ pub async fn get_host() -> Result<Option<String>, FetchInfosError> {
         .to_owned();
 
         Ok(Some(host))
+    }
+
+    #[cfg(target_os = "freebsd")]
+    {
+        let output: String = return_str_from_command(&mut Command::new("kenv"))?;
+
+        let mut vendor: String = String::default();
+        let mut product: String = String::default();
+
+        for line in output.lines() {
+            if line.contains("smbios.system.maker=") {
+                vendor = line
+                    .split('=')
+                    .nth(1)
+                    .ok_or(FetchInfosError::new_error("Failed to parse host vendor"))?
+                    .trim_matches('"')
+                    .to_owned();
+            } else if line.contains("smbios.system.product=") {
+                product = line
+                    .split('=')
+                    .nth(1)
+                    .ok_or(FetchInfosError::new_error("Failed to parse host product"))?
+                    .trim_matches('"')
+                    .to_owned();
+            }
+        }
+
+        if vendor.is_empty() || product.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(format!("{} {}", vendor, product)))
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "linux")))]
