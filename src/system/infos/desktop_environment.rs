@@ -68,6 +68,11 @@ pub async fn get_desktop_environment(
             "MUFFIN" => "Cinnamon".clone_into(&mut de_name),
             &_ => {}
         }
+
+        if de_name.is_empty() {
+            return Ok(None);
+        }
+
         if !config.version {
             return Ok(Some((de_name, None)));
         }
@@ -125,7 +130,13 @@ pub async fn get_desktop_environment(
             .matches(|c: char| !c.is_ascii_digit() || c != '.')
             .collect();
 
-        Ok(Some((de_name, Some(version))))
+        let version_opt: Option<String> = if version.is_empty() {
+            None
+        } else {
+            Some(version)
+        };
+
+        Ok(Some((de_name, version_opt)))
 
         // todo hide VM if VM == WM
     }

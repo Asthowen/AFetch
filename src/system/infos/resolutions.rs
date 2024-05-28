@@ -1,6 +1,6 @@
 use crate::error::FetchInfosError;
-use crate::utils::return_str_from_command;
-use std::process::Command;
+#[cfg(any(target_os = "linux", target_os = "windows"))]
+use {crate::utils::return_str_from_command, std::process::Command};
 #[cfg(target_os = "linux")]
 use {
     crate::utils::{command_exist, env_exist, get_file_content},

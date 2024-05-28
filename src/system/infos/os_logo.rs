@@ -14,7 +14,7 @@ use {
 #[cfg(target_os = "windows")]
 use sysinfo::System;
 
-#[cfg(target_family = "unix")]
+#[cfg(target_os = "linux")]
 async fn parse_os_release(file_path: &str) -> Result<String, FetchInfosError> {
     let contents: String = get_file_content(file_path).await?;
     Ok(contents
@@ -29,7 +29,7 @@ async fn parse_os_release(file_path: &str) -> Result<String, FetchInfosError> {
         .unwrap_or_default())
 }
 
-#[cfg(target_family = "unix")]
+#[cfg(target_os = "linux")]
 async fn get_linux_distribution() -> Result<String, FetchInfosError> {
     let mut distribution_name: String = if Path::new("/etc/os-release").exists() {
         parse_os_release("/etc/os-release").await?

@@ -1,8 +1,8 @@
 use crate::error::FetchInfosError;
-use crate::utils::return_str_from_command;
-use std::process::Command;
 #[cfg(target_os = "linux")]
 use {crate::utils::get_file_content_without_lines, std::path::Path};
+#[cfg(any(target_os = "linux", target_os = "windows"))]
+use {crate::utils::return_str_from_command, std::process::Command};
 
 pub async fn get_host() -> Result<Option<String>, FetchInfosError> {
     #[cfg(target_os = "linux")]

@@ -107,7 +107,7 @@ pub async fn get_window_manager() -> Result<Option<String>, FetchInfosError> {
                     .find(|&&pattern| line.contains(pattern))
                     .map(|&s| s.to_string())
             })
-            .or(Some("DWM".to_string()));
+            .or(Some("DWM".to_owned()));
 
         Ok(wm_name)
     }
