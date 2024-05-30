@@ -170,7 +170,7 @@ pub async fn get_os_logo(
         "elementaryos" => Ok(Some(logos::elementary_os::ELEMENTARY_OS)),
         "solaris" => Ok(Some(logos::solaris::SOLARIS)),
         "alpine" => Ok(Some(logos::alpine::ALPINE)),
-        "debian" => Ok(Some(logos::debian::DEBIAN)),
+        "debian" | "debiangnu/linux" => Ok(Some(logos::debian::DEBIAN)),
         _ => Ok(None),
     }
 }

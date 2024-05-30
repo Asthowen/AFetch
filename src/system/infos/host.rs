@@ -75,14 +75,14 @@ pub async fn get_host() -> Result<Option<String>, FetchInfosError> {
                     .nth(1)
                     .ok_or(FetchInfosError::new_error("Failed to parse host vendor"))?
                     .trim_matches('"')
-                    .to_owned();
+                    .clone_into(&mut vendor);
             } else if line.contains("smbios.system.product=") {
                 product = line
                     .split('=')
                     .nth(1)
                     .ok_or(FetchInfosError::new_error("Failed to parse host product"))?
                     .trim_matches('"')
-                    .to_owned();
+                    .clone_into(&mut product);
             }
         }
 
