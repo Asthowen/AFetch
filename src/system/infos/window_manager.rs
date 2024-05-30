@@ -109,7 +109,7 @@ pub async fn get_window_manager() -> Result<Option<String>, FetchInfosError> {
             })
             .or(Some("DWM".to_owned()));
 
-        Ok(wm_name)
+        return Ok(wm_name);
     }
 
     Ok(None)
