@@ -97,6 +97,10 @@ pub async fn get_packages_infos() -> Result<Option<String>, FetchInfosError> {
             }
         }
 
+        if packages_string.is_empty() {
+            return Ok(None);
+        }
+
         Ok(Some(packages_string.join(", ")))
     }
 

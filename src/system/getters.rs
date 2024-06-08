@@ -347,15 +347,18 @@ pub async fn get_disks(
     let mut disks: Vec<String> = Vec::new();
     let (mut total_disk_used, mut total_disk_total) = (0, 0);
 
+    let hide_individual_disks: bool = config_disk.is_none();
+    let show_disks_total: bool = config_disks.is_some();
+    let to_exclude = if let Some(config) = config_disks {
+        config.exclude
+    } else if let Some(config) = config_disk {
+        config.hide
+    } else {
+        None
+    };
+
     for disk in Disks::new_with_refreshed_list().list() {
         let disk_mount_point: String = disk.mount_point().to_str().unwrap().to_owned();
-        let to_exclude = if let Some(config) = &config_disks {
-            config.exclude.clone()
-        } else if let Some(config) = &config_disk {
-            config.hide.clone()
-        } else {
-            None
-        };
 
         if should_exclude_disk(&disk_mount_point, &to_exclude) {
             continue;
@@ -364,7 +367,7 @@ pub async fn get_disks(
         total_disk_used += disk.total_space() - disk.available_space();
         total_disk_total += disk.total_space();
 
-        if config_disk.is_none() {
+        if hide_individual_disks {
             continue;
         }
 
@@ -384,7 +387,7 @@ pub async fn get_disks(
             .custom_color(*logo_color)
         ));
     }
-    if config_disks.is_some() {
+    if show_disks_total {
         disks.push(format!(
             "{}{}",
             language["label-disks"]

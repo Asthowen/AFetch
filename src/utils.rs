@@ -96,14 +96,15 @@ pub fn count_lines_in_output(output: String) -> usize {
 
 #[cfg(all(unix, not(target_os = "macos")))]
 pub async fn get_conn() -> Arc<SyncConnection> {
-    CONN.get_or_init(|| async {
-        let (resource, conn) = connection::new_session_sync().unwrap();
-        let _handle = tokio::spawn(async {
-            let err = resource.await;
-            panic!("Lost connection to D-Bus: {}", err);
-        });
-        conn
-    })
-    .await
-    .clone()
+    Arc::clone(
+        CONN.get_or_init(|| async {
+            let (resource, conn) = connection::new_session_sync().unwrap();
+            let _handle = tokio::spawn(async {
+                let err = resource.await;
+                panic!("Lost connection to D-Bus: {}", err);
+            });
+            conn
+        })
+        .await,
+    )
 }

@@ -1,5 +1,6 @@
 use std::env::VarError;
 use std::io::ErrorKind;
+use std::process::exit;
 
 #[derive(Debug)]
 pub enum ErrorType {
@@ -11,34 +12,40 @@ pub enum ErrorType {
 pub struct FetchInfosError(pub ErrorType);
 
 impl FetchInfosError {
-    pub fn new_missing() -> Self {
+    pub fn missing() -> Self {
         Self(ErrorType::Missing)
     }
 
-    pub fn new_error<S: Into<String>>(error: S) -> Self {
+    pub fn error<S: Into<String>>(error: S) -> Self {
         let error: String = error.into();
         Self(ErrorType::Error(error))
+    }
+
+    pub fn error_exit<S: Into<String>>(error: S) -> Self {
+        let error: String = error.into();
+        println!("An error occurred: {}", error);
+        exit(9);
     }
 }
 
 impl From<VarError> for FetchInfosError {
     fn from(_: VarError) -> Self {
-        FetchInfosError::new_missing()
+        FetchInfosError::missing()
     }
 }
 
 #[cfg(all(unix, not(target_os = "macos")))]
 impl From<dbus::Error> for FetchInfosError {
     fn from(error: dbus::Error) -> Self {
-        FetchInfosError::new_error(error.to_string())
+        FetchInfosError::error(error.to_string())
     }
 }
 
 impl From<std::io::Error> for FetchInfosError {
     fn from(error: std::io::Error) -> Self {
         match error.kind() {
-            ErrorKind::NotFound | ErrorKind::PermissionDenied => FetchInfosError::new_missing(),
-            _ => FetchInfosError::new_error(error.to_string()),
+            ErrorKind::NotFound | ErrorKind::PermissionDenied => FetchInfosError::missing(),
+            _ => FetchInfosError::error(error.to_string()),
         }
     }
 }

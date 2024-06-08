@@ -20,22 +20,23 @@ const DEFAULT_CONFIG: &str = "language: auto # en / fr / auto \nlogo:\n  status:
 
 #[tokio::main]
 async fn main() -> Result<(), FetchInfosError> {
-    let afetch_config_parent_path: PathBuf = dirs::config_dir().unwrap_or_else(|| {
-        println!("An error occurred while retrieving the configuration files folder, please open an issue at: https://github.com/Asthowen/AFetch/issues/new so that we can solve your issue.");
-        exit(9);
-    }).join("afetch");
+    let afetch_config_parent_path: PathBuf = dirs::config_dir()
+        .ok_or_else(||
+            FetchInfosError::error_exit(
+                "An error occurred while retrieving the configuration files folder, please open an issue at: https://github.com/Asthowen/AFetch/issues/new so that we can solve your issue.".to_owned()
+            )
+        )?.join("afetch");
     let afetch_config_path = afetch_config_parent_path.join("config.yaml");
 
     if !afetch_config_parent_path.exists() {
         tokio::fs::create_dir_all(&afetch_config_parent_path)
             .await
-            .unwrap_or_else(|e| {
-                println!(
+            .map_err(|e| {
+                FetchInfosError::error_exit(format!(
                     "An error occurred while creating the configuration files: {}",
                     e
-                );
-                exit(9);
-            });
+                ))
+            })?;
     }
 
     let yaml_to_parse: String = if afetch_config_path.exists() {
@@ -43,13 +44,14 @@ async fn main() -> Result<(), FetchInfosError> {
             .await
             .unwrap_or_default()
     } else {
-        if let Err(e) = tokio::fs::write(afetch_config_path, DEFAULT_CONFIG).await {
-            println!(
-                "An error occurred while creating the configuration file: {}",
-                e
-            );
-            exit(9);
-        }
+        tokio::fs::write(afetch_config_path, DEFAULT_CONFIG)
+            .await
+            .map_err(|e| {
+                FetchInfosError::error(format!(
+                    "An error occurred while creating the configuration file: {}",
+                    e
+                ))
+            })?;
         DEFAULT_CONFIG.to_owned()
     };
 
@@ -65,6 +67,9 @@ async fn main() -> Result<(), FetchInfosError> {
     });
     let text_color: CustomColor =
         CustomColor::new(yaml.text_color[0], yaml.text_color[1], yaml.text_color[2]);
+
+    #[cfg(feature = "image")]
+    let picture_path = yaml.logo.picture_path.clone();
 
     let language: HashMap<&'static str, &'static str> = if yaml.language == "auto" {
         let locale_value_base: String = sys_locale::get_locale()
@@ -94,10 +99,7 @@ async fn main() -> Result<(), FetchInfosError> {
             .map(|logo| logo.to_lowercase())
     });
 
-    let shared_yaml: Arc<Config> = Arc::new(yaml.clone());
-
     let shared_logo_color: Arc<CustomColor> = Arc::new(text_color);
-    let shared_language = Arc::new(language.clone());
     let logo_type: i8 = if !supports_unicode::on(supports_unicode::Stream::Stdout) {
         3
     } else if yaml.logo.status && cfg!(feature = "image") && yaml.logo.char_type != "braille" {
@@ -112,7 +114,7 @@ async fn main() -> Result<(), FetchInfosError> {
     } else {
         None
     };
-    let header_color: AnsiOrCustom = if let Some(text_color_header) = yaml.text_color_header {
+    let header_color: AnsiOrCustom = if let Some(text_color_header) = &yaml.text_color_header {
         AnsiOrCustom::Custom(CustomColor::new(
             text_color_header[0],
             text_color_header[1],
@@ -145,10 +147,10 @@ async fn main() -> Result<(), FetchInfosError> {
     ));
 
     let futures = create_futures(
-        Arc::clone(&shared_yaml),
+        Arc::new(yaml),
         Arc::clone(&shared_header_color),
         Arc::clone(&shared_logo_color),
-        Arc::clone(&shared_language),
+        Arc::new(language),
     );
 
     let results = futures::future::join_all(futures).await;
@@ -203,13 +205,23 @@ async fn main() -> Result<(), FetchInfosError> {
         }
         print!("{}\x1b[{}A", output, infos_to_print.len());
 
-        let image = match image::open(&yaml.logo.picture_path) {
-            Ok(image) => image,
-            Err(e) => {
-                println!("An error occurred while loading the image: {}", e);
-                exit(9);
-            }
-        };
+        let buffer: Vec<u8> = tokio::fs::read(&picture_path).await.map_err(|e| {
+            FetchInfosError::error_exit(format!("An error occurred while reading the image: {}", e))
+        })?;
+
+        let image = image::io::Reader::new(std::io::Cursor::new(buffer))
+            .with_guessed_format()
+            .map_err(|e| {
+                FetchInfosError::error(format!(
+                    "An error occurred while guessing the image format: {}",
+                    e
+                ))
+            })?
+            .decode()
+            .map_err(|e| {
+                FetchInfosError::error(format!("An error occurred while decoding the image: {}", e))
+            })?;
+
         let dimensions: (u32, u32) = image.dimensions();
         let width_ratio: f64 = dimensions.0 as f64 / 44.0;
         let height_ratio: f64 = dimensions.1 as f64 / 44.0;
@@ -222,7 +234,12 @@ async fn main() -> Result<(), FetchInfosError> {
             absolute_offset: false,
             ..ViuerConfig::default()
         };
-        viuer::print_from_file(yaml.logo.picture_path, &viuer_config).ok();
+        viuer::print(&image, &viuer_config).map_err(|e| {
+            FetchInfosError::error_exit(format!(
+                "An error occurred while printing the image: {}",
+                e
+            ))
+        })?;
 
         println!();
         return Ok(());

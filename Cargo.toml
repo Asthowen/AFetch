@@ -22,10 +22,10 @@ opt-level = "z"
 strip = true
 
 [dependencies]
-tokio = { version = "1.37.0", default-features = false, features = ["rt-multi-thread", "macros", "time", "fs"] }
+tokio = { version = "1.38.0", default-features = false, features = ["rt-multi-thread", "macros", "time", "fs"] }
 serde_with = { version =  "3.8.1", features = ["macros"] }
 serde = { version = "1.0.203", features = ["derive"] }
-image = { version = "0.25.1", optional = true }
+image = { version = "0.24.9", optional = true }
 viuer = { version = "0.7.1", optional = true }
 unicode-segmentation = "1.11.0"
 strip-ansi-escapes = "0.2.0"
