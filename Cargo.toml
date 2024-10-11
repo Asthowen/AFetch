@@ -22,28 +22,28 @@ opt-level = "z"
 strip = true
 
 [dependencies]
-tokio = { version = "1.38.0", default-features = false, features = ["rt-multi-thread", "macros", "time", "fs"] }
-serde_with = { version =  "3.8.1", features = ["macros"] }
-serde = { version = "1.0.203", features = ["derive"] }
+tokio = { version = "1.40.0", default-features = false, features = ["rt-multi-thread", "macros", "time", "fs"] }
+serde_with = { version =  "3.11.0", features = ["macros"] }
+serde = { version = "1.0.210", features = ["derive"] }
 image = { version = "0.24.9", optional = true }
 viuer = { version = "0.7.1", optional = true }
-unicode-segmentation = "1.11.0"
+unicode-segmentation = "1.12.0"
 strip-ansi-escapes = "0.2.0"
 supports-unicode = "3.0.0"
-starship-battery = "0.8.3"
+starship-battery = "0.10.0"
 afetch-colored = "2.0.4"
 serde_yaml = "0.9.33"
 sys-locale = "0.3.1"
-sysinfo = "0.30.12"
-futures = "0.3.30"
-minreq = "2.11.2"
-whoami = "1.5.1"
-which = "6.0.1"
+sysinfo = "0.32.0"
+futures = "0.3.31"
+minreq = "2.12.0"
+whoami = "1.5.2"
+which = "6.0.3"
 dirs = "5.0.1"
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
-tokio = { version = "1.37.0", default-features = false, features = ["rt-multi-thread", "macros", "time", "fs", "sync"] }
-dbus = { version = "0.9.7", features=["futures"] }
+tokio = { version = "1.40.0", default-features = false, features = ["rt-multi-thread", "macros", "time", "fs", "sync"] }
+dbus = { version = "0.9.7", features = ["futures"] }
 dbus-tokio = "0.7.6"
 
 [features]

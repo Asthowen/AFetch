@@ -12,6 +12,6 @@ pub fn get_language(country_code: &str) -> HashMap<&'static str, &'static str> {
     }
 }
 
-pub fn language_code_list() -> [&'static str; 2] {
+pub const fn language_code_list() -> [&'static str; 2] {
     ["fr", "en"]
 }

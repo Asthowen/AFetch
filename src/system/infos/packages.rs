@@ -53,7 +53,7 @@ pub async fn get_packages_infos() -> Result<Option<String>, FetchInfosError> {
                     )?);
 
                     if packages_count != 0 {
-                        return Ok(Some(format!("{} ({})", packages_count, name)));
+                        return Ok(Some(format!("{packages_count} ({name})")));
                     }
                     Ok(None)
                 });
@@ -72,14 +72,14 @@ pub async fn get_packages_infos() -> Result<Option<String>, FetchInfosError> {
                             .arg(r#""SELECT count(pkg) FROM installed""#),
                     )?);
                     if packages_count != 0 {
-                        return Ok(Some(format!("{} (dnf)", packages_count)));
+                        return Ok(Some(format!("{packages_count} (dnf)")));
                     }
                 } else if command_exist("rpm") {
                     let packages_count = count_lines_in_output(return_str_from_command(
                         Command::new("rpm").arg("-qa"),
                     )?);
                     if packages_count != 0 {
-                        return Ok(Some(format!("{} (dnf)", packages_count)));
+                        return Ok(Some(format!("{packages_count} (dnf)")));
                     }
                 }
 
@@ -91,7 +91,7 @@ pub async fn get_packages_infos() -> Result<Option<String>, FetchInfosError> {
             match handle.await {
                 Ok(Ok(Some(formatted))) => packages_string.push(formatted),
                 Err(error) => {
-                    println!("Error while fetching packages number: {}", error);
+                    println!("Error while fetching packages number: {error}");
                 }
                 _ => {}
             }

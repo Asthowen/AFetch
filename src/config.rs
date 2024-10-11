@@ -91,7 +91,7 @@ fn default_language() -> String {
     "auto".to_owned()
 }
 
-fn default_status() -> bool {
+const fn default_status() -> bool {
     true
 }
 
@@ -107,14 +107,14 @@ fn default_text_color() -> Vec<u8> {
     vec![255, 255, 255]
 }
 
-fn default_text_color_header() -> Option<Vec<u8>> {
+const fn default_text_color_header() -> Option<Vec<u8>> {
     None
 }
 
-fn default_false() -> bool {
+const fn default_false() -> bool {
     false
 }
 
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }

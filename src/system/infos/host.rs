@@ -39,7 +39,7 @@ pub async fn get_host() -> Result<Option<String>, FetchInfosError> {
                 get_file_content_without_lines("/sys/devices/virtual/dmi/id/board_name")
                     .await?
                     .as_str(),
-            )
+            );
         }
 
         Ok(Some(host))

@@ -12,7 +12,7 @@ pub enum ErrorType {
 pub struct FetchInfosError(pub ErrorType);
 
 impl FetchInfosError {
-    pub fn missing() -> Self {
+    pub const fn missing() -> Self {
         Self(ErrorType::Missing)
     }
 
@@ -23,29 +23,29 @@ impl FetchInfosError {
 
     pub fn error_exit<S: Into<String>>(error: S) -> Self {
         let error: String = error.into();
-        println!("An error occurred: {}", error);
+        println!("An error occurred: {error}");
         exit(9);
     }
 }
 
 impl From<VarError> for FetchInfosError {
     fn from(_: VarError) -> Self {
-        FetchInfosError::missing()
+        Self::missing()
     }
 }
 
 #[cfg(all(unix, not(target_os = "macos")))]
 impl From<dbus::Error> for FetchInfosError {
     fn from(error: dbus::Error) -> Self {
-        FetchInfosError::error(error.to_string())
+        Self::error(error.to_string())
     }
 }
 
 impl From<std::io::Error> for FetchInfosError {
     fn from(error: std::io::Error) -> Self {
         match error.kind() {
-            ErrorKind::NotFound | ErrorKind::PermissionDenied => FetchInfosError::missing(),
-            _ => FetchInfosError::error(error.to_string()),
+            ErrorKind::NotFound | ErrorKind::PermissionDenied => Self::missing(),
+            _ => Self::error(error.to_string()),
         }
     }
 }

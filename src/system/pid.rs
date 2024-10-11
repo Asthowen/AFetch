@@ -1,6 +1,6 @@
 use crate::utils::get_file_content;
 use std::path::Path;
-use sysinfo::{Pid, System};
+use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 
 pub async fn get_ppid(pid: &str) -> Option<String> {
     let status_path = Path::new("/proc").join(pid).join("status");
@@ -21,7 +21,11 @@ pub fn get_parent_pid_names() -> Result<Vec<String>, String> {
     let process_pid: Pid = Pid::from_u32(std::process::id());
 
     let mut system = System::new();
-    system.refresh_process(process_pid);
+    system.refresh_processes_specifics(
+        ProcessesToUpdate::Some(&[process_pid]),
+        false,
+        ProcessRefreshKind::new(),
+    );
 
     let process = system
         .process(process_pid)
@@ -35,13 +39,19 @@ pub fn get_parent_pid_names() -> Result<Vec<String>, String> {
             break;
         }
 
-        system.refresh_process(parent);
+        system.refresh_processes_specifics(
+            ProcessesToUpdate::Some(&[parent]),
+            true,
+            ProcessRefreshKind::new(),
+        );
 
         let parent_process = system
             .process(parent)
             .ok_or_else(|| format!("Parent process with PID {} not found", parent.as_u32()))?;
 
-        parent_names.push(parent_process.name().to_owned());
+        if let Ok(parent_name) = parent_process.name().to_os_string().into_string() {
+            parent_names.push(parent_name);
+        }
         current_pid = parent_process.parent();
     }
 

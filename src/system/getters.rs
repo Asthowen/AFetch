@@ -256,7 +256,7 @@ pub async fn get_cpu(
 
     let cpu_name: String = if !cpu_infos.brand().is_empty() {
         cpu_infos.brand().to_owned()
-    } else if !infos.global_cpu_info().vendor_id().is_empty() {
+    } else if !cpu_infos.vendor_id().is_empty() {
         cpu_infos.vendor_id().to_owned()
     } else {
         return Ok(None);
@@ -273,7 +273,7 @@ pub async fn get_cpu(
         language["label-cpu"]
             .bold()
             .custom_color_or_ansi_color_code(*header_color),
-        format!("{}{}", cpu_name, cpu_percentage).custom_color(*logo_color)
+        format!("{cpu_name}{cpu_percentage}").custom_color(*logo_color)
     ))))
 }
 
@@ -430,9 +430,8 @@ pub async fn get_window_manager(
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
 ) -> Result<Option<FutureResultType>, FetchInfosError> {
-    Ok(crate::system::infos::window_manager::get_window_manager()
-        .await?
-        .map(|wm| {
+    Ok(
+        crate::system::infos::window_manager::get_window_manager()?.map(|wm| {
             FutureResultType::String(format!(
                 "{}{}",
                 language["label-wm"]
@@ -440,7 +439,8 @@ pub async fn get_window_manager(
                     .custom_color_or_ansi_color_code(*header_color),
                 wm.custom_color(*logo_color)
             ))
-        }))
+        }),
+    )
 }
 
 pub async fn get_battery(
@@ -470,16 +470,16 @@ pub async fn get_battery(
 }
 pub async fn get_color_blocks() -> Result<Option<FutureResultType>, FetchInfosError> {
     let first_colors: String = (0..8).fold(String::default(), |mut acc, i| {
-        write!(&mut acc, "\x1b[4{}m   \x1b[0m", i).unwrap_or_else(|error| {
-            println!("Failed to write to string for color blocks: {}.", error);
+        write!(&mut acc, "\x1b[4{i}m   \x1b[0m").unwrap_or_else(|error| {
+            println!("Failed to write to string for color blocks: {error}.");
             exit(9);
         });
         acc
     });
 
     let second_colors: String = (0..8).fold(String::default(), |mut acc, i| {
-        write!(&mut acc, "\x1b[10{}m   \x1b[0m", i).unwrap_or_else(|error| {
-            println!("Failed to write to string for color blocks: {}.", error);
+        write!(&mut acc, "\x1b[10{i}m   \x1b[0m").unwrap_or_else(|error| {
+            println!("Failed to write to string for color blocks: {error}.");
             exit(9);
         });
         acc

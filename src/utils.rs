@@ -100,8 +100,8 @@ pub async fn get_conn() -> Arc<SyncConnection> {
         CONN.get_or_init(|| async {
             let (resource, conn) = connection::new_session_sync().unwrap();
             let _handle = tokio::spawn(async {
-                let err = resource.await;
-                panic!("Lost connection to D-Bus: {}", err);
+                let error = resource.await;
+                panic!("Lost connection to D-Bus: {error}");
             });
             conn
         })

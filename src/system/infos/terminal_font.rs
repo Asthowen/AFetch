@@ -76,7 +76,7 @@ pub fn get_iterm2_font(home_dir: &PathBuf) -> Result<Option<String>, FetchInfosE
     for i in 0..profiles_count {
         let profile_name = return_str_from_command(Command::new("PlistBuddy").args([
             "-c",
-            &format!("Print ':New Bookmarks:{}:Name:'", i),
+            &format!("Print ':New Bookmarks:{i}:Name:'"),
             &font_file.display().to_string(),
         ]))?
         .trim()
@@ -88,7 +88,7 @@ pub fn get_iterm2_font(home_dir: &PathBuf) -> Result<Option<String>, FetchInfosE
 
         let temp_term_font: String = return_str_from_command(Command::new("PlistBuddy").args([
             "-c",
-            &format!("Print ':New Bookmarks:{}:Normal Font:'", i),
+            &format!("Print ':New Bookmarks:{i}:Normal Font:'"),
             &font_file.display().to_string(),
         ]))?
         .trim()
@@ -96,7 +96,7 @@ pub fn get_iterm2_font(home_dir: &PathBuf) -> Result<Option<String>, FetchInfosE
 
         let diff_font: String = return_str_from_command(Command::new("PlistBuddy").args([
             "-c",
-            &format!("Print ':New Bookmarks:{}:Use Non-ASCII Font:'", i),
+            &format!("Print ':New Bookmarks:{i}:Use Non-ASCII Font:'"),
             &font_file.display().to_string(),
         ]))?
         .trim()
@@ -108,7 +108,7 @@ pub fn get_iterm2_font(home_dir: &PathBuf) -> Result<Option<String>, FetchInfosE
 
         let non_ascii: String = return_str_from_command(Command::new("PlistBuddy").args([
             "-c",
-            &format!("Print ':New Bookmarks:{}:Non Ascii Font:'", i),
+            &format!("Print ':New Bookmarks:{i}:Non Ascii Font:'"),
             &font_file.display().to_string(),
         ]))?
         .trim()
@@ -116,8 +116,7 @@ pub fn get_iterm2_font(home_dir: &PathBuf) -> Result<Option<String>, FetchInfosE
 
         if temp_term_font != non_ascii {
             return Ok(Some(format!(
-                "{} (normal) / {} (non-ascii)",
-                temp_term_font, non_ascii
+                "{temp_term_font} (normal) / {non_ascii} (non-ascii)",
             )));
         }
     }
@@ -178,7 +177,7 @@ pub async fn get_hyper_font(home_dir: &PathBuf) -> Result<Option<String>, FetchI
 
     for line in file_content.lines() {
         if let Some(start_index) = line.find("fontFamily") {
-            if let Some(start_quote_index) = line[start_index..].find(|c| c == '\'' || c == '"') {
+            if let Some(start_quote_index) = line[start_index..].find(['\'', '"']) {
                 let start = start_index
                     + start_quote_index
                     + if line.as_bytes()[start_index + start_quote_index + 1] as char == '"' {
@@ -188,7 +187,7 @@ pub async fn get_hyper_font(home_dir: &PathBuf) -> Result<Option<String>, FetchI
                     };
                 let end_index = start
                     + line[start..]
-                        .find(|c| c == '\'' || c == '"' || c == ',')
+                        .find(['\'', '"', ','])
                         .unwrap_or_else(|| line.len() - start);
                 return Ok(Some(line[start..end_index].trim().to_owned()));
             }
@@ -204,7 +203,7 @@ fn extract_node_values(xml: String) -> Vec<String> {
         .filter_map(|line| {
             line.split_once("<node name=\"")
                 .and_then(|(_, rest)| rest.split_once('"'))
-                .map(|(value, _)| format!("/Sessions/{}", value))
+                .map(|(value, _)| format!("/Sessions/{value}"))
         })
         .collect()
 }
@@ -285,7 +284,7 @@ pub async fn get_konsole_font(local_dir: &PathBuf) -> Result<Option<String>, Fet
                 continue;
             };
 
-            if file_content.contains(&format!("Name={}", profile_name)) {
+            if file_content.contains(&format!("Name={profile_name}")) {
                 profile_filename = Some(path);
                 break;
             }

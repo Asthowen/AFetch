@@ -8,7 +8,7 @@ use {
 #[cfg(target_family = "windows")]
 use {crate::utils::return_str_from_command, std::process::Command};
 
-pub async fn get_window_manager() -> Result<Option<String>, FetchInfosError> {
+pub fn get_window_manager() -> Result<Option<String>, FetchInfosError> {
     #[cfg(target_family = "unix")]
     {
         if var("DESKTOP_SESSION")
@@ -76,7 +76,11 @@ pub async fn get_window_manager() -> Result<Option<String>, FetchInfosError> {
                 "xmonad",
             ];
 
-            for process_name in info.processes().values().map(|process| process.name()) {
+            for process_name in info
+                .processes()
+                .values()
+                .filter_map(|process| process.name().to_str())
+            {
                 for &name in &PROCESS_NAMES {
                     if process_name.contains(name) {
                         return Ok(Some(name.to_owned()));

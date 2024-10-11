@@ -15,7 +15,7 @@ pub fn get_gpus() -> Result<Option<Vec<String>>, FetchInfosError> {
             .filter(|line| line.contains("Display") || line.contains("3D") || line.contains("VGA"))
         {
             let parts: Vec<&str> = line
-                .split(|c| c == '"' || c == '(' || c == ')')
+                .split(['"', '(', ')'])
                 .filter(|&s| !s.trim().is_empty())
                 .map(|s| s.trim())
                 .collect();
