@@ -4,6 +4,7 @@ use dbus::nonblock::SyncConnection;
 #[cfg(all(unix, not(target_os = "macos")))]
 use dbus_tokio::connection;
 use std::collections::HashMap;
+use std::fmt::Write;
 use std::path::Path;
 use std::process::Command;
 #[cfg(all(unix, not(target_os = "macos")))]
@@ -37,38 +38,36 @@ pub fn command_exist(program: &str) -> bool {
     which::which(program).is_ok()
 }
 
-pub fn format_time(time_to_format: u64, language: &HashMap<&'static str, &'static str>) -> String {
+pub fn format_time(
+    time_to_format: u64,
+    language: &HashMap<&'static str, &'static str>,
+) -> Option<String> {
     let (minutes, seconds): (u64, u64) = div_mod(time_to_format, 60);
     let (hours, minutes): (u64, u64) = div_mod(minutes, 60);
     let (days, hours): (u64, u64) = div_mod(hours, 24);
-    let mut time_formatted: Vec<String> = Vec::new();
+    let mut time_formatted = String::new();
 
-    match days {
-        0 => (),
-        1 => time_formatted.push(format!("{} {}", days, language["day"])),
-        _ => time_formatted.push(format!("{} {}", days, language["days"])),
-    }
+    let mut append_time_part = |value, singular, plural| match value {
+        1 => write!(time_formatted, "{value} {singular}, ").unwrap(),
+        _ if value > 0 => write!(time_formatted, "{value} {plural}").unwrap(),
+        _ => {}
+    };
 
-    match hours {
-        0 => (),
-        1 => time_formatted.push(format!("{} {}", hours, language["hour"])),
-        _ => time_formatted.push(format!("{} {}", hours, language["hours"])),
-    }
-
-    match minutes {
-        0 => (),
-        1 => time_formatted.push(format!("{} {}", minutes, language["minute"])),
-        _ => time_formatted.push(format!("{} {}", minutes, language["minutes"])),
-    }
+    append_time_part(days, language["day"], language["days"]);
+    append_time_part(hours, language["hour"], language["hours"]);
+    append_time_part(minutes, language["minute"], language["minutes"]);
 
     if seconds > 0 && minutes == 0 && hours == 0 {
-        match minutes {
-            0 => (),
-            1 => time_formatted.push(format!("{} {}", seconds, language["second"])),
-            _ => time_formatted.push(format!("{} {}", seconds, language["seconds"])),
-        }
+        append_time_part(seconds, language["second"], language["seconds"]);
     }
-    time_formatted.join(", ")
+
+    if time_formatted.is_empty() {
+        None
+    } else {
+        time_formatted.pop();
+        time_formatted.pop();
+        Some(time_formatted)
+    }
 }
 
 // Based on the human_bytes library of Forkbomb9: https://gitlab.com/forkbomb9/human_bytes-rs

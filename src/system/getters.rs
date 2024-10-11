@@ -89,9 +89,9 @@ pub async fn get_uptime(
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
 ) -> Result<Option<FutureResultType>, FetchInfosError> {
-    match utils::format_time(System::uptime(), &language).as_str() {
-        "" => Ok(None),
-        uptime => Ok(Some(FutureResultType::String(format!(
+    match utils::format_time(System::uptime(), &language) {
+        None => Ok(None),
+        Some(uptime) => Ok(Some(FutureResultType::String(format!(
             "{}{}",
             language["label-uptime"]
                 .bold()

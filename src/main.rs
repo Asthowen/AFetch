@@ -146,18 +146,19 @@ async fn main() -> Result<(), FetchInfosError> {
             .custom_color(text_color)
     ));
 
-    let futures = create_futures(
+    let mut futures = create_futures(
         Arc::new(yaml),
         Arc::clone(&shared_header_color),
         Arc::clone(&shared_logo_color),
         Arc::new(language),
     );
 
-    let results = futures::future::join_all(futures).await;
-    for result in results.into_iter().flatten().flatten().flatten() {
-        match result {
-            FutureResultType::String(result) => infos_to_print.push(result),
-            FutureResultType::List(mut result) => infos_to_print.append(&mut result),
+    while let Some(Ok(Ok(result))) = futures.join_next().await {
+        if let Some(result) = result {
+            match result {
+                FutureResultType::String(result) => infos_to_print.push(result),
+                FutureResultType::List(mut result) => infos_to_print.append(&mut result),
+            }
         }
     }
 
