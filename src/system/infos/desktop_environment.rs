@@ -122,8 +122,7 @@ pub async fn get_desktop_environment(
             &_ => String::default(),
         };
         version = version
-            .replace(['\n', '-'], "")
-            .replace([')', '('], "")
+            .replace(['\n', '-', '(', ')'], "")
             .replace(r#"\""#, "")
             .replace(' ', "");
         version = version

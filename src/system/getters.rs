@@ -1,4 +1,3 @@
-use crate::config::{DesktopEnvironment, Shell};
 use crate::error::FetchInfosError;
 use crate::system::futures::FutureResultType;
 use crate::utils::convert_to_readable_unity;
@@ -168,7 +167,7 @@ pub async fn get_desktop(
     header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
-    config: DesktopEnvironment,
+    config: config::DesktopEnvironment,
     position: usize,
 ) -> Result<Option<(usize, FutureResultType)>, FetchInfosError> {
     Ok(
@@ -194,7 +193,7 @@ pub async fn get_shell(
     header_color: Arc<AnsiOrCustom>,
     logo_color: Arc<CustomColor>,
     language: Arc<HashMap<&'static str, &'static str>>,
-    config: Shell,
+    config: config::Shell,
     position: usize,
 ) -> Result<Option<(usize, FutureResultType)>, FetchInfosError> {
     Ok(crate::system::infos::shell::get_shell(config)

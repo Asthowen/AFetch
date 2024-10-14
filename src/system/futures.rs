@@ -34,7 +34,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
-                    config.clone(),
+                    *config,
                     i,
                 ));
             }
@@ -91,7 +91,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
-                    config.clone(),
+                    *config,
                     i,
                 ));
             }
@@ -108,7 +108,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
-                    config.clone(),
+                    *config,
                     i,
                 ));
             }

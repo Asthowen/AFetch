@@ -58,19 +58,19 @@ pub enum Entry {
     EmptyLine,
 }
 
-#[derive(Debug, Deserialize, Default, Clone)]
+#[derive(Debug, Deserialize, Default, Copy, Clone)]
 pub struct Cpu {
     #[serde(default = "default_false")]
     pub percentage: bool,
 }
 
-#[derive(Debug, Deserialize, Default, Clone)]
+#[derive(Debug, Deserialize, Default, Copy, Clone)]
 pub struct DesktopEnvironment {
     #[serde(default = "default_true")]
     pub version: bool,
 }
 
-#[derive(Debug, Deserialize, Default, Clone)]
+#[derive(Debug, Deserialize, Default, Copy, Clone)]
 pub struct Shell {
     #[serde(default = "default_true")]
     pub version: bool,

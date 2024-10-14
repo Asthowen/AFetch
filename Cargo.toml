@@ -25,8 +25,8 @@ strip = true
 tokio = { version = "1.40.0", default-features = false, features = ["rt-multi-thread", "macros", "time", "fs"] }
 serde_with = { version =  "3.11.0", features = ["macros"] }
 serde = { version = "1.0.210", features = ["derive"] }
-image = { version = "0.24.9", optional = true }
-viuer = { version = "0.7.1", optional = true }
+image = { version = "0.25.2", optional = true }
+viuer = { version = "0.8.1", optional = true }
 unicode-segmentation = "1.12.0"
 strip-ansi-escapes = "0.2.0"
 supports-unicode = "3.0.0"

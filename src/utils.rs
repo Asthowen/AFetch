@@ -49,7 +49,7 @@ pub fn format_time(
 
     let mut append_time_part = |value, singular, plural| match value {
         1 => write!(time_formatted, "{value} {singular}, ").unwrap(),
-        _ if value > 0 => write!(time_formatted, "{value} {plural}").unwrap(),
+        _ if value > 0 => write!(time_formatted, "{value} {plural}, ").unwrap(),
         _ => {}
     };
 

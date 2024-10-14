@@ -33,16 +33,16 @@ pub async fn get_terminal() -> Result<Option<String>, FetchInfosError> {
         Ok(pids) => pids,
         Err(error) => {
             println!("{error}");
-            return Ok(Some(String::default()));
+            return Ok(None);
         }
     };
-    let mut term: String = String::default();
     let shell_opt = get_shell(Shell { version: false }).await?;
     let shell_name = match shell_opt {
-        None => return Ok(None),
         Some(shell) => shell.0,
+        None => return Ok(None),
     };
 
+    let mut term: String = String::default();
     for name in pids_names {
         match name.as_str() {
             name if shell_name == name => {}

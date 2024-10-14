@@ -213,17 +213,16 @@ async fn main() -> Result<(), FetchInfosError> {
 
     #[cfg(feature = "image")]
     if logo_type == 1 {
-        println!();
         for info in &infos_to_print {
             writeln!(output, "{}{}", " ".repeat(47), info).ok();
         }
-        print!("{}\x1b[{}A", output, infos_to_print.len());
+        print!("\n{}\x1b[{}A", output, infos_to_print.len());
 
         let buffer: Vec<u8> = tokio::fs::read(&picture_path).await.map_err(|e| {
             FetchInfosError::error_exit(format!("An error occurred while reading the image: {}", e))
         })?;
 
-        let image = image::io::Reader::new(std::io::Cursor::new(buffer))
+        let image = image::ImageReader::new(std::io::Cursor::new(buffer))
             .with_guessed_format()
             .map_err(|e| {
                 FetchInfosError::error(format!(
