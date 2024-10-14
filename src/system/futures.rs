@@ -10,11 +10,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::task::JoinSet;
 
-type ResultFuture = Result<Option<FutureResultType>, FetchInfosError>;
+type ResultFuture = Result<Option<(usize, FutureResultType)>, FetchInfosError>;
 
+#[derive(Clone)]
 pub enum FutureResultType {
     String(String),
     List(Vec<String>),
+    Empty,
 }
 
 pub fn create_futures(
@@ -25,7 +27,7 @@ pub fn create_futures(
 ) -> JoinSet<ResultFuture> {
     let mut futures: JoinSet<ResultFuture> = JoinSet::new();
 
-    for entry in &shared_yaml.entries {
+    for (i, entry) in shared_yaml.entries.iter().enumerate() {
         match entry {
             Entry::Cpu(config) => {
                 futures.spawn(get_cpu(
@@ -33,6 +35,7 @@ pub fn create_futures(
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
                     config.clone(),
+                    i,
                 ));
             }
             Entry::Battery => {
@@ -40,6 +43,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::OS => {
@@ -47,6 +51,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::Host => {
@@ -54,6 +59,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::Kernel => {
@@ -61,6 +67,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::Uptime => {
@@ -68,6 +75,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::Packages => {
@@ -75,6 +83,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::Shell(config) => {
@@ -83,6 +92,7 @@ pub fn create_futures(
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
                     config.clone(),
+                    i,
                 ));
             }
             Entry::Resolution => {
@@ -90,6 +100,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::DesktopEnvironment(config) => {
@@ -98,6 +109,7 @@ pub fn create_futures(
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
                     config.clone(),
+                    i,
                 ));
             }
             Entry::WindowManager => {
@@ -105,6 +117,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::Terminal => {
@@ -112,6 +125,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::TerminalFont => {
@@ -119,6 +133,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::GPUS => {
@@ -126,6 +141,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::Memory => {
@@ -133,6 +149,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::Network => {
@@ -140,6 +157,7 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::Disk(config) => {
@@ -149,6 +167,7 @@ pub fn create_futures(
                     Arc::clone(&shared_language),
                     None,
                     Some(config.clone()),
+                    i,
                 ));
             }
             Entry::Disks(config) => {
@@ -158,6 +177,7 @@ pub fn create_futures(
                     Arc::clone(&shared_language),
                     Some(config.clone()),
                     None,
+                    i,
                 ));
             }
             Entry::PublicIP => {
@@ -165,13 +185,14 @@ pub fn create_futures(
                     Arc::clone(&shared_header_color),
                     Arc::clone(&shared_logo_color),
                     Arc::clone(&shared_language),
+                    i,
                 ));
             }
             Entry::ColorBlocks => {
-                futures.spawn(get_color_blocks());
+                futures.spawn(get_color_blocks(i));
             }
             Entry::EmptyLine => {
-                futures.spawn(get_empty_line());
+                futures.spawn(get_empty_line(i));
             }
         }
     }

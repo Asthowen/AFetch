@@ -128,8 +128,30 @@ async fn main() -> Result<(), FetchInfosError> {
 
     let shared_header_color = Arc::new(header_color);
 
+    let collected_results = create_futures(
+        Arc::new(yaml),
+        Arc::clone(&shared_header_color),
+        Arc::clone(&shared_logo_color),
+        Arc::new(language),
+    )
+    .join_all()
+    .await;
+
+    let mut results = vec![FutureResultType::Empty; collected_results.len()];
+    let mut results_length: usize = 2;
+
+    for result in collected_results {
+        if let Ok(Some((i, FutureResultType::List(list)))) = result {
+            results_length += list.len();
+            results[i] = FutureResultType::List(list);
+        } else if let Ok(Some((i, future_result))) = result {
+            results_length += 1;
+            results[i] = future_result;
+        }
+    }
+
     let (username, host): (String, String) = (username(), hostname().unwrap_or_default());
-    let mut infos_to_print: Vec<String> = Vec::new();
+    let mut infos_to_print: Vec<String> = Vec::with_capacity(results_length);
     let mut output: String = String::default();
     infos_to_print.push(format!(
         "{}{}{}",
@@ -145,20 +167,11 @@ async fn main() -> Result<(), FetchInfosError> {
             .repeat(username.len() + host.len() + 1)
             .custom_color(text_color)
     ));
-
-    let mut futures = create_futures(
-        Arc::new(yaml),
-        Arc::clone(&shared_header_color),
-        Arc::clone(&shared_logo_color),
-        Arc::new(language),
-    );
-
-    while let Some(Ok(Ok(result))) = futures.join_next().await {
-        if let Some(result) = result {
-            match result {
-                FutureResultType::String(result) => infos_to_print.push(result),
-                FutureResultType::List(mut result) => infos_to_print.append(&mut result),
-            }
+    for result in results {
+        match result {
+            FutureResultType::String(result) => infos_to_print.push(result),
+            FutureResultType::List(mut result) => infos_to_print.append(&mut result),
+            _ => {}
         }
     }
 
