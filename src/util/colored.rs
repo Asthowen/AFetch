@@ -1,9 +1,18 @@
-use colored::{Color, ColoredString, Colorize, CustomColor};
+use colored::{Color, ColoredString, Colorize};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum ColorWrapper {
+    #[serde(rename = "rgb")]
+    Rgb { r: u8, g: u8, b: u8 },
+    #[serde(rename = "ansi")]
     Ansi(u8),
-    CustomColor(CustomColor),
+}
+
+impl Default for ColorWrapper {
+    fn default() -> Self {
+        Self::Ansi(0)
+    }
 }
 
 pub trait ColorizeExt: Colorize {
@@ -13,11 +22,7 @@ pub trait ColorizeExt: Colorize {
     {
         match color.into() {
             ColorWrapper::Ansi(color) => self.color(Color::AnsiColor(color)),
-            ColorWrapper::CustomColor(color) => self.color(Color::TrueColor {
-                r: color.r,
-                g: color.g,
-                b: color.b,
-            }),
+            ColorWrapper::Rgb { r, g, b } => self.color(Color::TrueColor { r, g, b }),
         }
     }
 }

@@ -1,4 +1,4 @@
-use afetch::config::{ColorType, Config, LogoStyle, load_config};
+use afetch::config::{Config, LogoStyle, load_config};
 use afetch::error::{ErrorType, FetchInfosError};
 use afetch::logos::get_logo;
 use afetch::system::battery::get_battery;
@@ -13,7 +13,7 @@ use afetch::util::colored::{ColorWrapper, ColorizeExt};
 use afetch::util::count_str_length;
 #[cfg(feature = "image")]
 use afetch::util::print_picture;
-use colored::{Colorize, CustomColor};
+use colored::Colorize;
 use rayon::iter::ParallelIterator;
 use rayon::prelude::IntoParallelIterator;
 use std::fmt::Write;
@@ -59,16 +59,22 @@ fn main() -> Result<(), FetchInfosError> {
     };
 
     let headers_color = match config.colors.headers {
-        ColorType::Rgb { r, g, b } => ColorWrapper::CustomColor(CustomColor::new(r, g, b)),
-        ColorType::Ansi(color) => ColorWrapper::Ansi(color),
+        Some(color) => color,
+        None => match logo.as_ref() {
+            Some(color) => ColorWrapper::Ansi(color.1),
+            None => ColorWrapper::Ansi(6),
+        },
     };
-    let infos_color = match config.colors.infos {
-        Some(ColorType::Rgb { r, g, b }) => {
-            Some(ColorWrapper::CustomColor(CustomColor::new(r, g, b)))
-        }
-        Some(ColorType::Ansi(color)) => Some(ColorWrapper::Ansi(color)),
-        _ => None,
-    };
+    let separators_color = config.colors.separator.unwrap_or(ColorWrapper::Rgb {
+        r: 255,
+        g: 255,
+        b: 255,
+    });
+    let infos_color = config.colors.infos.unwrap_or(ColorWrapper::Rgb {
+        r: 255,
+        g: 255,
+        b: 255,
+    });
 
     let mut output: String = String::default();
     let mut last_char_count = 0;
@@ -97,28 +103,27 @@ fn main() -> Result<(), FetchInfosError> {
                 entry.value.repeat(last_char_count)
             };
 
-            if let Some(header) = entry.header.as_ref().filter(|s| !s.trim().is_empty()) {
-                last_char_count = count_str_length(header)
-                    + count_str_length(languages_func("separator"))
-                    + count_str_length(&default);
+            if entry.entry != "separator" {
+                let header = entry
+                    .header
+                    .as_deref()
+                    .unwrap_or_else(|| languages_func(&entry.entry));
 
-                let header_color = match infos_color {
-                    Some(color) => color,
-                    None => match logo.as_ref() {
-                        Some(color) => ColorWrapper::Ansi(color.1),
-                        None => ColorWrapper::Ansi(6),
-                    },
-                };
+                let separator = entry
+                    .separator
+                    .as_deref()
+                    .unwrap_or_else(|| languages_func("_colon_"));
+
+                last_char_count = count_str_length(header)
+                    + count_str_length(separator)
+                    + count_str_length(&default);
 
                 default = format!(
                     "{}{}{}",
-                    header.custom_color_wrapper(header_color).bold(),
-                    languages_func("separator"),
-                    default.custom_color_wrapper(headers_color)
+                    header.custom_color_wrapper(headers_color).bold(),
+                    separator.custom_color_wrapper(separators_color),
+                    default.custom_color_wrapper(infos_color)
                 );
-            } else {
-                last_char_count = count_str_length(&default);
-                default = format!("{}", default.custom_color_wrapper(headers_color));
             }
 
             #[cfg(feature = "image")]
@@ -128,15 +133,28 @@ fn main() -> Result<(), FetchInfosError> {
 
             if let Some((max_length, _, lines)) = &logo {
                 if lines.len() > i {
-                    writeln!(output, "   {}{}   {}", lines[i], "".white(), default).ok();
+                    writeln!(
+                        output,
+                        "   {}{}   {}",
+                        lines[i],
+                        "".white(),
+                        default.custom_color_wrapper(infos_color)
+                    )
+                    .ok();
                 } else {
-                    writeln!(output, "{}{}", " ".repeat(*max_length), default).ok();
+                    writeln!(
+                        output,
+                        "{}{}",
+                        " ".repeat(*max_length),
+                        default.custom_color_wrapper(infos_color)
+                    )
+                    .ok();
                 }
             }
 
             #[cfg(not(feature = "image"))]
             if logo.is_none() {
-                writeln!(output, "{default}").ok();
+                writeln!(output, "{}", default.custom_color_wrapper(infos_color)).ok();
             }
         };
 
@@ -158,7 +176,7 @@ fn main() -> Result<(), FetchInfosError> {
     if let Some((_, _, lines)) = &logo {
         if config.entries.len() < lines.len() {
             for logo_line in &lines[config.entries.len()..] {
-                writeln!(output, "   {}{}   ", logo_line, "".white()).ok();
+                writeln!(output, "   {}{}", logo_line, "".white()).ok();
             }
         }
     }

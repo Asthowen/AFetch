@@ -11,10 +11,6 @@ fn get_language_func(country_code: &str) -> fn(&str) -> &str {
     }
 }
 
-const fn language_code_list() -> [&'static str; 2] {
-    ["fr", "en"]
-}
-
 pub fn get_language(language: &str) -> fn(&str) -> &str {
     if language == "auto" {
         let locale_value_base: String = sys_locale::get_locale()
@@ -24,14 +20,8 @@ pub fn get_language(language: &str) -> fn(&str) -> &str {
             .split('-')
             .next()
             .unwrap_or(&locale_value_base);
-        if language_code_list().contains(&locale_value) {
-            get_language_func(locale_value)
-        } else {
-            get_language_func("en")
-        }
-    } else if language_code_list().contains(&language) {
-        get_language_func(language)
+        get_language_func(locale_value)
     } else {
-        get_language_func("en")
+        get_language_func(language)
     }
 }

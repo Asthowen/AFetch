@@ -1,4 +1,5 @@
 use crate::error::FetchInfosError;
+use crate::util::colored::ColorWrapper;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -31,30 +32,18 @@ pub struct Logo {
     pub file_path: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ColorType {
-    #[serde(rename = "rgb")]
-    Rgb { r: u8, g: u8, b: u8 },
-    #[serde(rename = "ansi")]
-    Ansi(u8),
-}
-impl Default for ColorType {
-    fn default() -> Self {
-        Self::Ansi(0)
-    }
-}
-
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Colors {
-    #[serde(default = "default_colors_headers")]
-    pub headers: ColorType,
-    pub infos: Option<ColorType>,
+    pub headers: Option<ColorWrapper>,
+    pub separator: Option<ColorWrapper>,
+    pub infos: Option<ColorWrapper>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Infos {
     pub entry: String,
     pub header: Option<String>,
+    pub separator: Option<String>,
     pub value: String,
 }
 
@@ -64,10 +53,6 @@ fn default_language() -> String {
 
 const fn default_status() -> bool {
     true
-}
-
-const fn default_colors_headers() -> ColorType {
-    ColorType::Ansi(6)
 }
 
 pub fn load_config() -> Result<Config, FetchInfosError> {

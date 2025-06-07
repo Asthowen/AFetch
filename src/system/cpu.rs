@@ -34,10 +34,6 @@ pub fn get_cpu(_languages_func: fn(&str) -> &str) -> Result<InfosResult, FetchIn
                     value: cpu.vendor_id().to_string(),
                 },
                 InfoValue {
-                    field: InfoField::CpuVendor,
-                    value: cpu.vendor_id().to_string(),
-                },
-                InfoValue {
                     field: InfoField::CpuArch,
                     value: System::cpu_arch(),
                 },
