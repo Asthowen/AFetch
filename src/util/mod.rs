@@ -24,7 +24,7 @@ pub fn command_exist(program: &str) -> bool {
 }
 
 pub fn str_from_command(command: &mut Command) -> Result<String, FetchInfosError> {
-    Ok(String::from_utf8_lossy(&command.output()?.stdout).to_string())
+    Ok(String::from_utf8_lossy(&command.output()?.stdout).into_owned())
 }
 
 pub fn count_str_length(value: &str) -> usize {
@@ -39,20 +39,20 @@ pub fn format_time(time_to_format: u64, languages_func: fn(&str) -> &str) -> Opt
     let (minutes, seconds): (u64, u64) = div_mod(time_to_format, 60);
     let (hours, minutes): (u64, u64) = div_mod(minutes, 60);
     let (days, hours): (u64, u64) = div_mod(hours, 24);
-    let mut time_formatted = String::new();
+    let mut time_formatted = String::default();
 
     let mut append_time_part = |value, singular, plural| match value {
-        1 => write!(time_formatted, "{value} {singular}, ").unwrap(),
-        _ if value > 0 => write!(time_formatted, "{value} {plural}, ").unwrap(),
+        1 => write!(time_formatted, "{value} {}, ", languages_func(singular)).unwrap(),
+        _ if value > 0 => write!(time_formatted, "{value} {}, ", languages_func(plural)).unwrap(),
         _ => {}
     };
 
-    append_time_part(days, languages_func("day"), languages_func("days"));
-    append_time_part(hours, languages_func("hour"), languages_func("hours"));
-    append_time_part(minutes, languages_func("minute"), languages_func("minutes"));
+    append_time_part(days, "day", "days");
+    append_time_part(hours, "hour", "hours");
+    append_time_part(minutes, "minute", "minutes");
 
     if seconds > 0 && minutes == 0 && hours == 0 {
-        append_time_part(seconds, languages_func("second"), languages_func("seconds"));
+        append_time_part(seconds, "second", "seconds");
     }
 
     if time_formatted.is_empty() {

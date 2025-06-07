@@ -80,7 +80,7 @@ pub fn get_logo(
         "linux" => Ok(Some(linux::LINUX)),
         "manjaro" | "manjarolinux" => Ok(Some(manjaro::MANJARO)),
         "ubuntu" => Ok(Some(ubuntu::UBUNTU)),
-        "archlinux" => Ok(Some(arch_linux::ARCH_LINUX)),
+        "archlinux" | "arch" => Ok(Some(arch_linux::ARCH_LINUX)),
         "gentoo" => Ok(Some(gentoo::GENTOO)),
         "fedora" | "fedoralinux" => Ok(Some(fedora::FEDORA)),
         "zorinos" => Ok(Some(zorin_os::ZORIN_OS)),

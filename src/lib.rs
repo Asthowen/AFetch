@@ -46,9 +46,8 @@
 )]
 
 pub mod config;
+pub mod error;
 pub mod logos;
 pub mod system;
 pub mod translations;
 pub mod util;
-
-pub mod error;
