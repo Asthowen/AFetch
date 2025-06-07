@@ -1,9 +1,11 @@
 use afetch::config::{ColorType, Config, LogoStyle, load_config};
-use afetch::error::FetchInfosError;
+use afetch::error::{ErrorType, FetchInfosError};
 use afetch::logos::get_logo;
+use afetch::system::battery::get_battery;
 use afetch::system::cpu::get_cpu;
 use afetch::system::host::get_hostname;
 use afetch::system::kernel::get_kernel;
+use afetch::system::memory::get_memory;
 use afetch::system::uptime::get_uptime;
 use afetch::system::{InfoFunction, InfoGroup, InfosResult};
 use afetch::translations::get_language;
@@ -24,18 +26,18 @@ fn main() -> Result<(), FetchInfosError> {
         .entries
         .iter()
         .filter_map(|element| match element.entry.as_str() {
+            "battery" => Some(get_battery as InfoFunction),
             "cpu" => Some(get_cpu as InfoFunction),
             "host" => Some(get_hostname as InfoFunction),
             "kernel" => Some(get_kernel as InfoFunction),
             "uptime" => Some(get_uptime as InfoFunction),
+            "memory" => Some(get_memory as InfoFunction),
             _ => None,
         })
         .collect::<Vec<_>>();
 
-    let results: Vec<InfosResult> = funcs
-        .into_par_iter()
-        .filter_map(|f| f(languages_func).ok())
-        .collect();
+    let results: Vec<Result<InfosResult, FetchInfosError>> =
+        funcs.into_par_iter().map(|f| f(languages_func)).collect();
 
     let logo = if config.logo.status
         && ([LogoStyle::Braille, LogoStyle::File].contains(&config.logo.style)
@@ -71,19 +73,31 @@ fn main() -> Result<(), FetchInfosError> {
     let mut output: String = String::default();
     let mut last_char_count = 0;
     let mut i2 = 0;
-    for (i, result) in config.entries.iter().enumerate() {
+    for (i, entry) in config.entries.iter().enumerate() {
+        let result = match &results[i2] {
+            Ok(result) => result,
+            Err(error) => {
+                match &error.0 {
+                    ErrorType::Missing => eprintln!("Mising information for {}", entry.entry),
+                    ErrorType::Error(error) => eprintln!("An error occurred: {error}"),
+                }
+                i2 += 1;
+                continue;
+            }
+        };
+
         let mut format_and_write = |infos: Option<&InfoGroup>| {
             let mut default = if let Some(infos) = &infos {
-                let mut default = result.value.clone();
+                let mut default = entry.value.clone();
                 for value in &infos.values {
                     default = default.replace(&format!("{{{}}}", value.field), &value.value);
                 }
                 default
             } else {
-                result.value.repeat(last_char_count)
+                entry.value.repeat(last_char_count)
             };
 
-            if let Some(header) = result.header.as_ref().filter(|s| !s.trim().is_empty()) {
+            if let Some(header) = entry.header.as_ref().filter(|s| !s.trim().is_empty()) {
                 last_char_count = count_str_length(header)
                     + count_str_length(languages_func("separator"))
                     + count_str_length(&default);
@@ -126,12 +140,12 @@ fn main() -> Result<(), FetchInfosError> {
             }
         };
 
-        if result.entry == "separator" {
+        if entry.entry == "separator" {
             format_and_write(None);
             continue;
         }
 
-        match &results[i2] {
+        match result {
             InfosResult::Single(single) => format_and_write(Some(single)),
             InfosResult::Several(elements) => elements
                 .iter()
