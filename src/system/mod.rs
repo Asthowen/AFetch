@@ -1,3 +1,6 @@
+use bitcode::{Decode, Encode};
+use serde::Deserialize;
+
 use crate::error::FetchInfosError;
 
 pub mod battery;
@@ -9,7 +12,84 @@ pub mod uptime;
 
 pub type InfoFunction = fn(fn(&str) -> &str) -> Result<InfosResult, FetchInfosError>;
 
-#[derive(Debug)]
+#[derive(Deserialize, Clone, Copy, Debug, Decode, Encode)]
+#[serde(rename_all = "snake_case")]
+pub enum Info {
+    Battery,
+    Cpu,
+    Host,
+    Kernel,
+    Memory,
+    Uptime,
+}
+
+impl Info {
+    pub const fn get_fields(&self) -> &[InfoField] {
+        match self {
+            Self::Battery => &[
+                InfoField::BatteryModel,
+                InfoField::BatteryCycleCount,
+                InfoField::BatterySerialNumber,
+                InfoField::BatteryVendor,
+                InfoField::BatteryTechnology,
+                InfoField::BatteryState,
+                InfoField::BatteryTemperature,
+                InfoField::BatteryStateOfHealth,
+                InfoField::BatteryStateOfCharge,
+                InfoField::BatteryEnergy,
+                InfoField::BatteryEnergyFull,
+                InfoField::BatteryEnergyFullDesign,
+                InfoField::BatteryEnergyRate,
+                InfoField::BatteryVoltage,
+                InfoField::BatteryTimeToFull,
+                InfoField::BatteryTimeToEmpty,
+            ],
+            Self::Cpu => &[
+                InfoField::CpuName,
+                InfoField::CpuUsage,
+                InfoField::CpuFrequency,
+                InfoField::CpuVendor,
+                InfoField::CpuArch,
+            ],
+            Self::Host => &[InfoField::Hostname],
+            Self::Kernel => &[InfoField::KernelVersion, InfoField::KernelLongVersion],
+            Self::Memory => &[
+                InfoField::MemoryAvailable,
+                InfoField::MemoryFree,
+                InfoField::MemoryTotal,
+                InfoField::MemoryUsed,
+                InfoField::MemorySwapFree,
+                InfoField::MemorySwapTotal,
+                InfoField::MemorySwapUsage,
+            ],
+            Self::Uptime => &[InfoField::Uptime],
+        }
+    }
+
+    pub const fn default_format(&self) -> &'static str {
+        match self {
+            Self::Battery => "{batterystateofcharge}%",
+            Self::Cpu => "{cpuname}",
+            Self::Host => "{username}@{hostname}",
+            Self::Kernel => "{kernellongversion}",
+            Self::Memory => "{memoryused} / {memorytotal}",
+            Self::Uptime => "{uptime}",
+        }
+    }
+
+    pub const fn default_header(&self) -> &'static str {
+        match self {
+            Self::Cpu => "cpu",
+            Self::Battery => "battery",
+            Self::Host => "host",
+            Self::Kernel => "kernel",
+            Self::Memory => "memory",
+            Self::Uptime => "uptime",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Decode, Encode)]
 pub enum InfoField {
     BatteryModel,
     BatteryCycleCount,

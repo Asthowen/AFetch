@@ -1,4 +1,5 @@
 use std::env::VarError;
+use std::fmt::Display;
 use std::io::ErrorKind;
 use std::process::exit;
 
@@ -21,9 +22,8 @@ impl FetchInfosError {
         Self(ErrorType::Error(error))
     }
 
-    pub fn error_exit<S: Into<String>>(error: S) -> Self {
-        let error: String = error.into();
-        println!("An error occurred: {error}");
+    pub fn error_exit<S: Display>(error: S) -> ! {
+        println!("{error}");
         exit(9);
     }
 }
