@@ -1,4 +1,4 @@
-pub fn english(key: &str) -> &str {
+pub fn english(key: &str) -> &'static str {
     match key {
         "_colon_" => ": ",
         "days" => "days",

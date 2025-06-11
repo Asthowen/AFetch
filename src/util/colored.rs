@@ -1,11 +1,8 @@
 use colored::{Color, ColoredString, Colorize};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, bitcode::Decode, bitcode::Encode)]
 pub enum ColorWrapper {
-    #[serde(rename = "rgb")]
     Rgb { r: u8, g: u8, b: u8 },
-    #[serde(rename = "ansi")]
     Ansi(u8),
 }
 

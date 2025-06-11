@@ -1,4 +1,4 @@
-pub fn french(key: &str) -> &str {
+pub fn french(key: &str) -> &'static str {
     match key {
         "_colon_" => " : ",
         "days" => "jours",

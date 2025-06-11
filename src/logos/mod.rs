@@ -1,9 +1,10 @@
-use crate::error::FetchInfosError;
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 use sysinfo::System;
 
 pub mod alpine;
 pub mod arch_linux;
 pub mod cent_os;
+pub mod computer;
 pub mod debian;
 pub mod elementary_os;
 pub mod endeavour;
@@ -30,9 +31,7 @@ pub mod windows_7;
 pub mod xubuntu;
 pub mod zorin_os;
 
-pub fn get_logo(
-    force_os: Option<String>,
-) -> Result<Option<(usize, u8, &'static str)>, FetchInfosError> {
+pub fn get_logo(force_os: Option<String>) -> (usize, u8, &'static str) {
     let os: String = if let Some(os) = force_os {
         os
     } else {
@@ -57,7 +56,7 @@ pub fn get_logo(
                 .and_then(|v| v.split_whitespace().next().map(str::to_owned))
                 .filter(|v| !v.is_empty())
                 .unwrap_or_else(|| "11".to_owned());
-            format!("windows{}", windows_version)
+            format!("windows{windows_version}")
         }
 
         #[cfg(not(any(
@@ -67,41 +66,41 @@ pub fn get_logo(
             target_os = "linux"
         )))]
         {
-            return Ok(None);
+            return Ok(computer::COMPUTER);
         }
     }
     .replace(' ', "")
     .to_lowercase();
 
     match os.as_str() {
-        "windows11" => Ok(Some(windows_11::WINDOWS11)),
-        "windows10" => Ok(Some(windows_10::WINDOWS10)),
-        "windows7" => Ok(Some(windows_7::WINDOWS7)),
-        "linux" => Ok(Some(linux::LINUX)),
-        "manjaro" | "manjarolinux" => Ok(Some(manjaro::MANJARO)),
-        "ubuntu" => Ok(Some(ubuntu::UBUNTU)),
-        "archlinux" | "arch" => Ok(Some(arch_linux::ARCH_LINUX)),
-        "gentoo" => Ok(Some(gentoo::GENTOO)),
-        "fedora" | "fedoralinux" => Ok(Some(fedora::FEDORA)),
-        "zorinos" => Ok(Some(zorin_os::ZORIN_OS)),
-        "linuxmint" => Ok(Some(linux_mint::LINUX_MINT)),
-        "macos" | "apple" | "osx" => Ok(Some(mac_os::MAC_OS)),
-        "opensuse" => Ok(Some(open_suse::OPEN_SUSE)),
-        "freebsd" => Ok(Some(freebsd::FREEBSD)),
-        "kubuntu" => Ok(Some(kubuntu::KUBUNTU)),
-        "lubuntu" => Ok(Some(lubuntu::LUBUNTU)),
-        "xubuntu" => Ok(Some(xubuntu::XUBUNTU)),
-        "raspbian" => Ok(Some(raspbian::RASPBIAN)),
-        "popos" => Ok(Some(pop_os::POP_OS)),
-        "endeavour" => Ok(Some(endeavour::ENDEAVOUR)),
-        "centos" => Ok(Some(cent_os::CENT_OS)),
-        "rhel" => Ok(Some(rhel::RHEL)),
-        "mageia" => Ok(Some(mageia::MAGEIA)),
-        "ubuntumate" => Ok(Some(ubuntu_mate::UBUNTU_MATE)),
-        "elementaryos" => Ok(Some(elementary_os::ELEMENTARY_OS)),
-        "solaris" => Ok(Some(solaris::SOLARIS)),
-        "alpine" => Ok(Some(alpine::ALPINE)),
-        "debian" | "debiangnu/linux" => Ok(Some(debian::DEBIAN)),
-        _ => Ok(None),
+        "windows11" => windows_11::WINDOWS11,
+        "windows10" => windows_10::WINDOWS10,
+        "windows7" => windows_7::WINDOWS7,
+        "linux" => linux::LINUX,
+        "manjaro" | "manjarolinux" => manjaro::MANJARO,
+        "ubuntu" => ubuntu::UBUNTU,
+        "archlinux" | "arch" => arch_linux::ARCH_LINUX,
+        "gentoo" => gentoo::GENTOO,
+        "fedora" | "fedoralinux" => fedora::FEDORA,
+        "zorinos" => zorin_os::ZORIN_OS,
+        "linuxmint" => linux_mint::LINUX_MINT,
+        "macos" | "apple" | "osx" => mac_os::MAC_OS,
+        "opensuse" => open_suse::OPEN_SUSE,
+        "freebsd" => freebsd::FREEBSD,
+        "kubuntu" => kubuntu::KUBUNTU,
+        "lubuntu" => lubuntu::LUBUNTU,
+        "xubuntu" => xubuntu::XUBUNTU,
+        "raspbian" => raspbian::RASPBIAN,
+        "popos" => pop_os::POP_OS,
+        "endeavour" => endeavour::ENDEAVOUR,
+        "centos" => cent_os::CENT_OS,
+        "rhel" => rhel::RHEL,
+        "mageia" => mageia::MAGEIA,
+        "ubuntumate" => ubuntu_mate::UBUNTU_MATE,
+        "elementaryos" => elementary_os::ELEMENTARY_OS,
+        "solaris" => solaris::SOLARIS,
+        "alpine" => alpine::ALPINE,
+        "debian" | "debiangnu/linux" => debian::DEBIAN,
+        _ => computer::COMPUTER,
     }
 }
