@@ -1,7 +1,6 @@
+use crate::error::FetchInfosError;
 use bitcode::{Decode, Encode};
 use serde::Deserialize;
-
-use crate::error::FetchInfosError;
 
 pub mod battery;
 pub mod cpu;
@@ -14,7 +13,7 @@ pub type InfoFunction = fn(fn(&str) -> &str) -> Result<InfosResult, FetchInfosEr
 
 #[derive(Deserialize, Clone, Copy, Debug, Decode, Encode)]
 #[serde(rename_all = "snake_case")]
-pub enum Info {
+pub enum InfoKind {
     Battery,
     Cpu,
     Host,
@@ -23,7 +22,7 @@ pub enum Info {
     Uptime,
 }
 
-impl Info {
+impl InfoKind {
     pub const fn get_fields(&self) -> &[InfoField] {
         match self {
             Self::Battery => &[

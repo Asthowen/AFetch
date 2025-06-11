@@ -1,9 +1,8 @@
-use serde::Deserialize;
-
 use crate::{
-    config::SeparatorSizing, logos::get_logo, system::Info, translations::get_language,
+    config::SeparatorSizing, logos::get_logo, system::InfoKind, translations::get_language,
     util::colored::ColorWrapper,
 };
+use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 struct ConfigWrapper<'a> {
@@ -20,7 +19,7 @@ struct ConfigWrapper<'a> {
 #[serde(untagged)]
 enum Entry<'a> {
     Info {
-        entry: Info,
+        kind: InfoKind,
         header: Option<&'a str>,
         value: Option<&'a str>,
         separator: Option<&'a str>,
@@ -103,36 +102,36 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                 .infos
                 .map(|infos| {
                     infos
-                        .iter()
+                        .into_iter()
                         .map(|info| match info {
                             Entry::Info {
-                                entry: name,
+                                kind,
                                 header,
                                 value: format,
                                 separator,
                             } => super::Entry::Info {
-                                entry: *name,
-                                fields: name
+                                kind,
+                                fields: kind
                                     .get_fields()
                                     .iter()
                                     .filter(|field| {
                                         format
-                                            .unwrap_or_else(|| name.default_format())
+                                            .unwrap_or_else(|| kind.default_format())
                                             .contains(&field.to_string())
                                     })
                                     .copied()
                                     .collect::<Vec<_>>(),
                                 header: header
-                                    .unwrap_or_else(|| language_func(name.default_header())),
-                                format: format.unwrap_or_else(|| name.default_format()),
+                                    .unwrap_or_else(|| language_func(kind.default_header())),
+                                format: format.unwrap_or_else(|| kind.default_format()),
                                 separator: separator.unwrap_or_else(|| language_func("_colon_")),
                             },
                             Entry::Separator {
                                 separator: content,
                                 sizing: Some(sizing @ SeparatorSizing::Fixed(size)),
                             } => super::Entry::Separator {
-                                content: content.chars().cycle().take(*size).collect(),
-                                sizing: *sizing,
+                                content: content.chars().cycle().take(size).collect(),
+                                sizing,
                             },
                             Entry::Separator {
                                 separator: content,

@@ -1,22 +1,21 @@
 #![allow(clippy::ref_option_ref)]
 
+pub mod deserialize;
+
+use crate::{
+    error::FetchInfosError,
+    system::{InfoField, InfoKind},
+    translations::get_language,
+    util::colored::ColorWrapper,
+};
+use bitcode::{Decode, Encode};
+use serde::Deserialize;
+
 const FALLBACK_COLOR: Option<ColorWrapper> = Some(ColorWrapper::Rgb {
     r: 255,
     g: 255,
     b: 255,
 });
-
-pub mod deserialize;
-
-use bitcode::{Decode, Encode};
-use serde::Deserialize;
-
-use crate::{
-    error::FetchInfosError,
-    system::{Info, InfoField},
-    translations::get_language,
-    util::colored::ColorWrapper,
-};
 
 #[derive(Debug, Decode, Encode)]
 pub struct Config {
@@ -48,7 +47,7 @@ impl Default for ColorOption {
 #[derive(Debug, Decode, Encode)]
 pub enum Entry<'a> {
     Info {
-        entry: Info,
+        kind: InfoKind,
         header: &'a str,
         format: &'a str,
         separator: &'a str,
@@ -62,18 +61,18 @@ pub enum Entry<'a> {
 
 impl<'a> Entry<'a> {
     pub fn from_info(
-        info: Info,
+        kind: InfoKind,
         language_func: fn(&str) -> &'a str,
         header: Option<&'a str>,
         separator: Option<&'a str>,
     ) -> Self {
-        let format = info.default_format();
+        let format = kind.default_format();
         Self::Info {
-            entry: info,
-            header: header.unwrap_or_else(|| language_func(info.default_header())),
+            kind,
+            header: header.unwrap_or_else(|| language_func(kind.default_header())),
             format,
             separator: separator.unwrap_or_else(|| language_func("_colon_")),
-            fields: info
+            fields: kind
                 .get_fields()
                 .iter()
                 .filter(|field| format.contains(&field.to_string()))
@@ -200,14 +199,14 @@ pub fn load_config() -> Config {
 fn default_entries(locale: Locale) -> Vec<Entry<'static>> {
     let language_func = get_language(locale.into());
     vec![
-        Entry::from_info(Info::Host, language_func, Some(""), Some("")),
+        Entry::from_info(InfoKind::Host, language_func, Some(""), Some("")),
         Entry::Separator {
             content: "─".to_owned(),
             sizing: SeparatorSizing::Dynamic,
         },
-        Entry::from_info(Info::Cpu, language_func, None, None),
-        Entry::from_info(Info::Kernel, language_func, None, None),
-        Entry::from_info(Info::Uptime, language_func, None, None),
-        Entry::from_info(Info::Memory, language_func, None, None),
+        Entry::from_info(InfoKind::Cpu, language_func, None, None),
+        Entry::from_info(InfoKind::Kernel, language_func, None, None),
+        Entry::from_info(InfoKind::Uptime, language_func, None, None),
+        Entry::from_info(InfoKind::Memory, language_func, None, None),
     ]
 }

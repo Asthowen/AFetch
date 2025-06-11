@@ -6,7 +6,7 @@ use afetch::system::host::get_hostname;
 use afetch::system::kernel::get_kernel;
 use afetch::system::memory::get_memory;
 use afetch::system::uptime::get_uptime;
-use afetch::system::{Info, InfoFunction, InfoGroup, InfosResult};
+use afetch::system::{InfoFunction, InfoGroup, InfoKind, InfosResult};
 use afetch::translations::get_language;
 use afetch::util::colored::{ColorWrapper, ColorizeExt};
 use afetch::util::count_str_length;
@@ -27,13 +27,13 @@ fn main() -> Result<(), FetchInfosError> {
         .entries
         .par_iter()
         .filter_map(|element| match element {
-            Entry::Info { entry, .. } => match entry {
-                Info::Battery => Some(get_battery as InfoFunction),
-                Info::Cpu => Some(get_cpu as InfoFunction),
-                Info::Host => Some(get_hostname as InfoFunction),
-                Info::Kernel => Some(get_kernel as InfoFunction),
-                Info::Uptime => Some(get_uptime as InfoFunction),
-                Info::Memory => Some(get_memory as InfoFunction),
+            Entry::Info { kind: entry, .. } => match entry {
+                InfoKind::Battery => Some(get_battery as InfoFunction),
+                InfoKind::Cpu => Some(get_cpu as InfoFunction),
+                InfoKind::Host => Some(get_hostname as InfoFunction),
+                InfoKind::Kernel => Some(get_kernel as InfoFunction),
+                InfoKind::Uptime => Some(get_uptime as InfoFunction),
+                InfoKind::Memory => Some(get_memory as InfoFunction),
             },
             _ => None,
         })
@@ -101,7 +101,7 @@ fn main() -> Result<(), FetchInfosError> {
 
         match entry {
             Entry::Info {
-                entry,
+                kind,
                 header,
                 format: value,
                 separator,
@@ -112,7 +112,7 @@ fn main() -> Result<(), FetchInfosError> {
                     Err(error) => {
                         match &error.0 {
                             ErrorType::Missing => {
-                                eprintln!("Mising information for {}", entry.default_header())
+                                eprintln!("Mising information for {}", kind.default_header())
                             }
                             ErrorType::Error(error) => eprintln!("An error occurred: {error}"),
                         }
