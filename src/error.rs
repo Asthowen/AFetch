@@ -23,7 +23,7 @@ impl FetchInfosError {
     }
 
     pub fn error_exit<S: Display>(error: S) -> ! {
-        println!("{error}");
+        eprintln!("{error}");
         exit(9);
     }
 }

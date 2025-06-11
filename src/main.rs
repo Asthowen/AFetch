@@ -15,6 +15,7 @@ use afetch::util::print_picture;
 use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::fmt::Write;
+use supports_unicode::supports_unicode;
 
 use afetch::config::{Config, Entry, LogoStyle, SeparatorSizing, load_config};
 
@@ -39,16 +40,20 @@ fn main() -> Result<(), FetchInfosError> {
         .map(|f| f(language_func))
         .collect();
 
-    let logo = match config.logo {
-        LogoStyle::Braille { logo } => Some(get_logo(logo.map(str::to_owned))),
-        LogoStyle::File { location: path } => {
-            let file_content: &str = Box::leak(std::fs::read_to_string(path)?.into_boxed_str());
-            let max_length = count_str_length(file_content) + 6;
-            Some((max_length, 0, file_content))
+    let logo = if supports_unicode() {
+        match config.logo {
+            LogoStyle::Braille { logo } => Some(get_logo(logo.map(str::to_owned))),
+            LogoStyle::File { location: path } => {
+                let file_content: &str = Box::leak(std::fs::read_to_string(path)?.into_boxed_str());
+                let max_length = count_str_length(file_content) + 6;
+                Some((max_length, 0, file_content))
+            }
+            _ => None,
         }
-        _ => None,
-    }
-    .map(|(max_length, ansi, logo)| (max_length, ansi, logo.lines().collect::<Vec<&str>>()));
+        .map(|(max_length, ansi, logo)| (max_length, ansi, logo.lines().collect::<Vec<&str>>()))
+    } else {
+        None
+    };
 
     let header_color = match config.colors.header {
         Some(color) => color,

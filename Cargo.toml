@@ -42,7 +42,6 @@ rayon = "1.10.0"
 which = "8.0.0"
 dirs = "6.0.0"
 
-
 [features]
 default = []
 image = ["dep:image", "dep:viuer"]

@@ -32,7 +32,7 @@ pub mod xubuntu;
 pub mod zorin_os;
 
 pub fn get_logo(force_os: Option<String>) -> (usize, u8, &'static str) {
-    let os = if let Some(os) = force_os {
+    let os: String = if let Some(os) = force_os {
         os
     } else {
         #[cfg(target_os = "linux")]

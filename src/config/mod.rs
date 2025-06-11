@@ -165,7 +165,7 @@ pub fn load_config() -> Config {
         })
         .or_else(|| {
             let config_path = dirs::config_dir()
-                .map(|p| p.join("afetch/config.json"))
+                .map(|p| p.join("afetch").join("config.json"))
                 .ok_or_else(|| {
                     FetchInfosError::error_exit(
                         "An error occurred while retrieving the config folder, \
@@ -180,9 +180,9 @@ pub fn load_config() -> Config {
                 .and_then(|buf| {
                     let buf = Box::leak(buf.into_boxed_slice());
                     serde_json::from_slice(buf)
-                        .inspect_err(|e| {
+                        .inspect_err(|error| {
                             eprintln!(
-                                "Warning: Your configuration is malformed ({e}). \
+                                "Warning: Your configuration is malformed ({error}). \
                             Falling back to the default one.",
                             );
                         })
