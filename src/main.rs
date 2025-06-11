@@ -57,18 +57,15 @@ fn main() -> Result<(), FetchInfosError> {
             None => ColorWrapper::Ansi(6),
         },
     };
-    let header_separator_color = config
-        .colors
-        .header_separator
-        .unwrap_or(match logo.as_ref() {
-            Some(color) => ColorWrapper::Ansi(color.1),
-            None => ColorWrapper::Ansi(6),
-        });
-    let info_color = config.colors.info.unwrap_or(match logo.as_ref() {
+    let header_separator_color = config.colors.header_separator.unwrap_or(match &logo {
         Some(color) => ColorWrapper::Ansi(color.1),
         None => ColorWrapper::Ansi(6),
     });
-    let separator_color = config.colors.separator.unwrap_or(match logo.as_ref() {
+    let info_color = config.colors.info.unwrap_or(match &logo {
+        Some(color) => ColorWrapper::Ansi(color.1),
+        None => ColorWrapper::Ansi(6),
+    });
+    let separator_color = config.colors.separator.unwrap_or(match &logo {
         Some(color) => ColorWrapper::Ansi(color.1),
         None => ColorWrapper::Ansi(6),
     });
