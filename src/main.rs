@@ -27,7 +27,7 @@ fn main() -> Result<(), FetchInfosError> {
         .entries
         .par_iter()
         .filter_map(|element| match element {
-            Entry::Info { kind: entry, .. } => match entry {
+            Entry::Info { kind, .. } => match kind {
                 InfoKind::Battery => Some(get_battery as InfoFunction),
                 InfoKind::Cpu => Some(get_cpu as InfoFunction),
                 InfoKind::Host => Some(get_hostname as InfoFunction),
