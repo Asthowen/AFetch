@@ -1,3 +1,4 @@
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 use sysinfo::System;
 
 pub mod alpine;
@@ -55,7 +56,7 @@ pub fn get_logo(force_os: Option<String>) -> (usize, u8, &'static str) {
                 .and_then(|v| v.split_whitespace().next().map(str::to_owned))
                 .filter(|v| !v.is_empty())
                 .unwrap_or_else(|| "11".to_owned());
-            format!("windows{}", windows_version)
+            format!("windows{windows_version}")
         }
 
         #[cfg(not(any(
