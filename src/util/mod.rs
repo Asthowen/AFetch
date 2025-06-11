@@ -80,12 +80,14 @@ pub fn convert_to_readable_unity<T: Into<f64>>(size: T) -> String {
 }
 
 #[cfg(feature = "image")]
-pub fn print_picture(path: &str) -> Result<(), FetchInfosError> {
-    let file = File::open(path).map_err(|error| {
-        FetchInfosError::error_exit(format!(
-            "An error occurred while reading the image: {error}"
-        ))
-    })?;
+pub fn print_picture(path: &str) {
+    let file = File::open(path)
+        .map_err(|error| {
+            FetchInfosError::error_exit(format!(
+                "An error occurred while reading the image: {error}"
+            ))
+        })
+        .unwrap();
 
     let reader = ImageReader::new(BufReader::new(file))
         .with_guessed_format()
@@ -93,13 +95,17 @@ pub fn print_picture(path: &str) -> Result<(), FetchInfosError> {
             FetchInfosError::error_exit(format!(
                 "An error occurred while guessing the image format: {error}"
             ))
-        })?;
+        })
+        .unwrap();
 
-    let image = reader.decode().map_err(|error| {
-        FetchInfosError::error_exit(format!(
-            "An error occurred while decoding the image: {error}"
-        ))
-    })?;
+    let image = reader
+        .decode()
+        .map_err(|error| {
+            FetchInfosError::error_exit(format!(
+                "An error occurred while decoding the image: {error}"
+            ))
+        })
+        .unwrap();
 
     let dimensions: (u32, u32) = image.dimensions();
     let (width_ratio, height_ratio): (f64, f64) = if dimensions.0 < 44 {
@@ -116,12 +122,12 @@ pub fn print_picture(path: &str) -> Result<(), FetchInfosError> {
         absolute_offset: false,
         ..ViuerConfig::default()
     };
-    viuer::print(&image, &config).map_err(|error| {
-        FetchInfosError::error_exit(format!(
-            "An error occurred while printing the image: {error}",
-        ))
-    })?;
+    viuer::print(&image, &config)
+        .map_err(|error| {
+            FetchInfosError::error_exit(format!(
+                "An error occurred while printing the image: {error}",
+            ))
+        })
+        .unwrap();
     println!();
-
-    Ok(())
 }

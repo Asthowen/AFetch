@@ -172,9 +172,9 @@ fn main() -> Result<(), FetchInfosError> {
     }
 
     #[cfg(feature = "image")]
-    if matches!(config.logo, LogoStyle::Image { path }) {
+    if let LogoStyle::Image { location } = config.logo {
         print!("\n{}\x1b[{}A", output, config.entries.len());
-        print_picture(path)?;
+        print_picture(location);
         return Ok(());
     }
 
