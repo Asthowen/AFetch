@@ -29,6 +29,7 @@ pub fn french(key: &str) -> &'static str {
         "desktop" => "Bureau",
         "battery" => "Batterie",
         "wm" => "Gestionnaire de fenêtre",
+        "loadavg" => "Charge moyenne",
         _ => panic!("unknown key: {key}"),
     }
 }
