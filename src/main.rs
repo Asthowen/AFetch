@@ -4,6 +4,7 @@ use afetch::system::battery::get_battery;
 use afetch::system::cpu::get_cpu;
 use afetch::system::host::get_hostname;
 use afetch::system::kernel::get_kernel;
+use afetch::system::loadavg::get_loadavg;
 use afetch::system::memory::get_memory;
 use afetch::system::uptime::get_uptime;
 use afetch::system::{InfoFunction, InfoGroup, InfoKind, InfosResult};
@@ -34,6 +35,7 @@ fn main() -> Result<(), FetchInfosError> {
                 InfoKind::Kernel => Some(get_kernel as InfoFunction),
                 InfoKind::Uptime => Some(get_uptime as InfoFunction),
                 InfoKind::Memory => Some(get_memory as InfoFunction),
+                InfoKind::Loadavg => Some(get_loadavg as InfoFunction),
             },
             _ => None,
         })

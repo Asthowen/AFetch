@@ -208,5 +208,7 @@ fn default_entries(locale: Locale) -> Vec<Entry<'static>> {
         Entry::from_info(InfoKind::Kernel, language_func, None, None),
         Entry::from_info(InfoKind::Uptime, language_func, None, None),
         Entry::from_info(InfoKind::Memory, language_func, None, None),
+        #[cfg(not(target_os = "windows"))]
+        Entry::from_info(InfoKind::Loadavg, language_func, None, None),
     ]
 }

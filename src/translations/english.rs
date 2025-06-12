@@ -29,6 +29,7 @@ pub fn english(key: &str) -> &'static str {
         "desktop" => "Desktop",
         "battery" => "Battery",
         "wm" => "WM",
+        "loadavg" => "Load average",
         _ => panic!("unknown key: {key}"),
     }
 }
