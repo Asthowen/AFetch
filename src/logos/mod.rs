@@ -6,6 +6,7 @@ pub mod arch_linux;
 pub mod cent_os;
 pub mod computer;
 pub mod debian;
+pub mod deepin;
 pub mod elementary_os;
 pub mod endeavour;
 pub mod fedora;
@@ -98,9 +99,11 @@ pub fn get_logo(force_os: Option<String>) -> (usize, u8, &'static str) {
         "mageia" => mageia::MAGEIA,
         "ubuntumate" => ubuntu_mate::UBUNTU_MATE,
         "elementaryos" => elementary_os::ELEMENTARY_OS,
+        "elementaryos_old" => elementary_os::ELEMENTARY_OS_OLD,
         "solaris" => solaris::SOLARIS,
         "alpine" => alpine::ALPINE,
         "debian" | "debiangnu/linux" => debian::DEBIAN,
+        "deepin" => deepin::DEEPIN,
         _ => computer::COMPUTER,
     }
 }
