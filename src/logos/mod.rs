@@ -106,8 +106,8 @@ pub fn get_logo(force_os: Option<String>) -> (usize, u8, &'static str) {
         "alpine" => alpine::ALPINE,
         "debian" | "debiangnu/linux" => debian::DEBIAN,
         "deepin" => deepin::DEEPIN,
-        "rockylinux" => rocky_linux::ROCKY_LINUX,
-        "kde_neon" => kde_neon::KDE_NEON,
+        "rocky" => rocky_linux::ROCKY_LINUX,
+        "kde_neon" | "neon" => kde_neon::KDE_NEON,
         _ => computer::COMPUTER,
     }
 }
