@@ -12,6 +12,7 @@ pub mod endeavour;
 pub mod fedora;
 pub mod freebsd;
 pub mod gentoo;
+pub mod kde_neon;
 pub mod kubuntu;
 pub mod linux;
 pub mod linux_mint;
@@ -23,6 +24,7 @@ pub mod open_suse;
 pub mod pop_os;
 pub mod raspbian;
 pub mod rhel;
+pub mod rocky_linux;
 pub mod solaris;
 pub mod ubuntu;
 pub mod ubuntu_mate;
@@ -104,6 +106,8 @@ pub fn get_logo(force_os: Option<String>) -> (usize, u8, &'static str) {
         "alpine" => alpine::ALPINE,
         "debian" | "debiangnu/linux" => debian::DEBIAN,
         "deepin" => deepin::DEEPIN,
+        "rockylinux" => rocky_linux::ROCKY_LINUX,
+        "kde_neon" => kde_neon::KDE_NEON,
         _ => computer::COMPUTER,
     }
 }
