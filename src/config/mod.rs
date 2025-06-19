@@ -44,6 +44,23 @@ impl Default for ColorOption {
     }
 }
 
+#[derive(Debug, PartialEq, Decode, Encode)]
+pub enum ColorBlockDisplay {
+    Normal,
+    Bright,
+    Both,
+}
+
+impl ColorBlockDisplay {
+    pub fn show_normal(&self) -> bool {
+        self == &Self::Normal || self == &Self::Both
+    }
+
+    pub fn show_bright(&self) -> bool {
+        self == &Self::Bright || self == &Self::Both
+    }
+}
+
 #[derive(Debug, Decode, Encode)]
 pub enum Entry<'a> {
     Info {
@@ -59,7 +76,7 @@ pub enum Entry<'a> {
     },
     ColorBlocks {
         content: &'a str,
-        display: u8,
+        display: ColorBlockDisplay,
     },
 }
 
@@ -220,7 +237,7 @@ fn default_entries(locale: Locale) -> Vec<Entry<'static>> {
         },
         Entry::ColorBlocks {
             content: "● ",
-            display: 2,
+            display: ColorBlockDisplay::Both,
         },
     ]
 }

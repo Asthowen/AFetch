@@ -1,3 +1,4 @@
+use afetch::config::{Config, Entry, LogoStyle, SeparatorSizing, load_config};
 use afetch::error::{ErrorType, FetchInfosError};
 use afetch::logos::get_logo;
 use afetch::system::battery::get_battery;
@@ -17,8 +18,6 @@ use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::fmt::Write;
 use supports_unicode::supports_unicode;
-
-use afetch::config::{Config, Entry, LogoStyle, SeparatorSizing, load_config};
 
 fn main() -> Result<(), FetchInfosError> {
     let config: Config = load_config();
@@ -165,14 +164,14 @@ fn main() -> Result<(), FetchInfosError> {
                 );
             }
             Entry::ColorBlocks { content, display } => {
-                if *display == 0 || *display == 2 {
+                if display.show_normal() {
                     let first_colors: String = (0..8).fold(String::default(), |mut acc, i| {
                         write!(&mut acc, "\x1b[3{i}m{content}\x1b[0m").ok();
                         acc
                     });
                     write_entry(first_colors);
                 }
-                if *display == 1 || *display == 2 {
+                if display.show_bright() {
                     let second_colors: String = (0..8).fold(String::new(), |mut acc, i| {
                         write!(&mut acc, "\x1b[{}m{content}\x1b[0m", 90 + i).unwrap();
                         acc

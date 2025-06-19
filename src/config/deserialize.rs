@@ -62,7 +62,7 @@ struct Color<'a> {
     #[serde(default)]
     header_separator: Option<ColorRepr<'a>>,
     #[serde(default)]
-    info: Option<ColorRepr<'a>>,
+    infos: Option<ColorRepr<'a>>,
     #[serde(default)]
     separator: Option<ColorRepr<'a>>,
 }
@@ -116,7 +116,7 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                     super::FALLBACK_COLOR,
                     logo_color,
                 ),
-                info: color_repr_to_wrapper(config.colors.info, super::FALLBACK_COLOR, logo_color),
+                info: color_repr_to_wrapper(config.colors.infos, super::FALLBACK_COLOR, logo_color),
                 separator: color_repr_to_wrapper(
                     config.colors.separator,
                     super::FALLBACK_COLOR,
@@ -176,9 +176,13 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                                     ColorBlockStyle::Text(s) => s,
                                 },
                                 display: match display {
-                                    Some(ColorBlockDisplay::Normal) => 0,
-                                    Some(ColorBlockDisplay::Bright) => 1,
-                                    _ => 2,
+                                    Some(ColorBlockDisplay::Normal) => {
+                                        super::ColorBlockDisplay::Normal
+                                    }
+                                    Some(ColorBlockDisplay::Bright) => {
+                                        super::ColorBlockDisplay::Bright
+                                    }
+                                    _ => super::ColorBlockDisplay::Both,
                                 },
                             },
                         })
