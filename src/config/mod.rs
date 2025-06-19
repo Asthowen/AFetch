@@ -23,6 +23,25 @@ pub struct Config {
     pub entries: Vec<Entry<'static>>,
     pub colors: ColorOption,
     pub logo: LogoStyle<'static>,
+    pub parameters: InfoConfig<'static>,
+}
+
+#[derive(Debug, Default, Decode, Encode)]
+pub struct InfoConfig<'a> {
+    pub disks: DisksInfoConfig<'a>,
+}
+
+#[derive(Debug, Decode, Encode)]
+pub struct DisksInfoConfig<'a> {
+    pub exclude: Vec<&'a str>,
+}
+
+impl<'a> Default for DisksInfoConfig<'a> {
+    fn default() -> Self {
+        Self {
+            exclude: vec!["/boot", "/etc", "/snapd", "/docker"],
+        }
+    }
 }
 
 #[derive(Debug, Decode, Encode)]
@@ -88,15 +107,19 @@ impl<'a> Entry<'a> {
         separator: Option<&'a str>,
     ) -> Self {
         let format = kind.default_format();
+        let header = header.unwrap_or_else(|| language_func(kind.default_header()));
         Self::Info {
             kind,
-            header: header.unwrap_or_else(|| language_func(kind.default_header())),
+            header,
             format,
             separator: separator.unwrap_or_else(|| language_func("_colon_")),
             fields: kind
                 .get_fields()
                 .iter()
-                .filter(|field| format.contains(&field.to_string()))
+                .filter(|field| {
+                    let field_str = field.as_str();
+                    format.contains(field_str) || header.contains(field_str)
+                })
                 .copied()
                 .collect(),
         }
@@ -162,6 +185,7 @@ impl Default for Config {
             entries: default_entries(Locale::default()),
             colors: ColorOption::default(),
             logo: LogoStyle::default(),
+            parameters: InfoConfig::default(),
         }
     }
 }
