@@ -121,9 +121,9 @@ fn main() -> Result<(), FetchInfosError> {
                     }
                 };
 
-                let mut format_and_write = |infos: &InfoGroup| {
+                let mut format_and_write = |info: &InfoGroup| {
                     let mut formatted_info = (*value).to_owned();
-                    for value in &infos.values {
+                    for value in &info.values {
                         formatted_info =
                             formatted_info.replace(&format!("{{{}}}", value.field), &value.value);
                     }

@@ -8,7 +8,7 @@ use serde::Deserialize;
 struct ConfigWrapper<'a> {
     #[serde(default)]
     language: super::Locale,
-    infos: Option<Vec<Entry<'a>>>,
+    info: Option<Vec<Entry<'a>>>,
     #[serde(default, borrow)]
     colors: Color<'a>,
     #[serde(default)]
@@ -62,7 +62,7 @@ struct Color<'a> {
     #[serde(default)]
     header_separator: Option<ColorRepr<'a>>,
     #[serde(default)]
-    infos: Option<ColorRepr<'a>>,
+    info: Option<ColorRepr<'a>>,
     #[serde(default)]
     separator: Option<ColorRepr<'a>>,
 }
@@ -116,7 +116,7 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                     super::FALLBACK_COLOR,
                     logo_color,
                 ),
-                info: color_repr_to_wrapper(config.colors.infos, super::FALLBACK_COLOR, logo_color),
+                info: color_repr_to_wrapper(config.colors.info, super::FALLBACK_COLOR, logo_color),
                 separator: color_repr_to_wrapper(
                     config.colors.separator,
                     super::FALLBACK_COLOR,
@@ -124,10 +124,9 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                 ),
             },
             entries: config
-                .infos
-                .map(|infos| {
-                    infos
-                        .into_iter()
+                .info
+                .map(|info| {
+                    info.into_iter()
                         .map(|info| match info {
                             Entry::Info {
                                 kind,

@@ -23,7 +23,7 @@ A clear and concise description of what you expected to happen.
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
-**Device infos (please complete the following information):**
+**Device info (please complete the following information):**
  - OS: [e.g. GNU/Linux (ArchLinux, Debian), Windows, MacOS]
  - Terminal name [e.g. Tess, Konsole]
  - Terminal version [e.g. 1.0.0]
