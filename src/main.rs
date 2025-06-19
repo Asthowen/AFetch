@@ -173,7 +173,7 @@ fn main() -> Result<(), FetchInfosError> {
                 }
                 if display.show_bright() {
                     let second_colors: String = (0..8).fold(String::new(), |mut acc, i| {
-                        write!(&mut acc, "\x1b[{}m{content}\x1b[0m", 90 + i).unwrap();
+                        write!(&mut acc, "\x1b[9{i}m{content}\x1b[0m").unwrap();
                         acc
                     });
                     write_entry(second_colors);
