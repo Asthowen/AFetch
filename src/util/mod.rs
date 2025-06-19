@@ -72,11 +72,12 @@ pub fn convert_to_readable_unity<T: Into<f64>>(size: T) -> String {
         return "0 B".to_owned();
     }
     let base: f64 = size_converted.log10() / 1024_f64.log10();
-    let mut result: String = format!("{:.1}", 1024_f64.powf(base - base.floor()))
-        .trim_end_matches(".0")
-        .to_owned();
-    result.push_str(SUFFIX[base.floor() as usize]);
-    result
+    format!(
+        "{:.1} {}",
+        1024_f64.powf(base.fract()),
+        SUFFIX[base.floor() as usize]
+    )
+    .replace(".0", "")
 }
 
 #[cfg(feature = "image")]

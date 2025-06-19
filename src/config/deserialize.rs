@@ -13,6 +13,20 @@ struct ConfigWrapper<'a> {
     colors: Color<'a>,
     #[serde(default)]
     logo: super::LogoStyle<'a>,
+    #[serde(default)]
+    parameters: Option<InfoConfig<'a>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct InfoConfig<'a> {
+    #[serde(default, borrow)]
+    disks: Option<DisksInfoConfig<'a>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct DisksInfoConfig<'a> {
+    #[serde(default, borrow)]
+    exclude: Option<Vec<&'a str>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -133,23 +147,27 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                                 header,
                                 value: format,
                                 separator,
-                            } => super::Entry::Info {
-                                kind,
-                                fields: kind
-                                    .get_fields()
-                                    .iter()
-                                    .filter(|field| {
-                                        format
-                                            .unwrap_or_else(|| kind.default_format())
-                                            .contains(&field.to_string())
-                                    })
-                                    .copied()
-                                    .collect::<Vec<_>>(),
-                                header: header
-                                    .unwrap_or_else(|| language_func(kind.default_header())),
-                                format: format.unwrap_or_else(|| kind.default_format()),
-                                separator: separator.unwrap_or_else(|| language_func("_colon_")),
-                            },
+                            } => {
+                                let header =
+                                    header.unwrap_or_else(|| language_func(kind.default_header()));
+                                let format = format.unwrap_or_else(|| kind.default_format());
+                                super::Entry::Info {
+                                    kind,
+                                    fields: kind
+                                        .get_fields()
+                                        .iter()
+                                        .filter(|field| {
+                                            let field_str = field.as_str();
+                                            header.contains(field_str) || format.contains(field_str)
+                                        })
+                                        .copied()
+                                        .collect::<Vec<_>>(),
+                                    header,
+                                    format,
+                                    separator: separator
+                                        .unwrap_or_else(|| language_func("_colon_")),
+                                }
+                            }
                             Entry::Separator {
                                 separator: content,
                                 sizing: Some(sizing @ SeparatorSizing::Fixed(size)),
@@ -188,6 +206,17 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                         .collect::<Vec<_>>()
                 })
                 .unwrap_or_else(|| super::default_entries(config.language)),
+            parameters: config
+                .parameters
+                .map(|info| super::InfoConfig {
+                    disks: info
+                        .disks
+                        .map(|disks| super::DisksInfoConfig {
+                            exclude: disks.exclude.unwrap_or_default(),
+                        })
+                        .unwrap_or_default(),
+                })
+                .unwrap_or_default(),
         })
     }
 }

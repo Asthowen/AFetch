@@ -3,6 +3,8 @@ use afetch::error::{ErrorType, FetchInfosError};
 use afetch::logos::get_logo;
 use afetch::system::battery::get_battery;
 use afetch::system::cpu::get_cpu;
+use afetch::system::disk::get_disk;
+use afetch::system::disks::get_disks;
 use afetch::system::host::get_hostname;
 use afetch::system::kernel::get_kernel;
 use afetch::system::loadavg::get_loadavg;
@@ -27,18 +29,20 @@ fn main() -> Result<(), FetchInfosError> {
         .entries
         .par_iter()
         .filter_map(|element| match element {
-            Entry::Info { kind, .. } => match kind {
-                InfoKind::Battery => Some(get_battery as InfoFunction),
-                InfoKind::Cpu => Some(get_cpu as InfoFunction),
-                InfoKind::Host => Some(get_hostname as InfoFunction),
-                InfoKind::Kernel => Some(get_kernel as InfoFunction),
-                InfoKind::Uptime => Some(get_uptime as InfoFunction),
-                InfoKind::Memory => Some(get_memory as InfoFunction),
-                InfoKind::Loadavg => Some(get_loadavg as InfoFunction),
+            Entry::Info { kind, fields, .. } => match kind {
+                InfoKind::Battery => Some((get_battery as InfoFunction, fields)),
+                InfoKind::Cpu => Some((get_cpu as InfoFunction, fields)),
+                InfoKind::Disk => Some((get_disk as InfoFunction, fields)),
+                InfoKind::Disks => Some((get_disks as InfoFunction, fields)),
+                InfoKind::Host => Some((get_hostname as InfoFunction, fields)),
+                InfoKind::Kernel => Some((get_kernel as InfoFunction, fields)),
+                InfoKind::Uptime => Some((get_uptime as InfoFunction, fields)),
+                InfoKind::Memory => Some((get_memory as InfoFunction, fields)),
+                InfoKind::Loadavg => Some((get_loadavg as InfoFunction, fields)),
             },
             _ => None,
         })
-        .map(|f| f(language_func))
+        .map(|(f, fields)| f(language_func, fields, &config))
         .collect();
 
     let logo = if supports_unicode() {
@@ -78,8 +82,9 @@ fn main() -> Result<(), FetchInfosError> {
 
     let mut output: String = String::default();
     let mut last_info_len = 0;
+    let mut i = 0;
     let mut i2 = 0;
-    for (i, entry) in config.entries.iter().enumerate() {
+    for entry in &config.entries {
         let mut write_entry = |entry: String| {
             #[cfg(feature = "image")]
             if matches!(config.logo, LogoStyle::Image { .. }) {
@@ -98,6 +103,8 @@ fn main() -> Result<(), FetchInfosError> {
             if logo.is_none() {
                 writeln!(output, "{entry}").ok();
             }
+
+            i += 1;
         };
 
         match entry {
@@ -122,19 +129,21 @@ fn main() -> Result<(), FetchInfosError> {
                 };
 
                 let mut format_and_write = |info: &InfoGroup| {
+                    let mut formatted_header = (*header).to_owned();
                     let mut formatted_info = (*value).to_owned();
                     for value in &info.values {
-                        formatted_info =
-                            formatted_info.replace(&format!("{{{}}}", value.field), &value.value);
+                        let placeholder = format!("{{{}}}", value.field);
+                        formatted_header = formatted_header.replace(&placeholder, &value.value);
+                        formatted_info = formatted_info.replace(&placeholder, &value.value);
                     }
 
-                    last_info_len = count_str_length(header)
+                    last_info_len = count_str_length(&formatted_header)
                         + count_str_length(separator)
                         + count_str_length(&formatted_info);
 
                     formatted_info = format!(
                         "{}{}{}",
-                        header.custom_color_wrapper(header_color).bold(),
+                        formatted_header.custom_color_wrapper(header_color).bold(),
                         separator.custom_color_wrapper(header_separator_color),
                         formatted_info.custom_color_wrapper(info_color)
                     );
@@ -183,8 +192,8 @@ fn main() -> Result<(), FetchInfosError> {
     }
 
     if let Some((_, _, lines)) = &logo {
-        if config.entries.len() < lines.len() {
-            for logo_line in &lines[config.entries.len()..] {
+        if i < lines.len() {
+            for logo_line in &lines[i..] {
                 writeln!(output, "   {}{}", logo_line, "".white()).ok();
             }
         }
