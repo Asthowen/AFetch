@@ -24,7 +24,7 @@ enum ColorBlockStyle<'a> {
     Triangle,
     Square,
     Star,
-    Text(&'a str),
+    Custom(&'a str),
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -173,7 +173,7 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                                     ColorBlockStyle::Triangle => "▲ ",
                                     ColorBlockStyle::Square => "■ ",
                                     ColorBlockStyle::Star => "★ ",
-                                    ColorBlockStyle::Text(s) => s,
+                                    ColorBlockStyle::Custom(content) => content,
                                 },
                                 display: match display {
                                     Some(ColorBlockDisplay::Normal) => {
