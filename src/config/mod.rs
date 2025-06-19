@@ -57,6 +57,10 @@ pub enum Entry<'a> {
         content: String,
         sizing: SeparatorSizing,
     },
+    ColorBlocks {
+        content: &'a str,
+        display: u8,
+    },
 }
 
 impl<'a> Entry<'a> {
@@ -82,7 +86,7 @@ impl<'a> Entry<'a> {
     }
 }
 
-#[derive(Debug, Deserialize, Default, Clone, Copy, Decode, Encode)]
+#[derive(Debug, Default, Copy, Clone, Deserialize, Decode, Encode)]
 #[serde(rename_all = "lowercase")]
 pub enum SeparatorSizing {
     #[default]
@@ -114,7 +118,7 @@ impl<'a> Default for LogoStyle<'a> {
     }
 }
 
-#[derive(serde::Deserialize, Default, Debug, Clone, Copy)]
+#[derive(Debug, Default, Copy, Clone, Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum Locale {
     Fr,
@@ -210,5 +214,13 @@ fn default_entries(locale: Locale) -> Vec<Entry<'static>> {
         Entry::from_info(InfoKind::Memory, language_func, None, None),
         #[cfg(not(target_os = "windows"))]
         Entry::from_info(InfoKind::Loadavg, language_func, None, None),
+        Entry::Separator {
+            content: String::default(),
+            sizing: SeparatorSizing::Fixed(0),
+        },
+        Entry::ColorBlocks {
+            content: "● ",
+            display: 2,
+        },
     ]
 }

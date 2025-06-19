@@ -164,6 +164,22 @@ fn main() -> Result<(), FetchInfosError> {
                         .to_string(),
                 );
             }
+            Entry::ColorBlocks { content, display } => {
+                if *display == 0 || *display == 2 {
+                    let first_colors: String = (0..8).fold(String::default(), |mut acc, i| {
+                        write!(&mut acc, "\x1b[3{i}m{content}\x1b[0m").ok();
+                        acc
+                    });
+                    write_entry(first_colors);
+                }
+                if *display == 1 || *display == 2 {
+                    let second_colors: String = (0..8).fold(String::new(), |mut acc, i| {
+                        write!(&mut acc, "\x1b[{}m{content}\x1b[0m", 90 + i).unwrap();
+                        acc
+                    });
+                    write_entry(second_colors);
+                }
+            }
         }
     }
 

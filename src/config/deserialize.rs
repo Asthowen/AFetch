@@ -4,7 +4,7 @@ use crate::{
 };
 use serde::Deserialize;
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 struct ConfigWrapper<'a> {
     #[serde(default)]
     language: super::Locale,
@@ -15,7 +15,28 @@ struct ConfigWrapper<'a> {
     logo: super::LogoStyle<'a>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ColorBlockStyle<'a> {
+    Circle,
+    Classic,
+    Diamond,
+    Triangle,
+    Square,
+    Star,
+    Text(&'a str),
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ColorBlockDisplay {
+    Normal,
+    Bright,
+    #[default]
+    Both,
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum Entry<'a> {
     Info {
@@ -26,11 +47,15 @@ enum Entry<'a> {
     },
     Separator {
         separator: String,
-        sizing: Option<super::SeparatorSizing>,
+        sizing: Option<SeparatorSizing>,
+    },
+    ColorBlocks {
+        color_block_style: ColorBlockStyle<'a>,
+        display: Option<ColorBlockDisplay>,
     },
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Default, Deserialize)]
 struct Color<'a> {
     #[serde(default, borrow)]
     header: Option<ColorRepr<'a>>,
@@ -133,12 +158,28 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                                 content: content.chars().cycle().take(size).collect(),
                                 sizing,
                             },
-                            Entry::Separator {
-                                separator: content,
-                                sizing,
-                            } => super::Entry::Separator {
-                                content: content.to_owned(),
+                            Entry::Separator { separator, sizing } => super::Entry::Separator {
+                                content: separator,
                                 sizing: sizing.unwrap_or_default(),
+                            },
+                            Entry::ColorBlocks {
+                                color_block_style,
+                                display,
+                            } => super::Entry::ColorBlocks {
+                                content: match color_block_style {
+                                    ColorBlockStyle::Circle => "● ",
+                                    ColorBlockStyle::Classic => "███",
+                                    ColorBlockStyle::Diamond => "◆ ",
+                                    ColorBlockStyle::Triangle => "▲ ",
+                                    ColorBlockStyle::Square => "■ ",
+                                    ColorBlockStyle::Star => "★ ",
+                                    ColorBlockStyle::Text(s) => s,
+                                },
+                                display: match display {
+                                    Some(ColorBlockDisplay::Normal) => 0,
+                                    Some(ColorBlockDisplay::Bright) => 1,
+                                    _ => 2,
+                                },
                             },
                         })
                         .collect::<Vec<_>>()
