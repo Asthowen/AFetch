@@ -7,15 +7,15 @@ pub fn get_cpu(_languages_func: fn(&str) -> &str) -> Result<InfosResult, FetchIn
     let system =
         System::new_with_specifics(RefreshKind::nothing().with_cpu(CpuRefreshKind::everything()));
 
-    let mut cpu_infos: Vec<InfoGroup> = Vec::new();
-    let mut prevent_duplicate: HashSet<&str> = HashSet::new();
+    let mut cpu_info: Vec<InfoGroup> = Vec::new();
+    let mut seen: HashSet<&str> = HashSet::new();
 
     for cpu in system.cpus() {
-        if prevent_duplicate.contains(cpu.brand()) {
+        if seen.contains(cpu.brand()) {
             continue;
         }
-        prevent_duplicate.insert(cpu.brand());
-        cpu_infos.push(InfoGroup {
+        seen.insert(cpu.brand());
+        cpu_info.push(InfoGroup {
             values: vec![
                 InfoValue {
                     field: InfoField::CpuName,
@@ -41,5 +41,5 @@ pub fn get_cpu(_languages_func: fn(&str) -> &str) -> Result<InfosResult, FetchIn
         });
     }
 
-    Ok(InfosResult::Several(cpu_infos))
+    Ok(InfosResult::Several(cpu_info))
 }

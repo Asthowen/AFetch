@@ -9,7 +9,7 @@ pub fn get_battery(languages_func: fn(&str) -> &str) -> Result<InfosResult, Fetc
         .batteries()
         .map_err(|error| FetchInfosError::error(error.to_string()))?;
 
-    let mut batteries_infos: Vec<InfoGroup> = Vec::new();
+    let mut batteries_info: Vec<InfoGroup> = Vec::new();
 
     while let Some(Ok(battery)) = batteries.next() {
         let mut info_group = InfoGroup {
@@ -108,8 +108,8 @@ pub fn get_battery(languages_func: fn(&str) -> &str) -> Result<InfosResult, Fetc
             });
         }
 
-        batteries_infos.push(info_group);
+        batteries_info.push(info_group);
     }
 
-    Ok(InfosResult::Several(batteries_infos))
+    Ok(InfosResult::Several(batteries_info))
 }

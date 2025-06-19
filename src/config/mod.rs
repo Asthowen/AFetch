@@ -44,6 +44,23 @@ impl Default for ColorOption {
     }
 }
 
+#[derive(Debug, PartialEq, Decode, Encode)]
+pub enum ColorBlockDisplay {
+    Normal,
+    Bright,
+    Both,
+}
+
+impl ColorBlockDisplay {
+    pub fn show_normal(&self) -> bool {
+        self == &Self::Normal || self == &Self::Both
+    }
+
+    pub fn show_bright(&self) -> bool {
+        self == &Self::Bright || self == &Self::Both
+    }
+}
+
 #[derive(Debug, Decode, Encode)]
 pub enum Entry<'a> {
     Info {
@@ -56,6 +73,10 @@ pub enum Entry<'a> {
     Separator {
         content: String,
         sizing: SeparatorSizing,
+    },
+    ColorBlocks {
+        content: &'a str,
+        display: ColorBlockDisplay,
     },
 }
 
@@ -82,7 +103,7 @@ impl<'a> Entry<'a> {
     }
 }
 
-#[derive(Debug, Deserialize, Default, Clone, Copy, Decode, Encode)]
+#[derive(Debug, Default, Copy, Clone, Deserialize, Decode, Encode)]
 #[serde(rename_all = "lowercase")]
 pub enum SeparatorSizing {
     #[default]
@@ -114,7 +135,7 @@ impl<'a> Default for LogoStyle<'a> {
     }
 }
 
-#[derive(serde::Deserialize, Default, Debug, Clone, Copy)]
+#[derive(Debug, Default, Copy, Clone, Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum Locale {
     Fr,
@@ -210,5 +231,13 @@ fn default_entries(locale: Locale) -> Vec<Entry<'static>> {
         Entry::from_info(InfoKind::Memory, language_func, None, None),
         #[cfg(not(target_os = "windows"))]
         Entry::from_info(InfoKind::Loadavg, language_func, None, None),
+        Entry::Separator {
+            content: String::default(),
+            sizing: SeparatorSizing::Fixed(0),
+        },
+        Entry::ColorBlocks {
+            content: "● ",
+            display: ColorBlockDisplay::Both,
+        },
     ]
 }

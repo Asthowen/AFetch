@@ -4,18 +4,39 @@ use crate::{
 };
 use serde::Deserialize;
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 struct ConfigWrapper<'a> {
     #[serde(default)]
     language: super::Locale,
-    infos: Option<Vec<Entry<'a>>>,
+    info: Option<Vec<Entry<'a>>>,
     #[serde(default, borrow)]
     colors: Color<'a>,
     #[serde(default)]
     logo: super::LogoStyle<'a>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ColorBlockStyle<'a> {
+    Circle,
+    Classic,
+    Diamond,
+    Triangle,
+    Square,
+    Star,
+    Custom(&'a str),
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ColorBlockDisplay {
+    Normal,
+    Bright,
+    #[default]
+    Both,
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum Entry<'a> {
     Info {
@@ -26,11 +47,15 @@ enum Entry<'a> {
     },
     Separator {
         separator: String,
-        sizing: Option<super::SeparatorSizing>,
+        sizing: Option<SeparatorSizing>,
+    },
+    ColorBlocks {
+        color_block_style: ColorBlockStyle<'a>,
+        display: Option<ColorBlockDisplay>,
     },
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Default, Deserialize)]
 struct Color<'a> {
     #[serde(default, borrow)]
     header: Option<ColorRepr<'a>>,
@@ -99,10 +124,9 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                 ),
             },
             entries: config
-                .infos
-                .map(|infos| {
-                    infos
-                        .into_iter()
+                .info
+                .map(|info| {
+                    info.into_iter()
                         .map(|info| match info {
                             Entry::Info {
                                 kind,
@@ -133,12 +157,32 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                                 content: content.chars().cycle().take(size).collect(),
                                 sizing,
                             },
-                            Entry::Separator {
-                                separator: content,
-                                sizing,
-                            } => super::Entry::Separator {
-                                content: content.to_owned(),
+                            Entry::Separator { separator, sizing } => super::Entry::Separator {
+                                content: separator,
                                 sizing: sizing.unwrap_or_default(),
+                            },
+                            Entry::ColorBlocks {
+                                color_block_style,
+                                display,
+                            } => super::Entry::ColorBlocks {
+                                content: match color_block_style {
+                                    ColorBlockStyle::Circle => "● ",
+                                    ColorBlockStyle::Classic => "███",
+                                    ColorBlockStyle::Diamond => "◆ ",
+                                    ColorBlockStyle::Triangle => "▲ ",
+                                    ColorBlockStyle::Square => "■ ",
+                                    ColorBlockStyle::Star => "★ ",
+                                    ColorBlockStyle::Custom(content) => content,
+                                },
+                                display: match display {
+                                    Some(ColorBlockDisplay::Normal) => {
+                                        super::ColorBlockDisplay::Normal
+                                    }
+                                    Some(ColorBlockDisplay::Bright) => {
+                                        super::ColorBlockDisplay::Bright
+                                    }
+                                    _ => super::ColorBlockDisplay::Both,
+                                },
                             },
                         })
                         .collect::<Vec<_>>()

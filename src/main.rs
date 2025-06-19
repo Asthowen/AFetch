@@ -1,3 +1,4 @@
+use afetch::config::{Config, Entry, LogoStyle, SeparatorSizing, load_config};
 use afetch::error::{ErrorType, FetchInfosError};
 use afetch::logos::get_logo;
 use afetch::system::battery::get_battery;
@@ -17,8 +18,6 @@ use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::fmt::Write;
 use supports_unicode::supports_unicode;
-
-use afetch::config::{Config, Entry, LogoStyle, SeparatorSizing, load_config};
 
 fn main() -> Result<(), FetchInfosError> {
     let config: Config = load_config();
@@ -122,9 +121,9 @@ fn main() -> Result<(), FetchInfosError> {
                     }
                 };
 
-                let mut format_and_write = |infos: &InfoGroup| {
+                let mut format_and_write = |info: &InfoGroup| {
                     let mut formatted_info = (*value).to_owned();
-                    for value in &infos.values {
+                    for value in &info.values {
                         formatted_info =
                             formatted_info.replace(&format!("{{{}}}", value.field), &value.value);
                     }
@@ -163,6 +162,22 @@ fn main() -> Result<(), FetchInfosError> {
                         .custom_color_wrapper(separator_color)
                         .to_string(),
                 );
+            }
+            Entry::ColorBlocks { content, display } => {
+                if display.show_normal() {
+                    let first_colors: String = (0..8).fold(String::default(), |mut acc, i| {
+                        write!(&mut acc, "\x1b[3{i}m{content}\x1b[0m").ok();
+                        acc
+                    });
+                    write_entry(first_colors);
+                }
+                if display.show_bright() {
+                    let second_colors: String = (0..8).fold(String::new(), |mut acc, i| {
+                        write!(&mut acc, "\x1b[9{i}m{content}\x1b[0m").unwrap();
+                        acc
+                    });
+                    write_entry(second_colors);
+                }
             }
         }
     }
