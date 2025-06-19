@@ -17,7 +17,7 @@ pub fn get_disks(
     for disk in
         Disks::new_with_refreshed_list_specifics(DiskRefreshKind::nothing().with_storage()).list()
     {
-        let mount_point = disk.mount_point().to_str().unwrap_or_default();
+        let mount_point = disk.mount_point().to_string_lossy().to_string();
 
         if config
             .parameters

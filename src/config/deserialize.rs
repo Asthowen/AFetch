@@ -20,13 +20,13 @@ struct ConfigWrapper<'a> {
 #[derive(Debug, Deserialize)]
 struct InfoConfig<'a> {
     #[serde(default, borrow)]
-    disks: Option<DiskInfoConfig<'a>>,
+    disks: Option<DisksInfoConfig<'a>>,
 }
 
 #[derive(Debug, Deserialize)]
-struct DiskInfoConfig<'a> {
+struct DisksInfoConfig<'a> {
     #[serde(default, borrow)]
-    mount_points_exclude: Option<Vec<&'a str>>,
+    exclude: Option<Vec<&'a str>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -212,7 +212,7 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                     disks: info
                         .disks
                         .map(|disks| super::DisksInfoConfig {
-                            exclude: disks.mount_points_exclude.unwrap_or_default(),
+                            exclude: disks.exclude.unwrap_or_default(),
                         })
                         .unwrap_or_default(),
                 })
