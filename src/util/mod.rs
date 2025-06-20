@@ -1,6 +1,6 @@
 pub mod colored;
 
-use crate::error::FetchInfosError;
+use crate::error::FetchInfoError;
 #[cfg(feature = "image")]
 use image::{GenericImageView, ImageReader};
 use std::fmt::Write;
@@ -23,7 +23,7 @@ pub fn command_exist(program: &str) -> bool {
     which::which(program).is_ok()
 }
 
-pub fn str_from_command(command: &mut Command) -> Result<String, FetchInfosError> {
+pub fn str_from_command(command: &mut Command) -> Result<String, FetchInfoError> {
     Ok(String::from_utf8_lossy(&command.output()?.stdout).into_owned())
 }
 
@@ -84,20 +84,20 @@ pub fn convert_to_readable_unity<T: Into<f64>>(size: T) -> String {
 pub fn print_picture(path: &str) {
     let file = match File::open(path) {
         Ok(f) => f,
-        Err(error) => FetchInfosError::error_exit(format!(
+        Err(error) => FetchInfoError::error_exit(format!(
             "An error occurred while reading the image: {error}"
         )),
     };
     let reader: ImageReader<BufReader<File>> =
         match ImageReader::new(BufReader::new(file)).with_guessed_format() {
             Ok(r) => r,
-            Err(error) => FetchInfosError::error_exit(format!(
+            Err(error) => FetchInfoError::error_exit(format!(
                 "An error occurred while guessing the image format: {error}"
             )),
         };
     let image = match reader.decode() {
         Ok(i) => i,
-        Err(error) => FetchInfosError::error_exit(format!(
+        Err(error) => FetchInfoError::error_exit(format!(
             "An error occurred while decoding the image: {error}"
         )),
     };
@@ -118,7 +118,7 @@ pub fn print_picture(path: &str) {
         ..ViuerConfig::default()
     };
     if let Err(error) = viuer::print(&image, &config) {
-        FetchInfosError::error_exit(format!(
+        FetchInfoError::error_exit(format!(
             "An error occurred while printing the image: {error}",
         ))
     }

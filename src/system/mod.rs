@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::error::FetchInfosError;
+use crate::error::FetchInfoError;
 use bitcode::{Decode, Encode};
 use serde::Deserialize;
 
@@ -14,7 +14,7 @@ pub mod memory;
 pub mod uptime;
 
 pub type InfoFunction =
-    fn(fn(&str) -> &str, &[InfoField], &Config) -> Result<InfosResult, FetchInfosError>;
+    fn(fn(&str) -> &str, &[InfoField], &Config) -> Result<InfoResult, FetchInfoError>;
 
 #[macro_export]
 macro_rules! filtered_values {
@@ -32,7 +32,7 @@ macro_rules! filtered_values {
     }};
 }
 
-#[derive(Deserialize, Clone, Copy, Debug, Decode, Encode)]
+#[derive(Deserialize, Clone, Copy, Debug, Decode, Encode, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum InfoKind {
     Battery,
@@ -85,6 +85,7 @@ impl InfoKind {
                 InfoField::DiskKind,
                 InfoField::DiskWrittenSinceBoot,
                 InfoField::DiskReadSinceBoot,
+                InfoField::DiskFileSystem,
             ],
             Self::Disks => &[
                 InfoField::DisksCount,
@@ -141,7 +142,7 @@ impl InfoKind {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy, Decode, Encode)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash, Decode, Encode)]
 pub enum InfoField {
     BatteryModel,
     BatteryCycleCount,
@@ -269,7 +270,7 @@ pub struct InfoGroup {
     pub values: Vec<InfoValue>,
 }
 
-pub enum InfosResult {
+pub enum InfoResult {
     Single(InfoGroup),
     Several(Vec<InfoGroup>),
 }

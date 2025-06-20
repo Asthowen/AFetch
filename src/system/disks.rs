@@ -1,7 +1,7 @@
 use crate::config::Config;
-use crate::error::FetchInfosError;
+use crate::error::FetchInfoError;
 use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoValue, InfosResult};
+use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
 use crate::util::convert_to_readable_unity;
 use sysinfo::{DiskRefreshKind, Disks};
 
@@ -9,7 +9,7 @@ pub fn get_disks(
     _languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     config: &Config,
-) -> Result<InfosResult, FetchInfosError> {
+) -> Result<InfoResult, FetchInfoError> {
     let mut available_space = 0;
     let mut total_space = 0;
     let mut count = 0;
@@ -34,7 +34,7 @@ pub fn get_disks(
         count += 1;
     }
 
-    Ok(InfosResult::Single(InfoGroup {
+    Ok(InfoResult::Single(InfoGroup {
         values: filtered_values!(
             fields,
             [

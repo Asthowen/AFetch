@@ -1,7 +1,7 @@
 use crate::config::Config;
-use crate::error::FetchInfosError;
+use crate::error::FetchInfoError;
 use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoValue, InfosResult};
+use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
 use crate::util::format_time;
 use starship_battery::units::time::second;
 
@@ -9,11 +9,11 @@ pub fn get_battery(
     languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     _config: &Config,
-) -> Result<InfosResult, FetchInfosError> {
+) -> Result<InfoResult, FetchInfoError> {
     let mut batteries = starship_battery::Manager::new()
-        .map_err(|error| FetchInfosError::error(error.to_string()))?
+        .map_err(|error| FetchInfoError::error(error.to_string()))?
         .batteries()
-        .map_err(|error| FetchInfosError::error(error.to_string()))?;
+        .map_err(|error| FetchInfoError::error(error.to_string()))?;
 
     let mut batteries_info: Vec<InfoGroup> = Vec::new();
 
@@ -128,5 +128,5 @@ pub fn get_battery(
         batteries_info.push(info_group);
     }
 
-    Ok(InfosResult::Several(batteries_info))
+    Ok(InfoResult::Several(batteries_info))
 }

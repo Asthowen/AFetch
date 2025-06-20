@@ -120,7 +120,74 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
             None
         };
 
+        let entries = config
+            .info
+            .map(|info| {
+                info.into_iter()
+                    .map(|info| match info {
+                        Entry::Info {
+                            kind,
+                            header,
+                            value: format,
+                            separator,
+                        } => {
+                            let header =
+                                header.unwrap_or_else(|| language_func(kind.default_header()));
+                            let format = format.unwrap_or_else(|| kind.default_format());
+
+                            super::Entry::Info {
+                                kind,
+                                fields: kind
+                                    .get_fields()
+                                    .iter()
+                                    .filter(|field| {
+                                        let field_str = field.as_str();
+                                        header.contains(field_str) || format.contains(field_str)
+                                    })
+                                    .copied()
+                                    .collect::<Vec<_>>(),
+                                header,
+                                format,
+                                separator: separator.unwrap_or_else(|| language_func("_colon_")),
+                            }
+                        }
+                        Entry::Separator {
+                            separator: content,
+                            sizing: Some(sizing @ SeparatorSizing::Fixed(size)),
+                        } => super::Entry::Separator {
+                            content: content.chars().cycle().take(size).collect(),
+                            sizing,
+                        },
+                        Entry::Separator { separator, sizing } => super::Entry::Separator {
+                            content: separator,
+                            sizing: sizing.unwrap_or_default(),
+                        },
+                        Entry::ColorBlocks {
+                            color_block_style,
+                            display,
+                        } => super::Entry::ColorBlocks {
+                            content: match color_block_style {
+                                ColorBlockStyle::Circle => "● ",
+                                ColorBlockStyle::Classic => "███",
+                                ColorBlockStyle::Diamond => "◆ ",
+                                ColorBlockStyle::Triangle => "▲ ",
+                                ColorBlockStyle::Square => "■ ",
+                                ColorBlockStyle::Star => "★ ",
+                                ColorBlockStyle::Custom(content) => content,
+                            },
+                            display: match display {
+                                Some(ColorBlockDisplay::Normal) => super::ColorBlockDisplay::Normal,
+                                Some(ColorBlockDisplay::Bright) => super::ColorBlockDisplay::Bright,
+                                _ => super::ColorBlockDisplay::Both,
+                            },
+                        },
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_else(|| super::default_entries(config.language));
+
         Ok(Self {
+            info: super::group_fields_by_kind(&entries),
             logo: config.logo,
             language: config.language.into(),
             colors: super::ColorOption {
@@ -137,75 +204,7 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                     logo_color,
                 ),
             },
-            entries: config
-                .info
-                .map(|info| {
-                    info.into_iter()
-                        .map(|info| match info {
-                            Entry::Info {
-                                kind,
-                                header,
-                                value: format,
-                                separator,
-                            } => {
-                                let header =
-                                    header.unwrap_or_else(|| language_func(kind.default_header()));
-                                let format = format.unwrap_or_else(|| kind.default_format());
-                                super::Entry::Info {
-                                    kind,
-                                    fields: kind
-                                        .get_fields()
-                                        .iter()
-                                        .filter(|field| {
-                                            let field_str = field.as_str();
-                                            header.contains(field_str) || format.contains(field_str)
-                                        })
-                                        .copied()
-                                        .collect::<Vec<_>>(),
-                                    header,
-                                    format,
-                                    separator: separator
-                                        .unwrap_or_else(|| language_func("_colon_")),
-                                }
-                            }
-                            Entry::Separator {
-                                separator: content,
-                                sizing: Some(sizing @ SeparatorSizing::Fixed(size)),
-                            } => super::Entry::Separator {
-                                content: content.chars().cycle().take(size).collect(),
-                                sizing,
-                            },
-                            Entry::Separator { separator, sizing } => super::Entry::Separator {
-                                content: separator,
-                                sizing: sizing.unwrap_or_default(),
-                            },
-                            Entry::ColorBlocks {
-                                color_block_style,
-                                display,
-                            } => super::Entry::ColorBlocks {
-                                content: match color_block_style {
-                                    ColorBlockStyle::Circle => "● ",
-                                    ColorBlockStyle::Classic => "███",
-                                    ColorBlockStyle::Diamond => "◆ ",
-                                    ColorBlockStyle::Triangle => "▲ ",
-                                    ColorBlockStyle::Square => "■ ",
-                                    ColorBlockStyle::Star => "★ ",
-                                    ColorBlockStyle::Custom(content) => content,
-                                },
-                                display: match display {
-                                    Some(ColorBlockDisplay::Normal) => {
-                                        super::ColorBlockDisplay::Normal
-                                    }
-                                    Some(ColorBlockDisplay::Bright) => {
-                                        super::ColorBlockDisplay::Bright
-                                    }
-                                    _ => super::ColorBlockDisplay::Both,
-                                },
-                            },
-                        })
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_else(|| super::default_entries(config.language)),
+            entries,
             parameters: config
                 .parameters
                 .map(|info| super::InfoConfig {

@@ -1,7 +1,7 @@
 use crate::config::Config;
-use crate::error::FetchInfosError;
+use crate::error::FetchInfoError;
 use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoValue, InfosResult};
+use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
 use crate::util::convert_to_readable_unity;
 use sysinfo::Disks;
 
@@ -9,7 +9,7 @@ pub fn get_disk(
     _languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     config: &Config,
-) -> Result<InfosResult, FetchInfosError> {
+) -> Result<InfoResult, FetchInfoError> {
     let mut disks_info: Vec<InfoGroup> = Vec::new();
 
     for disk in Disks::new_with_refreshed_list().list() {
@@ -33,7 +33,7 @@ pub fn get_disk(
                     (
                         InfoField::DiskName,
                         disk.name().to_os_string().into_string().map_err(|_| {
-                            FetchInfosError::error("Failed to convert disk name to String")
+                            FetchInfoError::error("Failed to convert disk name to String")
                         })?
                     ),
                     (
@@ -71,5 +71,5 @@ pub fn get_disk(
         });
     }
 
-    Ok(InfosResult::Several(disks_info))
+    Ok(InfoResult::Several(disks_info))
 }

@@ -1,7 +1,7 @@
 use crate::config::Config;
-use crate::error::FetchInfosError;
+use crate::error::FetchInfoError;
 use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoValue, InfosResult};
+use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
 use std::collections::HashSet;
 use sysinfo::{CpuRefreshKind, RefreshKind, System};
 
@@ -9,7 +9,7 @@ pub fn get_cpu(
     _languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     _config: &Config,
-) -> Result<InfosResult, FetchInfosError> {
+) -> Result<InfoResult, FetchInfoError> {
     let system =
         System::new_with_specifics(RefreshKind::nothing().with_cpu(CpuRefreshKind::everything()));
 
@@ -35,5 +35,5 @@ pub fn get_cpu(
         });
     }
 
-    Ok(InfosResult::Several(cpu_info))
+    Ok(InfoResult::Several(cpu_info))
 }

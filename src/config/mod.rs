@@ -3,13 +3,14 @@
 pub mod deserialize;
 
 use crate::{
-    error::FetchInfosError,
+    error::FetchInfoError,
     system::{InfoField, InfoKind},
     translations::get_language,
     util::colored::ColorWrapper,
 };
 use bitcode::{Decode, Encode};
 use serde::Deserialize;
+use std::collections::{HashMap, HashSet};
 
 const FALLBACK_COLOR: Option<ColorWrapper> = Some(ColorWrapper::Rgb {
     r: 255,
@@ -19,6 +20,7 @@ const FALLBACK_COLOR: Option<ColorWrapper> = Some(ColorWrapper::Rgb {
 
 #[derive(Debug, Decode, Encode)]
 pub struct Config {
+    pub info: HashMap<InfoKind, Vec<InfoField>>,
     pub language: &'static str,
     pub entries: Vec<Entry<'static>>,
     pub colors: ColorOption,
@@ -180,9 +182,11 @@ impl From<Locale> for &str {
 
 impl Default for Config {
     fn default() -> Self {
+        let entries = default_entries(Locale::default());
         Self {
+            info: group_fields_by_kind(&entries),
             language: Locale::default().into(),
-            entries: default_entries(Locale::default()),
+            entries,
             colors: ColorOption::default(),
             logo: LogoStyle::default(),
             parameters: InfoConfig::default(),
@@ -194,7 +198,7 @@ pub fn load_config() -> Config {
     let cache_path = dirs::cache_dir()
         .map(|p| p.join("afetch.bin"))
         .ok_or_else(|| {
-            FetchInfosError::error_exit(
+            FetchInfoError::error_exit(
                 "An error occurred while retrieving the cache folder, \
                 please open an issue at: https://github.com/Asthowen/AFetch/issues/new \
                 so that we can solve your issue.",
@@ -211,7 +215,7 @@ pub fn load_config() -> Config {
             let config_path = dirs::config_dir()
                 .map(|p| p.join("afetch").join("config.json"))
                 .ok_or_else(|| {
-                    FetchInfosError::error_exit(
+                    FetchInfoError::error_exit(
                         "An error occurred while retrieving the config folder, \
                         please open an issue at: https://github.com/Asthowen/AFetch/issues/new \
                         so that we can solve your issue.",
@@ -264,4 +268,18 @@ fn default_entries(locale: Locale) -> Vec<Entry<'static>> {
             display: ColorBlockDisplay::Both,
         },
     ]
+}
+
+fn group_fields_by_kind(entries: &[Entry]) -> HashMap<InfoKind, Vec<InfoField>> {
+    let mut info = HashMap::new();
+
+    for entry in entries {
+        if let Entry::Info { kind, fields, .. } = entry {
+            info.entry(kind).or_insert_with(HashSet::new).extend(fields);
+        }
+    }
+
+    info.into_iter()
+        .map(|(kind, fields)| (*kind, fields.into_iter().collect()))
+        .collect()
 }
