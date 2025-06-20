@@ -1,7 +1,7 @@
 use crate::config::Config;
-use crate::error::FetchInfosError;
+use crate::error::FetchInfoError;
 use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoValue, InfosResult};
+use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
 use crate::util::convert_to_readable_unity;
 use sysinfo::{MemoryRefreshKind, RefreshKind, System};
 
@@ -9,11 +9,11 @@ pub fn get_memory(
     _languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     _config: &Config,
-) -> Result<InfosResult, FetchInfosError> {
+) -> Result<InfoResult, FetchInfoError> {
     let system = System::new_with_specifics(
         RefreshKind::nothing().with_memory(MemoryRefreshKind::everything()),
     );
-    Ok(InfosResult::Single(InfoGroup {
+    Ok(InfoResult::Single(InfoGroup {
         values: filtered_values!(
             fields,
             [

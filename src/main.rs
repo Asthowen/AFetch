@@ -1,5 +1,5 @@
 use afetch::config::{Config, Entry, LogoStyle, SeparatorSizing, load_config};
-use afetch::error::{ErrorType, FetchInfosError};
+use afetch::error::{ErrorType, FetchInfoError};
 use afetch::logos::get_logo;
 use afetch::system::battery::get_battery;
 use afetch::system::cpu::get_cpu;
@@ -10,7 +10,7 @@ use afetch::system::kernel::get_kernel;
 use afetch::system::loadavg::get_loadavg;
 use afetch::system::memory::get_memory;
 use afetch::system::uptime::get_uptime;
-use afetch::system::{InfoFunction, InfoGroup, InfoKind, InfosResult};
+use afetch::system::{InfoGroup, InfoKind, InfoResult};
 use afetch::translations::get_language;
 use afetch::util::colored::{ColorWrapper, ColorizeExt};
 use afetch::util::count_str_length;
@@ -18,31 +18,33 @@ use afetch::util::count_str_length;
 use afetch::util::print_picture;
 use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use std::collections::HashMap;
 use std::fmt::Write;
 use supports_unicode::supports_unicode;
 
-fn main() -> Result<(), FetchInfosError> {
+fn main() -> Result<(), FetchInfoError> {
     let config: Config = load_config();
     let language_func = get_language(config.language);
 
-    let results: Vec<Result<InfosResult, FetchInfosError>> = config
-        .entries
+    let results: HashMap<InfoKind, Result<InfoResult, FetchInfoError>> = config
+        .info
         .par_iter()
-        .filter_map(|element| match element {
-            Entry::Info { kind, fields, .. } => match kind {
-                InfoKind::Battery => Some((get_battery as InfoFunction, fields)),
-                InfoKind::Cpu => Some((get_cpu as InfoFunction, fields)),
-                InfoKind::Disk => Some((get_disk as InfoFunction, fields)),
-                InfoKind::Disks => Some((get_disks as InfoFunction, fields)),
-                InfoKind::Host => Some((get_hostname as InfoFunction, fields)),
-                InfoKind::Kernel => Some((get_kernel as InfoFunction, fields)),
-                InfoKind::Uptime => Some((get_uptime as InfoFunction, fields)),
-                InfoKind::Memory => Some((get_memory as InfoFunction, fields)),
-                InfoKind::Loadavg => Some((get_loadavg as InfoFunction, fields)),
-            },
-            _ => None,
+        .map(|(kind, fields)| {
+            (
+                *kind,
+                match kind {
+                    InfoKind::Battery => get_battery(language_func, fields, &config),
+                    InfoKind::Cpu => get_cpu(language_func, fields, &config),
+                    InfoKind::Disk => get_disk(language_func, fields, &config),
+                    InfoKind::Disks => get_disks(language_func, fields, &config),
+                    InfoKind::Host => get_hostname(language_func, fields, &config),
+                    InfoKind::Kernel => get_kernel(language_func, fields, &config),
+                    InfoKind::Uptime => get_uptime(language_func, fields, &config),
+                    InfoKind::Memory => get_memory(language_func, fields, &config),
+                    InfoKind::Loadavg => get_loadavg(language_func, fields, &config),
+                },
+            )
         })
-        .map(|(f, fields)| f(language_func, fields, &config))
         .collect();
 
     let logo = if supports_unicode() {
@@ -83,7 +85,7 @@ fn main() -> Result<(), FetchInfosError> {
     let mut output: String = String::default();
     let mut last_info_len = 0;
     let mut i = 0;
-    let mut i2 = 0;
+
     for entry in &config.entries {
         let mut write_entry = |entry: String| {
             #[cfg(feature = "image")]
@@ -115,7 +117,7 @@ fn main() -> Result<(), FetchInfosError> {
                 separator,
                 ..
             } => {
-                let result = match &results[i2] {
+                let result = match &results[kind] {
                     Ok(result) => result,
                     Err(error) => {
                         match &error.0 {
@@ -152,11 +154,9 @@ fn main() -> Result<(), FetchInfosError> {
                 };
 
                 match result {
-                    InfosResult::Single(single) => format_and_write(single),
-                    InfosResult::Several(elements) => elements.iter().for_each(format_and_write),
+                    InfoResult::Single(single) => format_and_write(single),
+                    InfoResult::Several(elements) => elements.iter().for_each(format_and_write),
                 }
-
-                i2 += 1;
             }
             Entry::Separator { content, sizing } => {
                 let formatted_separator = match sizing {

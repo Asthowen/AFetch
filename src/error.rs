@@ -10,9 +10,9 @@ pub enum ErrorType {
 }
 
 #[derive(Debug)]
-pub struct FetchInfosError(pub ErrorType);
+pub struct FetchInfoError(pub ErrorType);
 
-impl FetchInfosError {
+impl FetchInfoError {
     pub const fn missing() -> Self {
         Self(ErrorType::Missing)
     }
@@ -28,13 +28,13 @@ impl FetchInfosError {
     }
 }
 
-impl From<VarError> for FetchInfosError {
+impl From<VarError> for FetchInfoError {
     fn from(_: VarError) -> Self {
         Self::missing()
     }
 }
 
-impl From<std::io::Error> for FetchInfosError {
+impl From<std::io::Error> for FetchInfoError {
     fn from(error: std::io::Error) -> Self {
         match error.kind() {
             ErrorKind::NotFound | ErrorKind::PermissionDenied => Self::missing(),
