@@ -12,6 +12,8 @@ pub mod endeavour;
 pub mod fedora;
 pub mod freebsd;
 pub mod gentoo;
+pub mod ka_os;
+pub mod kali_linux;
 pub mod kde_neon;
 pub mod kubuntu;
 pub mod linux;
@@ -20,14 +22,20 @@ pub mod lubuntu;
 pub mod mac_os;
 pub mod mageia;
 pub mod manjaro;
+pub mod mx_linux;
 pub mod open_suse;
+pub mod pardus;
+pub mod parrot;
 pub mod pop_os;
 pub mod raspbian;
 pub mod rhel;
 pub mod rocky_linux;
 pub mod solaris;
+pub mod solus;
+pub mod true_nas;
 pub mod ubuntu;
 pub mod ubuntu_mate;
+pub mod void_linux;
 pub mod windows_10;
 pub mod windows_11;
 pub mod windows_7;
@@ -108,6 +116,16 @@ pub fn get_logo(force_os: Option<String>) -> (usize, u8, &'static str) {
         "deepin" => deepin::DEEPIN,
         "rocky" => rocky_linux::ROCKY_LINUX,
         "kde_neon" | "neon" => kde_neon::KDE_NEON,
+        "pardus" => pardus::PARDUS,
+        "parrot" => parrot::PARROT,
+        "solus" => solus::SOLUS,
+        "truenas" | "truenas_core" => true_nas::TRUENAS_CORE,
+        "truenas_scale" => true_nas::TRUENAS_SCALE,
+        "truenas_enterprise" => true_nas::TRUENAS_ENTERPRISE,
+        "kali" => kali_linux::KALI_LINUX,
+        "kaos" => ka_os::KA_OS,
+        "void" | "void_linux" => void_linux::VOID_LINUX,
+        "mx_linux" => mx_linux::MX_LINUX,
         _ => computer::COMPUTER,
     }
 }
