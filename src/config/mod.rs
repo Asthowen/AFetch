@@ -28,8 +28,6 @@ pub struct Config {
     pub parameters: InfoConfig<'static>,
 }
 
-pub struct FetchInfo {}
-
 #[derive(Debug, Default, Decode, Encode)]
 pub struct InfoConfig<'a> {
     pub disks: DisksInfoConfig<'a>,
