@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::error::FetchInfoError;
 use crate::filtered_values;
 use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
+use crate::util::ToOptionString;
 use crate::util::format_time;
 use sysinfo::System;
 
@@ -16,7 +17,6 @@ pub fn get_uptime(
             [(
                 InfoField::Uptime,
                 format_time(System::uptime(), languages_func)
-                    .ok_or_else(FetchInfoError::missing)?
             ),]
         ),
     }))

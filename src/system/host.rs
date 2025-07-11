@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::error::FetchInfoError;
 use crate::filtered_values;
 use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
+use crate::util::ToOptionString;
 use whoami::fallible::hostname;
 use whoami::username;
 
@@ -15,7 +16,7 @@ pub fn get_hostname(
             fields,
             [
                 (InfoField::Username, username()),
-                (InfoField::Hostname, hostname().unwrap_or_default()),
+                (InfoField::Hostname, hostname().ok()),
             ]
         ),
     }))

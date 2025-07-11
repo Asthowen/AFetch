@@ -11,26 +11,12 @@ pub mod host;
 pub mod kernel;
 pub mod loadavg;
 pub mod memory;
+pub mod motherboard;
+pub mod product;
 pub mod uptime;
 
 pub type InfoFunction =
     fn(fn(&str) -> &str, &[InfoField], &Config) -> Result<InfoResult, FetchInfoError>;
-
-#[macro_export]
-macro_rules! filtered_values {
-    ($fields:expr, [ $( ($field:expr, $value_expr:expr) ),* $(,)? ]) => {{
-        let mut info: Vec<InfoValue> = Vec::new();
-        $(
-            if $fields.contains(&$field) {
-                info.push(InfoValue {
-                    field: $field,
-                    value: $value_expr,
-                });
-            }
-        )*
-        info
-    }};
-}
 
 #[derive(Deserialize, Clone, Copy, Debug, Decode, Encode, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
@@ -43,6 +29,8 @@ pub enum InfoKind {
     Kernel,
     Loadavg,
     Memory,
+    Motherboard,
+    Product,
     Uptime,
 }
 
@@ -109,6 +97,22 @@ impl InfoKind {
                 InfoField::MemorySwapTotal,
                 InfoField::MemorySwapUsage,
             ],
+            Self::Motherboard => &[
+                InfoField::MotherboardAssetTag,
+                InfoField::MotherboardName,
+                InfoField::MotherboardSerialNumber,
+                InfoField::MotherboardVendorName,
+                InfoField::MotherboardVersion,
+            ],
+            Self::Product => &[
+                InfoField::ProductFamily,
+                InfoField::ProductName,
+                InfoField::ProductSerialNumber,
+                InfoField::ProductStockKeepingUnit,
+                InfoField::ProductUuid,
+                InfoField::ProductVendorName,
+                InfoField::ProductVersion,
+            ],
             Self::Uptime => &[InfoField::Uptime],
         }
     }
@@ -121,9 +125,11 @@ impl InfoKind {
             Self::Disks => "{disks_used_space} / {disks_total_space}",
             Self::Host => "{username}@{hostname}",
             Self::Kernel => "{kernel_long_version}",
-            Self::Memory => "{memory_used} / {memory_total}",
-            Self::Uptime => "{uptime}",
             Self::Loadavg => "{loadavg_one}, {loadavg_five}, {loadavg_fifteen}",
+            Self::Memory => "{memory_used} / {memory_total}",
+            Self::Motherboard => "{motherboard_name} {motherboard_version}",
+            Self::Product => "{product_name} {product_version}",
+            Self::Uptime => "{uptime}",
         }
     }
 
@@ -135,9 +141,11 @@ impl InfoKind {
             Self::Disks => "disks",
             Self::Host => "host",
             Self::Kernel => "kernel",
-            Self::Memory => "memory",
-            Self::Uptime => "uptime",
             Self::Loadavg => "loadavg",
+            Self::Memory => "memory",
+            Self::Motherboard => "motherboard",
+            Self::Product => "host",
+            Self::Uptime => "uptime",
         }
     }
 }
@@ -183,6 +191,9 @@ pub enum InfoField {
     Hostname,
     KernelVersion,
     KernelLongVersion,
+    LoadAvgOne,
+    LoadAvgFive,
+    LoadAvgFifteen,
     MemoryAvailable,
     MemoryFree,
     MemoryTotal,
@@ -190,11 +201,20 @@ pub enum InfoField {
     MemorySwapFree,
     MemorySwapTotal,
     MemorySwapUsage,
+    MotherboardAssetTag,
+    MotherboardName,
+    MotherboardSerialNumber,
+    MotherboardVendorName,
+    MotherboardVersion,
+    ProductFamily,
+    ProductName,
+    ProductSerialNumber,
+    ProductStockKeepingUnit,
+    ProductUuid,
+    ProductVendorName,
+    ProductVersion,
     Uptime,
     Username,
-    LoadAvgOne,
-    LoadAvgFive,
-    LoadAvgFifteen,
 }
 
 impl InfoField {
@@ -239,6 +259,9 @@ impl InfoField {
             Self::Hostname => "hostname",
             Self::KernelVersion => "kernel_version",
             Self::KernelLongVersion => "kernel_long_version",
+            Self::LoadAvgOne => "loadavg_one",
+            Self::LoadAvgFive => "loadavg_five",
+            Self::LoadAvgFifteen => "loadavg_fifteen",
             Self::MemoryAvailable => "memory_available",
             Self::MemoryFree => "memory_free",
             Self::MemoryTotal => "memory_total",
@@ -246,11 +269,20 @@ impl InfoField {
             Self::MemorySwapFree => "memory_swap_free",
             Self::MemorySwapTotal => "memory_swap_total",
             Self::MemorySwapUsage => "memory_swap_usage",
+            Self::MotherboardAssetTag => "motherboard_asset_tag",
+            Self::MotherboardName => "motherboard_name",
+            Self::MotherboardSerialNumber => "motherboard_serial_number",
+            Self::MotherboardVendorName => "motherboard_vendor_name",
+            Self::MotherboardVersion => "motherboard_version",
+            Self::ProductFamily => "product_family",
+            Self::ProductName => "product_name",
+            Self::ProductSerialNumber => "product_serial_number",
+            Self::ProductStockKeepingUnit => "product_stock_keeping_unit",
+            Self::ProductUuid => "product_uuid",
+            Self::ProductVendorName => "product_vendor_name",
+            Self::ProductVersion => "product_version",
             Self::Uptime => "uptime",
             Self::Username => "username",
-            Self::LoadAvgOne => "loadavg_one",
-            Self::LoadAvgFive => "loadavg_five",
-            Self::LoadAvgFifteen => "loadavg_fifteen",
         }
     }
 }

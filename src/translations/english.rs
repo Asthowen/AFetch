@@ -19,6 +19,7 @@ pub fn english(key: &str) -> &'static str {
         "terminal" => "Terminal",
         "terminal-font" => "Font",
         "memory" => "Memory",
+        "motherboard" => "Motherboard",
         "cpu" => "CPU",
         "gpu" => "GPU",
         "network" => "Network",

@@ -1,4 +1,7 @@
 pub mod colored;
+mod filtered_values;
+
+pub use filtered_values::ToOptionString;
 
 use crate::error::FetchInfoError;
 #[cfg(feature = "image")]
