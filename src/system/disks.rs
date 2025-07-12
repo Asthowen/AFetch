@@ -14,25 +14,21 @@ pub fn get_disks(
     let mut available_space = 0;
     let mut total_space = 0;
     let mut count = 0;
+    let mut count_filtered = 0;
 
     for disk in
         Disks::new_with_refreshed_list_specifics(DiskRefreshKind::nothing().with_storage()).list()
     {
         let mount_point = disk.mount_point().to_string_lossy().to_string();
+        count += 1;
 
-        if config
-            .parameters
-            .disks
-            .exclude
-            .iter()
-            .any(|ignore| mount_point.starts_with(ignore))
-        {
+        if ignore_disk(config, &mount_point) {
             continue;
         }
 
         available_space += disk.available_space();
         total_space += disk.total_space();
-        count += 1;
+        count_filtered += 1;
     }
 
     Ok(InfoResult::Single(InfoGroup {
@@ -40,6 +36,7 @@ pub fn get_disks(
             fields,
             [
                 (InfoField::DisksCount, count.to_string()),
+                (InfoField::DisksCountFiltered, count_filtered.to_string()),
                 (
                     InfoField::DisksAvailableSpace,
                     convert_to_readable_unity(available_space as f64)
@@ -55,4 +52,23 @@ pub fn get_disks(
             ]
         ),
     }))
+}
+
+pub(crate) fn ignore_disk(config: &Config, mount_point: &str) -> bool {
+    config
+        .parameters
+        .disks
+        .exclude
+        .iter()
+        .any(|ignore| mount_point.starts_with(ignore))
+        || config
+            .parameters
+            .disks
+            .include
+            .as_ref()
+            .is_some_and(|include| {
+                !include
+                    .iter()
+                    .any(|&include| mount_point.starts_with(include))
+            })
 }

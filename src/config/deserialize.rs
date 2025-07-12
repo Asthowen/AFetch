@@ -21,12 +21,30 @@ struct ConfigWrapper<'a> {
 struct InfoConfig<'a> {
     #[serde(default, borrow)]
     disks: Option<DisksInfoConfig<'a>>,
+    #[serde(default, borrow)]
+    networks: Option<NetworksInfoConfig<'a>>,
 }
 
 #[derive(Debug, Deserialize)]
 struct DisksInfoConfig<'a> {
     #[serde(default, borrow)]
     exclude: Option<Vec<&'a str>>,
+    #[serde(default, borrow)]
+    include: Option<Vec<&'a str>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct NetworksInfoConfig<'a> {
+    #[serde(default, borrow)]
+    exclude: Option<Vec<&'a str>>,
+    #[serde(default, borrow)]
+    include: Option<Vec<&'a str>>,
+    #[serde(default)]
+    private_only: Option<bool>,
+    #[serde(default)]
+    assigned_only: Option<bool>,
+    #[serde(default)]
+    ignore_loopback: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -212,6 +230,17 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                         .disks
                         .map(|disks| super::DisksInfoConfig {
                             exclude: disks.exclude.unwrap_or_default(),
+                            include: disks.include,
+                        })
+                        .unwrap_or_default(),
+                    networks: info
+                        .networks
+                        .map(|networks| super::NetworksInfoConfig {
+                            exclude: networks.exclude.unwrap_or_default(),
+                            include: networks.include,
+                            private_only: networks.private_only.unwrap_or(true),
+                            assigned_only: networks.assigned_only.unwrap_or(true),
+                            ignore_loopback: networks.ignore_loopback.unwrap_or(true),
                         })
                         .unwrap_or_default(),
                 })

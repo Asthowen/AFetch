@@ -31,17 +31,43 @@ pub struct Config {
 #[derive(Debug, Default, Decode, Encode)]
 pub struct InfoConfig<'a> {
     pub disks: DisksInfoConfig<'a>,
+    pub networks: NetworksInfoConfig<'a>,
 }
 
 #[derive(Debug, Decode, Encode)]
 pub struct DisksInfoConfig<'a> {
     pub exclude: Vec<&'a str>,
+    pub include: Option<Vec<&'a str>>,
+}
+
+#[derive(Debug, Decode, Encode)]
+pub struct NetworksInfoConfig<'a> {
+    pub exclude: Vec<&'a str>,
+    pub include: Option<Vec<&'a str>>,
+    pub private_only: bool,
+    pub assigned_only: bool,
+    pub ignore_loopback: bool,
 }
 
 impl<'a> Default for DisksInfoConfig<'a> {
     fn default() -> Self {
         Self {
+            include: None,
             exclude: vec!["/boot", "/etc", "/snapd", "/docker"],
+        }
+    }
+}
+
+impl<'a> Default for NetworksInfoConfig<'a> {
+    fn default() -> Self {
+        Self {
+            include: None,
+            exclude: vec![
+                "br-", "docker", "veth", "tun", "tap", "wg", "virbr", "vmnet",
+            ],
+            private_only: true,
+            assigned_only: true,
+            ignore_loopback: true,
         }
     }
 }
