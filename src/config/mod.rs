@@ -253,6 +253,7 @@ fn default_entries(locale: Locale) -> Vec<Entry<'static>> {
             content: "─".to_owned(),
             sizing: SeparatorSizing::Dynamic,
         },
+        Entry::from_info(InfoKind::Product, language_func, None, None),
         Entry::from_info(InfoKind::Cpu, language_func, None, None),
         Entry::from_info(InfoKind::Kernel, language_func, None, None),
         Entry::from_info(InfoKind::Uptime, language_func, None, None),

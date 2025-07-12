@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::error::FetchInfoError;
 use crate::filtered_values;
 use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
+use crate::util::ToOptionString;
 use std::collections::HashSet;
 use sysinfo::{CpuRefreshKind, RefreshKind, System};
 
@@ -25,10 +26,10 @@ pub fn get_cpu(
             values: filtered_values!(
                 fields,
                 [
-                    (InfoField::CpuName, cpu.brand().to_owned()),
+                    (InfoField::CpuName, cpu.brand()),
                     (InfoField::CpuUsage, cpu.cpu_usage().to_string()),
                     (InfoField::CpuFrequency, cpu.frequency().to_string()),
-                    (InfoField::CpuVendor, cpu.vendor_id().to_string()),
+                    (InfoField::CpuVendor, cpu.vendor_id()),
                     (InfoField::CpuArch, System::cpu_arch()),
                 ]
             ),

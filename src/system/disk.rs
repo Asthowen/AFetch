@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::error::FetchInfoError;
 use crate::filtered_values;
 use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
+use crate::util::ToOptionString;
 use crate::util::convert_to_readable_unity;
 use sysinfo::Disks;
 
@@ -32,9 +33,7 @@ pub fn get_disk(
                 [
                     (
                         InfoField::DiskName,
-                        disk.name().to_os_string().into_string().map_err(|_| {
-                            FetchInfoError::error("Failed to convert disk name to String")
-                        })?
+                        disk.name().to_os_string().into_string().ok()
                     ),
                     (
                         InfoField::DiskAvailableSpace,

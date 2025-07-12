@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::error::FetchInfoError;
 use crate::filtered_values;
 use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
+use crate::util::ToOptionString;
 use sysinfo::System;
 
 pub fn get_loadavg(

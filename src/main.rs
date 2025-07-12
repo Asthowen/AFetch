@@ -9,6 +9,8 @@ use afetch::system::host::get_hostname;
 use afetch::system::kernel::get_kernel;
 use afetch::system::loadavg::get_loadavg;
 use afetch::system::memory::get_memory;
+use afetch::system::motherboard::get_motherboard;
+use afetch::system::product::get_product;
 use afetch::system::uptime::get_uptime;
 use afetch::system::{InfoGroup, InfoKind, InfoResult};
 use afetch::translations::get_language;
@@ -39,9 +41,11 @@ fn main() -> Result<(), FetchInfoError> {
                     InfoKind::Disks => get_disks(language_func, fields, &config),
                     InfoKind::Host => get_hostname(language_func, fields, &config),
                     InfoKind::Kernel => get_kernel(language_func, fields, &config),
-                    InfoKind::Uptime => get_uptime(language_func, fields, &config),
-                    InfoKind::Memory => get_memory(language_func, fields, &config),
                     InfoKind::Loadavg => get_loadavg(language_func, fields, &config),
+                    InfoKind::Memory => get_memory(language_func, fields, &config),
+                    InfoKind::Motherboard => get_motherboard(language_func, fields, &config),
+                    InfoKind::Product => get_product(language_func, fields, &config),
+                    InfoKind::Uptime => get_uptime(language_func, fields, &config),
                 },
             )
         })

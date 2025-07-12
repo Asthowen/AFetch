@@ -19,6 +19,7 @@ pub fn french(key: &str) -> &'static str {
         "terminal" => "Terminal",
         "terminal-font" => "Police",
         "memory" => "Mémoire",
+        "motherboard" => "Carte mère",
         "cpu" => "CPU",
         "gpu" => "GPU",
         "network" => "Réseau",
