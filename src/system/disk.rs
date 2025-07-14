@@ -1,6 +1,7 @@
 use crate::config::Config;
 use crate::error::FetchInfoError;
 use crate::filtered_values;
+use crate::system::disks::ignore_disk;
 use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
 use crate::util::ToOptionString;
 use crate::util::convert_to_readable_unity;
@@ -16,13 +17,7 @@ pub fn get_disk(
     for disk in Disks::new_with_refreshed_list().list() {
         let mount_point = disk.mount_point().to_string_lossy().to_string();
 
-        if config
-            .parameters
-            .disks
-            .exclude
-            .iter()
-            .any(|ignore| mount_point.starts_with(ignore))
-        {
+        if ignore_disk(config, &mount_point) {
             continue;
         }
 

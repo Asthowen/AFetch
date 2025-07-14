@@ -12,6 +12,7 @@ pub mod kernel;
 pub mod loadavg;
 pub mod memory;
 pub mod motherboard;
+pub mod networks;
 pub mod product;
 pub mod uptime;
 
@@ -30,6 +31,7 @@ pub enum InfoKind {
     Loadavg,
     Memory,
     Motherboard,
+    Networks,
     Product,
     Uptime,
 }
@@ -77,6 +79,7 @@ impl InfoKind {
             ],
             Self::Disks => &[
                 InfoField::DisksCount,
+                InfoField::DisksCountFiltered,
                 InfoField::DisksAvailableSpace,
                 InfoField::DisksUsedSpace,
                 InfoField::DisksTotalSpace,
@@ -104,6 +107,21 @@ impl InfoKind {
                 InfoField::MotherboardVendorName,
                 InfoField::MotherboardVersion,
             ],
+            Self::Networks => &[
+                InfoField::NetworkName,
+                InfoField::NetworkFirstIp,
+                InfoField::NetworkPreferFirstIpv4,
+                InfoField::NetworkPreferFirstIpv6,
+                InfoField::NetworkAllIp,
+                InfoField::NetworkMacAddress,
+                InfoField::NetworkMaximumTransferUnit,
+                InfoField::NetworkErrorsOnReceived,
+                InfoField::NetworkErrorsOnTransmitted,
+                InfoField::NetworkPacketsReceived,
+                InfoField::NetworkPacketsTransmitted,
+                InfoField::NetworkReceived,
+                InfoField::NetworkTransmitted,
+            ],
             Self::Product => &[
                 InfoField::ProductFamily,
                 InfoField::ProductName,
@@ -128,6 +146,7 @@ impl InfoKind {
             Self::Loadavg => "{loadavg_one}, {loadavg_five}, {loadavg_fifteen}",
             Self::Memory => "{memory_used} / {memory_total}",
             Self::Motherboard => "{motherboard_name} {motherboard_version}",
+            Self::Networks => "{network_prefer_first_ipv4}",
             Self::Product => "{product_name} {product_version}",
             Self::Uptime => "{uptime}",
         }
@@ -144,6 +163,7 @@ impl InfoKind {
             Self::Loadavg => "loadavg",
             Self::Memory => "memory",
             Self::Motherboard => "motherboard",
+            Self::Networks => "networks",
             Self::Product => "host",
             Self::Uptime => "uptime",
         }
@@ -185,6 +205,7 @@ pub enum InfoField {
     DiskWrittenSinceBoot,
     DiskReadSinceBoot,
     DisksCount,
+    DisksCountFiltered,
     DisksAvailableSpace,
     DisksUsedSpace,
     DisksTotalSpace,
@@ -206,6 +227,19 @@ pub enum InfoField {
     MotherboardSerialNumber,
     MotherboardVendorName,
     MotherboardVersion,
+    NetworkName,
+    NetworkFirstIp,
+    NetworkPreferFirstIpv4,
+    NetworkPreferFirstIpv6,
+    NetworkAllIp,
+    NetworkMacAddress,
+    NetworkMaximumTransferUnit,
+    NetworkErrorsOnReceived,
+    NetworkErrorsOnTransmitted,
+    NetworkPacketsReceived,
+    NetworkPacketsTransmitted,
+    NetworkReceived,
+    NetworkTransmitted,
     ProductFamily,
     ProductName,
     ProductSerialNumber,
@@ -253,6 +287,7 @@ impl InfoField {
             Self::DiskWrittenSinceBoot => "disk_written_since_boot",
             Self::DiskReadSinceBoot => "disk_read_since_boot",
             Self::DisksCount => "disks_count",
+            Self::DisksCountFiltered => "disks_count_filtered",
             Self::DisksAvailableSpace => "disks_available_space",
             Self::DisksUsedSpace => "disks_used_space",
             Self::DisksTotalSpace => "disks_total_space",
@@ -274,6 +309,19 @@ impl InfoField {
             Self::MotherboardSerialNumber => "motherboard_serial_number",
             Self::MotherboardVendorName => "motherboard_vendor_name",
             Self::MotherboardVersion => "motherboard_version",
+            Self::NetworkName => "network_name",
+            Self::NetworkPreferFirstIpv4 => "network_prefer_first_ipv4",
+            Self::NetworkPreferFirstIpv6 => "network_prefer_first_ipv6",
+            Self::NetworkFirstIp => "network_first_ip",
+            Self::NetworkAllIp => "network_all_ip",
+            Self::NetworkMacAddress => "network_mac_address",
+            Self::NetworkMaximumTransferUnit => "network_maximum_transfer_unit",
+            Self::NetworkErrorsOnReceived => "network_errors_on_received",
+            Self::NetworkErrorsOnTransmitted => "network_errors_on_transmitted",
+            Self::NetworkPacketsReceived => "network_packets_received",
+            Self::NetworkPacketsTransmitted => "network_packets_transmitted",
+            Self::NetworkReceived => "network_received",
+            Self::NetworkTransmitted => "network_transmitted",
             Self::ProductFamily => "product_family",
             Self::ProductName => "product_name",
             Self::ProductSerialNumber => "product_serial_number",
