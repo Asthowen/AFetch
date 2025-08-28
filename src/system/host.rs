@@ -3,8 +3,7 @@ use crate::error::FetchInfoError;
 use crate::filtered_values;
 use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
 use crate::util::ToOptionString;
-use whoami::fallible::hostname;
-use whoami::username;
+use whoami::fallible::{hostname, username};
 
 pub fn get_hostname(
     _languages_func: fn(&str) -> &str,
@@ -15,7 +14,7 @@ pub fn get_hostname(
         values: filtered_values!(
             fields,
             [
-                (InfoField::Username, username()),
+                (InfoField::Username, username().ok()),
                 (InfoField::Hostname, hostname().ok()),
             ]
         ),

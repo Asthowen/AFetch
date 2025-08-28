@@ -2,8 +2,7 @@ use crate::config::Config;
 use crate::error::FetchInfoError;
 use crate::filtered_values;
 use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
-use crate::util::ToOptionString;
-use crate::util::format_time;
+use crate::util::{ToOptionString, format_time};
 use starship_battery::units::time::second;
 
 pub fn get_battery(
