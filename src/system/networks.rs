@@ -48,12 +48,11 @@ pub fn get_networks(
             .map(|ip| ip.addr);
         let first_ipv6 = network.ip_networks().iter().find(|ip| ip.addr.is_ipv6());
 
-        if config.parameters.networks.private_only {
-            if let Some(IpAddr::V4(ip)) = first_ipv4 {
-                if !ip.is_private() {
-                    continue;
-                }
-            }
+        if config.parameters.networks.private_only
+            && let Some(IpAddr::V4(ip)) = first_ipv4
+            && !ip.is_private()
+        {
+            continue;
         }
 
         networks_info.push(InfoGroup {

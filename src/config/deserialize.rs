@@ -1,7 +1,7 @@
 use crate::{
     config::SeparatorSizing, logos::get_logo, system::InfoKind, translations::get_language,
-    util::colored::ColorWrapper,
 };
+use owo_colors::DynColors;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -122,6 +122,27 @@ struct Color<'a> {
 enum ColorRepr<'a> {
     Ansi(u8),
     Text(&'a str),
+}
+
+#[derive(Debug, Clone, Copy, bitcode::Decode, bitcode::Encode)]
+pub enum ColorWrapper {
+    Rgb { r: u8, g: u8, b: u8 },
+    Ansi(u8),
+}
+
+impl From<ColorWrapper> for DynColors {
+    fn from(value: ColorWrapper) -> Self {
+        match value {
+            ColorWrapper::Ansi(color) => Self::Xterm(color.into()),
+            ColorWrapper::Rgb { r, g, b } => Self::Rgb(r, g, b),
+        }
+    }
+}
+
+impl Default for ColorWrapper {
+    fn default() -> Self {
+        Self::Ansi(6)
+    }
 }
 
 #[inline]
