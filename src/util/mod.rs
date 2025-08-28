@@ -14,6 +14,8 @@ use unicode_segmentation::UnicodeSegmentation;
 #[cfg(feature = "image")]
 use viuer::Config as ViuerConfig;
 
+pub const PROJECT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 const fn div_mod(dividend: u64, divisor: u64) -> (u64, u64) {
     (dividend / divisor, dividend % divisor)
 }

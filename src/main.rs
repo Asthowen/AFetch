@@ -12,6 +12,7 @@ use afetch::system::memory::get_memory;
 use afetch::system::motherboard::get_motherboard;
 use afetch::system::networks::get_networks;
 use afetch::system::product::get_product;
+use afetch::system::public_ip::get_public_ip;
 use afetch::system::uptime::get_uptime;
 use afetch::system::{InfoGroup, InfoKind, InfoResult};
 use afetch::translations::get_language;
@@ -47,6 +48,7 @@ fn main() -> Result<(), FetchInfoError> {
                     InfoKind::Motherboard => get_motherboard(language_func, fields, &config),
                     InfoKind::Networks => get_networks(language_func, fields, &config),
                     InfoKind::Product => get_product(language_func, fields, &config),
+                    InfoKind::PublicIp => get_public_ip(language_func, fields, &config),
                     InfoKind::Uptime => get_uptime(language_func, fields, &config),
                 },
             )

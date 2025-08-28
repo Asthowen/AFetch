@@ -17,6 +17,12 @@ const FALLBACK_COLOR: Option<ColorWrapper> = Some(ColorWrapper::Rgb {
     g: 255,
     b: 255,
 });
+const DEFAULT_IPV4_DOMAIN: &str = "ipinfo.io";
+const DEFAULT_IPV4_PORT: u16 = 80;
+const DEFAULT_IPV4_PATH: &str = "/ip";
+const DEFAULT_IPV6_DOMAIN: &str = "v6.ipinfo.io";
+const DEFAULT_IPV6_PORT: u16 = 80;
+const DEFAULT_IPV6_PATH: &str = "/ip";
 
 #[derive(Debug, Decode, Encode)]
 pub struct Config {
@@ -32,6 +38,7 @@ pub struct Config {
 pub struct InfoConfig<'a> {
     pub disks: DisksInfoConfig<'a>,
     pub networks: NetworksInfoConfig<'a>,
+    pub public_ip: PublicIpInfoConfig<'a>,
 }
 
 #[derive(Debug, Decode, Encode)]
@@ -47,6 +54,16 @@ pub struct NetworksInfoConfig<'a> {
     pub private_only: bool,
     pub assigned_only: bool,
     pub ignore_loopback: bool,
+}
+
+#[derive(Debug, Decode, Encode)]
+pub struct PublicIpInfoConfig<'a> {
+    pub ipv4_domain: &'a str,
+    pub ipv4_port: u16,
+    pub ipv4_path: &'a str,
+    pub ipv6_domain: &'a str,
+    pub ipv6_port: u16,
+    pub ipv6_path: &'a str,
 }
 
 impl<'a> Default for DisksInfoConfig<'a> {
@@ -68,6 +85,19 @@ impl<'a> Default for NetworksInfoConfig<'a> {
             private_only: true,
             assigned_only: true,
             ignore_loopback: true,
+        }
+    }
+}
+
+impl<'a> Default for PublicIpInfoConfig<'a> {
+    fn default() -> Self {
+        Self {
+            ipv4_domain: DEFAULT_IPV4_DOMAIN,
+            ipv4_port: DEFAULT_IPV4_PORT,
+            ipv4_path: DEFAULT_IPV4_PATH,
+            ipv6_domain: DEFAULT_IPV6_DOMAIN,
+            ipv6_port: DEFAULT_IPV6_PORT,
+            ipv6_path: DEFAULT_IPV6_PATH,
         }
     }
 }

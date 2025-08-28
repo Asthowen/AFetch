@@ -23,6 +23,8 @@ struct InfoConfig<'a> {
     disks: Option<DisksInfoConfig<'a>>,
     #[serde(default, borrow)]
     networks: Option<NetworksInfoConfig<'a>>,
+    #[serde(default, borrow)]
+    public_ip: Option<PublicIpInfoConfig<'a>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -45,6 +47,22 @@ struct NetworksInfoConfig<'a> {
     assigned_only: Option<bool>,
     #[serde(default)]
     ignore_loopback: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PublicIpInfoConfig<'a> {
+    #[serde(default, borrow)]
+    ipv4_domain: Option<&'a str>,
+    #[serde(default)]
+    ipv4_port: Option<u16>,
+    #[serde(default, borrow)]
+    ipv4_path: Option<&'a str>,
+    #[serde(default, borrow)]
+    ipv6_domain: Option<&'a str>,
+    #[serde(default)]
+    ipv6_port: Option<u16>,
+    #[serde(default, borrow)]
+    ipv6_path: Option<&'a str>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -241,6 +259,21 @@ impl<'de: 'static> serde::Deserialize<'de> for super::Config {
                             private_only: networks.private_only.unwrap_or(true),
                             assigned_only: networks.assigned_only.unwrap_or(true),
                             ignore_loopback: networks.ignore_loopback.unwrap_or(true),
+                        })
+                        .unwrap_or_default(),
+                    public_ip: info
+                        .public_ip
+                        .map(|public_ip| super::PublicIpInfoConfig {
+                            ipv4_domain: public_ip
+                                .ipv4_domain
+                                .unwrap_or(super::DEFAULT_IPV4_DOMAIN),
+                            ipv4_port: public_ip.ipv4_port.unwrap_or(super::DEFAULT_IPV4_PORT),
+                            ipv4_path: public_ip.ipv4_path.unwrap_or(super::DEFAULT_IPV4_PATH),
+                            ipv6_domain: public_ip
+                                .ipv6_domain
+                                .unwrap_or(super::DEFAULT_IPV6_DOMAIN),
+                            ipv6_port: public_ip.ipv6_port.unwrap_or(super::DEFAULT_IPV6_PORT),
+                            ipv6_path: public_ip.ipv6_path.unwrap_or(super::DEFAULT_IPV6_PATH),
                         })
                         .unwrap_or_default(),
                 })

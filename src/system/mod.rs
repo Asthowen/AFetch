@@ -14,6 +14,7 @@ pub mod memory;
 pub mod motherboard;
 pub mod networks;
 pub mod product;
+pub mod public_ip;
 pub mod uptime;
 
 pub type InfoFunction =
@@ -33,6 +34,7 @@ pub enum InfoKind {
     Motherboard,
     Networks,
     Product,
+    PublicIp,
     Uptime,
 }
 
@@ -131,6 +133,11 @@ impl InfoKind {
                 InfoField::ProductVendorName,
                 InfoField::ProductVersion,
             ],
+            Self::PublicIp => &[
+                InfoField::PublicIpAny,
+                InfoField::PublicIpv4,
+                InfoField::PublicIpv6,
+            ],
             Self::Uptime => &[InfoField::Uptime],
         }
     }
@@ -148,6 +155,7 @@ impl InfoKind {
             Self::Motherboard => "{motherboard_name} {motherboard_version}",
             Self::Networks => "{network_prefer_first_ipv4}",
             Self::Product => "{product_name} {product_version}",
+            Self::PublicIp => "{public_ip_any}",
             Self::Uptime => "{uptime}",
         }
     }
@@ -165,6 +173,7 @@ impl InfoKind {
             Self::Motherboard => "motherboard",
             Self::Networks => "networks",
             Self::Product => "host",
+            Self::PublicIp => "public-ip",
             Self::Uptime => "uptime",
         }
     }
@@ -247,6 +256,9 @@ pub enum InfoField {
     ProductUuid,
     ProductVendorName,
     ProductVersion,
+    PublicIpAny,
+    PublicIpv4,
+    PublicIpv6,
     Uptime,
     Username,
 }
@@ -329,6 +341,9 @@ impl InfoField {
             Self::ProductUuid => "product_uuid",
             Self::ProductVendorName => "product_vendor_name",
             Self::ProductVersion => "product_version",
+            Self::PublicIpAny => "public_ip_any",
+            Self::PublicIpv4 => "public_ipv4",
+            Self::PublicIpv6 => "public_ipv6",
             Self::Uptime => "uptime",
             Self::Username => "username",
         }

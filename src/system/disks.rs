@@ -2,8 +2,7 @@ use crate::config::Config;
 use crate::error::FetchInfoError;
 use crate::filtered_values;
 use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
-use crate::util::ToOptionString;
-use crate::util::convert_to_readable_unity;
+use crate::util::{ToOptionString, convert_to_readable_unity};
 use sysinfo::{DiskRefreshKind, Disks};
 
 pub fn get_disks(
