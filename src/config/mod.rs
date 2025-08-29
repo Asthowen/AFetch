@@ -3,10 +3,10 @@
 pub mod deserialize;
 
 use crate::{
+    config::deserialize::ColorWrapper,
     error::FetchInfoError,
     system::{InfoField, InfoKind},
     translations::get_language,
-    util::colored::ColorWrapper,
 };
 use bitcode::{Decode, Encode};
 use serde::Deserialize;

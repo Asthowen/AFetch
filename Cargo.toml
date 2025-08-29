@@ -3,7 +3,7 @@ name = "afetch"
 version = "0.0.7"
 authors = ["Asthowen<contact@asthowen.fr>", "Squitch1<clement.foure@proton.me>"]
 edition = "2024"
-rust-version = "1.85.0"
+rust-version = "1.88.0"
 description = "A CLI system information tool written in Rust."
 repository = "https://github.com/Asthowen/AFetch"
 readme = "README.md"
@@ -23,7 +23,6 @@ opt-level = 3
 strip = true
 
 [dependencies]
-colored = { version = "3.0.0", git = "https://github.com/colored-rs/colored", branch = "master" }
 whoami = { version = "1.5.2", default-features = false }
 serde = { version = "1.0.219", features = ["derive"] }
 image = { version = "0.25.6", optional = true }
@@ -33,12 +32,13 @@ strip-ansi-escapes = "0.2.1"
 starship-battery = "0.10.2"
 supports-unicode = "3.0.0"
 csscolorparser = "0.7.2"
-serde_json = "1.0.142"
+serde_json = "1.0.143"
 sys-locale = "0.3.2"
-sysinfo = "0.36.1"
-bitcode = "0.6.6"
+owo-colors = "4.2.2"
+sysinfo = "0.37.0"
+bitcode = "0.6.7"
 socket2 = "0.6.0"
-rayon = "1.10.0"
+rayon = "1.11.0"
 which = "8.0.0"
 dirs = "6.0.0"
 

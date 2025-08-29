@@ -1,4 +1,3 @@
-pub mod colored;
 mod filtered_values;
 
 pub use filtered_values::ToOptionString;

@@ -1,3 +1,4 @@
+use afetch::config::deserialize::ColorWrapper;
 use afetch::config::{Config, Entry, LogoStyle, SeparatorSizing, load_config};
 use afetch::error::{ErrorType, FetchInfoError};
 use afetch::logos::get_logo;
@@ -16,11 +17,10 @@ use afetch::system::public_ip::get_public_ip;
 use afetch::system::uptime::get_uptime;
 use afetch::system::{InfoGroup, InfoKind, InfoResult};
 use afetch::translations::get_language;
-use afetch::util::colored::{ColorWrapper, ColorizeExt};
 use afetch::util::count_str_length;
 #[cfg(feature = "image")]
 use afetch::util::print_picture;
-use colored::Colorize;
+use owo_colors::{DynColors, OwoColorize, XtermColors};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -70,25 +70,38 @@ fn main() -> Result<(), FetchInfoError> {
         None
     };
 
-    let header_color = match config.colors.header {
-        Some(color) => color,
+    let header_color: DynColors = match config.colors.header {
+        Some(color) => color.into(),
         None => match logo.as_ref() {
-            Some(color) => ColorWrapper::Ansi(color.1),
-            None => ColorWrapper::Ansi(6),
+            Some(color) => DynColors::Xterm(color.1.into()),
+            None => DynColors::Xterm(XtermColors::Cyan),
         },
     };
-    let header_separator_color = config.colors.header_separator.unwrap_or(match &logo {
-        Some(color) => ColorWrapper::Ansi(color.1),
-        None => ColorWrapper::Ansi(6),
-    });
-    let info_color = config.colors.info.unwrap_or(match &logo {
-        Some(color) => ColorWrapper::Ansi(color.1),
-        None => ColorWrapper::Ansi(6),
-    });
-    let separator_color = config.colors.separator.unwrap_or(match &logo {
-        Some(color) => ColorWrapper::Ansi(color.1),
-        None => ColorWrapper::Ansi(6),
-    });
+    let header_separator_color: DynColors = config
+        .colors
+        .header_separator
+        .map(ColorWrapper::into)
+        .unwrap_or(match &logo {
+            Some(color) => DynColors::Xterm(color.1.into()),
+            None => DynColors::Xterm(XtermColors::Cyan),
+        });
+    let info_color: DynColors = config
+        .colors
+        .info
+        .map(ColorWrapper::into)
+        .unwrap_or(match &logo {
+            Some(color) => DynColors::Xterm(color.1.into()),
+            None => DynColors::Xterm(XtermColors::Cyan),
+        });
+    let separator_color: DynColors =
+        config
+            .colors
+            .separator
+            .map(ColorWrapper::into)
+            .unwrap_or(match &logo {
+                Some(color) => DynColors::Xterm(color.1.into()),
+                None => DynColors::Xterm(XtermColors::Cyan),
+            });
 
     let mut output: String = String::default();
     let mut last_info_len = 0;
@@ -153,9 +166,9 @@ fn main() -> Result<(), FetchInfoError> {
 
                     formatted_info = format!(
                         "{}{}{}",
-                        formatted_header.custom_color_wrapper(header_color).bold(),
-                        separator.custom_color_wrapper(header_separator_color),
-                        formatted_info.custom_color_wrapper(info_color)
+                        formatted_header.color(header_color).bold(),
+                        separator.color(header_separator_color),
+                        formatted_info.color(info_color)
                     );
 
                     write_entry(formatted_info);
@@ -174,11 +187,7 @@ fn main() -> Result<(), FetchInfoError> {
                     }
                 };
 
-                write_entry(
-                    formatted_separator
-                        .custom_color_wrapper(separator_color)
-                        .to_string(),
-                );
+                write_entry(formatted_separator.color(separator_color).to_string());
             }
             Entry::ColorBlocks { content, display } => {
                 if display.show_normal() {
@@ -199,11 +208,11 @@ fn main() -> Result<(), FetchInfoError> {
         }
     }
 
-    if let Some((_, _, lines)) = &logo {
-        if i < lines.len() {
-            for logo_line in &lines[i..] {
-                writeln!(output, "   {}{}", logo_line, "".white()).ok();
-            }
+    if let Some((_, _, lines)) = &logo
+        && i < lines.len()
+    {
+        for logo_line in &lines[i..] {
+            writeln!(output, "   {}{}", logo_line, "".white()).ok();
         }
     }
 
