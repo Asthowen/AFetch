@@ -1,16 +1,27 @@
 #[cfg(any(target_os = "linux", target_os = "windows"))]
 use sysinfo::System;
 
+pub mod alma_linux;
 pub mod alpine;
 pub mod arch_linux;
+pub mod aurora;
+pub mod bazzite;
+pub mod black_arch;
+pub mod cachy;
+pub mod calculate_linux;
 pub mod cent_os;
 pub mod computer;
 pub mod debian;
+pub mod deepin;
 pub mod elementary_os;
 pub mod endeavour;
 pub mod fedora;
 pub mod freebsd;
+pub mod garuda;
 pub mod gentoo;
+pub mod ka_os;
+pub mod kali_linux;
+pub mod kde_neon;
 pub mod kubuntu;
 pub mod linux;
 pub mod linux_mint;
@@ -18,13 +29,28 @@ pub mod lubuntu;
 pub mod mac_os;
 pub mod mageia;
 pub mod manjaro;
+pub mod mx_linux;
+pub mod nix_os;
+pub mod nobara;
+pub mod omv;
 pub mod open_suse;
+pub mod openbsd;
+pub mod pardus;
+pub mod parrot;
 pub mod pop_os;
 pub mod raspbian;
 pub mod rhel;
+pub mod rocky_linux;
+pub mod slackware;
 pub mod solaris;
+pub mod solus;
+pub mod steam_os;
+pub mod tails;
+pub mod true_nas;
 pub mod ubuntu;
 pub mod ubuntu_mate;
+pub mod venom_linux;
+pub mod void_linux;
 pub mod windows_10;
 pub mod windows_11;
 pub mod windows_7;
@@ -73,34 +99,64 @@ pub fn get_logo(force_os: Option<String>) -> (usize, u8, &'static str) {
     .to_lowercase();
 
     match os.as_str() {
-        "windows11" => windows_11::WINDOWS11,
-        "windows10" => windows_10::WINDOWS10,
-        "windows7" => windows_7::WINDOWS7,
-        "linux" => linux::LINUX,
-        "manjaro" | "manjarolinux" => manjaro::MANJARO,
-        "ubuntu" => ubuntu::UBUNTU,
-        "archlinux" | "arch" => arch_linux::ARCH_LINUX,
-        "gentoo" => gentoo::GENTOO,
-        "fedora" | "fedoralinux" => fedora::FEDORA,
-        "zorinos" => zorin_os::ZORIN_OS,
-        "linuxmint" => linux_mint::LINUX_MINT,
-        "macos" | "apple" | "osx" => mac_os::MAC_OS,
-        "opensuse" => open_suse::OPEN_SUSE,
-        "freebsd" => freebsd::FREEBSD,
-        "kubuntu" => kubuntu::KUBUNTU,
-        "lubuntu" => lubuntu::LUBUNTU,
-        "xubuntu" => xubuntu::XUBUNTU,
-        "raspbian" => raspbian::RASPBIAN,
-        "popos" => pop_os::POP_OS,
-        "endeavour" => endeavour::ENDEAVOUR,
-        "centos" => cent_os::CENT_OS,
-        "rhel" => rhel::RHEL,
-        "mageia" => mageia::MAGEIA,
-        "ubuntumate" => ubuntu_mate::UBUNTU_MATE,
-        "elementaryos" => elementary_os::ELEMENTARY_OS,
-        "solaris" => solaris::SOLARIS,
+        "almalinux" => alma_linux::ALMA_LINUX,
         "alpine" => alpine::ALPINE,
+        "archlinux" | "arch" => arch_linux::ARCH_LINUX,
+        "aurora" => aurora::AURORA,
+        "bazzite" => bazzite::BAZZITE,
+        "blackarch" => black_arch::BLACK_ARCH,
+        "cachyos" => cachy::CACHY,
+        "calculate" | "calculate_linux" => calculate_linux::CALCULATE_LINUX,
+        "centos" => cent_os::CENTOS,
+        "centos_old" => cent_os::CENTOS_OLD,
         "debian" | "debiangnu/linux" => debian::DEBIAN,
+        "deepin" => deepin::DEEPIN,
+        "elementaryos" => elementary_os::ELEMENTARY_OS,
+        "elementaryos_old" => elementary_os::ELEMENTARY_OS_OLD,
+        "endeavour" => endeavour::ENDEAVOUR,
+        "fedora" | "fedoralinux" => fedora::FEDORA,
+        "freebsd" => freebsd::FREEBSD,
+        "garuda" => garuda::GARUDA,
+        "gentoo" => gentoo::GENTOO,
+        "kali" => kali_linux::KALI_LINUX,
+        "kaos" => ka_os::KA_OS,
+        "kde_neon" | "neon" => kde_neon::KDE_NEON,
+        "kubuntu" => kubuntu::KUBUNTU,
+        "linux" | "tux" => linux::LINUX,
+        "linuxmint" => linux_mint::LINUX_MINT,
+        "lubuntu" => lubuntu::LUBUNTU,
+        "macos" | "apple" | "osx" => mac_os::MAC_OS,
+        "mageia" => mageia::MAGEIA,
+        "manjaro" | "manjarolinux" => manjaro::MANJARO,
+        "mx_linux" => mx_linux::MX_LINUX,
+        "nixos" => nix_os::NIX_OS,
+        "nobara" => nobara::NOBARA,
+        "omv" | "open_media_vault" => omv::OPEN_MEDIA_VAULT,
+        "openbsd" => openbsd::OPENBSD,
+        "opensuse" => open_suse::OPEN_SUSE,
+        "pardus" => pardus::PARDUS,
+        "parrot" => parrot::PARROT,
+        "popos" => pop_os::POP_OS,
+        "raspbian" => raspbian::RASPBIAN,
+        "rhel" => rhel::RHEL,
+        "rocky" => rocky_linux::ROCKY_LINUX,
+        "slackware" => slackware::SLACKWARE,
+        "solaris" => solaris::SOLARIS,
+        "solus" => solus::SOLUS,
+        "steam_os" => steam_os::STEAM_OS,
+        "tails" => tails::TAILS,
+        "truenas" | "truenas_core" => true_nas::TRUENAS_CORE,
+        "truenas_enterprise" => true_nas::TRUENAS_ENTERPRISE,
+        "truenas_scale" => true_nas::TRUENAS_SCALE,
+        "ubuntu" => ubuntu::UBUNTU,
+        "ubuntumate" => ubuntu_mate::UBUNTU_MATE,
+        "venom" | "venom_linux" => venom_linux::VENOM_LINUX,
+        "void" | "void_linux" => void_linux::VOID_LINUX,
+        "windows10" => windows_10::WINDOWS10,
+        "windows11" => windows_11::WINDOWS11,
+        "windows7" => windows_7::WINDOWS7,
+        "xubuntu" => xubuntu::XUBUNTU,
+        "zorinos" => zorin_os::ZORIN_OS,
         _ => computer::COMPUTER,
     }
 }
