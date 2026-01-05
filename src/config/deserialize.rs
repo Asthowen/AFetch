@@ -167,7 +167,7 @@ fn color_repr_to_wrapper(
     })
 }
 
-impl<'de: 'static> serde::Deserialize<'de> for super::Config {
+impl<'de> serde::Deserialize<'de> for super::Config<'de> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let config = ConfigWrapper::deserialize(deserializer)?;
         let language_func = get_language(config.language.into());

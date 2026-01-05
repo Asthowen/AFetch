@@ -39,7 +39,7 @@
     clippy::if_let_mutex,
     clippy::imprecise_flops,
     clippy::mutex_integer,
-    clippy::string_to_string,
+    clippy::implicit_clone,
     clippy::string_add,
     clippy::ref_option_ref,
     clippy::use_self

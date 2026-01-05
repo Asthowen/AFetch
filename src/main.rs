@@ -27,7 +27,8 @@ use std::fmt::Write;
 use supports_unicode::supports_unicode;
 
 fn main() -> Result<(), FetchInfoError> {
-    let config: Config = load_config();
+    let mut config_buffer: Vec<u8> = Vec::new();
+    let config: Config = load_config(&mut config_buffer);
     let language_func = get_language(config.language);
 
     let results: HashMap<InfoKind, Result<InfoResult, FetchInfoError>> = config
@@ -55,17 +56,20 @@ fn main() -> Result<(), FetchInfoError> {
         })
         .collect();
 
-    let logo = if supports_unicode() {
+    let logo_buffer;
+    let mut logo = if supports_unicode() {
         match config.logo {
-            LogoStyle::Braille { logo } => Some(get_logo(logo.map(str::to_owned))),
+            LogoStyle::Braille { logo } => Some(get_logo(logo.map(str::to_owned)))
+                .map(|(max_length, ansi, logo)| (max_length, ansi, logo.lines())),
             LogoStyle::File { location: path } => {
-                let file_content: &str = Box::leak(std::fs::read_to_string(path)?.into_boxed_str());
-                let max_length = count_str_length(file_content) + 6;
-                Some((max_length, 0, file_content))
+                logo_buffer = Some(std::fs::read_to_string(path)?);
+                logo_buffer.as_deref().map(|logo| {
+                    let max_length = count_str_length(logo) + 6;
+                    (max_length, 0, logo.lines())
+                })
             }
             _ => None,
         }
-        .map(|(max_length, ansi, logo)| (max_length, ansi, logo.lines().collect::<Vec<&str>>()))
     } else {
         None
     };
@@ -105,7 +109,6 @@ fn main() -> Result<(), FetchInfoError> {
 
     let mut output: String = String::default();
     let mut last_info_len = 0;
-    let mut i = 0;
 
     for entry in &config.entries {
         let mut write_entry = |entry: String| {
@@ -114,11 +117,11 @@ fn main() -> Result<(), FetchInfoError> {
                 writeln!(output, "{}{}", " ".repeat(47), entry).ok();
             }
 
-            if let Some((logo_width, _, lines)) = &logo {
-                if lines.len() > i {
-                    writeln!(output, "   {}{}   {}", lines[i], "".white(), entry).ok();
+            if let Some((width, _, lines)) = logo.as_mut() {
+                if let Some(line) = lines.next() {
+                    writeln!(output, "   {}{}   {}", line, "".white(), entry).ok();
                 } else {
-                    writeln!(output, "{}{}", " ".repeat(*logo_width), entry).ok();
+                    writeln!(output, "{}{}", " ".repeat(*width), entry).ok();
                 }
             }
 
@@ -126,8 +129,6 @@ fn main() -> Result<(), FetchInfoError> {
             if logo.is_none() {
                 writeln!(output, "{entry}").ok();
             }
-
-            i += 1;
         };
 
         match entry {
@@ -208,11 +209,9 @@ fn main() -> Result<(), FetchInfoError> {
         }
     }
 
-    if let Some((_, _, lines)) = &logo
-        && i < lines.len()
-    {
-        for logo_line in &lines[i..] {
-            writeln!(output, "   {}{}", logo_line, "".white()).ok();
+    if let Some((_, _, lines)) = logo {
+        for line in lines {
+            writeln!(output, "   {}{}", line, "".white()).ok();
         }
     }
 

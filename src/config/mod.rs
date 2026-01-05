@@ -25,13 +25,13 @@ const DEFAULT_IPV6_PORT: u16 = 80;
 const DEFAULT_IPV6_PATH: &str = "/ip";
 
 #[derive(Debug, Decode, Encode)]
-pub struct Config {
+pub struct Config<'a> {
     pub info: HashMap<InfoKind, Vec<InfoField>>,
-    pub language: &'static str,
-    pub entries: Vec<Entry<'static>>,
+    pub language: &'a str,
+    pub entries: Vec<Entry<'a>>,
     pub colors: ColorOption,
-    pub logo: LogoStyle<'static>,
-    pub parameters: InfoConfig<'static>,
+    pub logo: LogoStyle<'a>,
+    pub parameters: InfoConfig<'a>,
 }
 
 #[derive(Debug, Default, Decode, Encode)]
@@ -236,7 +236,7 @@ impl From<Locale> for &str {
     }
 }
 
-impl Default for Config {
+impl Default for Config<'_> {
     fn default() -> Self {
         let entries = default_entries(Locale::default());
         Self {
@@ -250,7 +250,7 @@ impl Default for Config {
     }
 }
 
-pub fn load_config() -> Config {
+pub fn load_config(buffer: &mut Vec<u8>) -> Config<'_> {
     let cache_path = dirs::cache_dir()
         .map(|p| p.join("afetch.bin"))
         .ok_or_else(|| {
@@ -261,44 +261,44 @@ pub fn load_config() -> Config {
             )
         })
         .unwrap();
-    std::fs::read(&cache_path)
-        .ok()
-        .and_then(|buf| {
-            let buf = Box::leak(buf.into_boxed_slice());
-            bitcode::decode(buf).ok()
-        })
-        .or_else(|| {
-            let config_path = dirs::config_dir()
-                .map(|p| p.join("afetch").join("config.json"))
-                .ok_or_else(|| {
-                    FetchInfoError::error_exit(
-                        "An error occurred while retrieving the config folder, \
+
+    if let Ok(content) = std::fs::read(&cache_path) {
+        *buffer = content;
+        return bitcode::decode(buffer).ok().unwrap_or_default();
+    }
+
+    let config_path = dirs::config_dir()
+        .map(|p| p.join("afetch").join("config.json"))
+        .ok_or_else(|| {
+            FetchInfoError::error_exit(
+                "An error occurred while retrieving the config folder, \
                         please open an issue at: https://github.com/Asthowen/AFetch/issues/new \
                         so that we can solve your issue.",
-                    )
-                })
-                .unwrap();
-
-            std::fs::read(config_path)
-                .ok()
-                .and_then(|buf| {
-                    let buf = Box::leak(buf.into_boxed_slice());
-                    serde_json::from_slice(buf)
-                        .inspect_err(|error| {
-                            eprintln!(
-                                "Warning: Your configuration is malformed ({error}). \
-                            Falling back to the default one.",
-                            );
-                        })
-                        .ok()
-                })
-                .inspect(|config| {
-                    std::fs::create_dir_all(cache_path.parent().unwrap())
-                        .and_then(|()| std::fs::write(cache_path, bitcode::encode(config)))
-                        .ok();
-                })
+            )
         })
-        .unwrap_or_default()
+        .unwrap();
+
+    if let Ok(content) = std::fs::read(&config_path) {
+        *buffer = content;
+
+        let config: Config = serde_json::from_slice(buffer)
+            .inspect_err(|error| {
+                eprintln!(
+                    "Warning: Your configuration is malformed ({error}). \
+                            Falling back to the default one.",
+                );
+            })
+            .ok()
+            .unwrap_or_default();
+
+        std::fs::create_dir_all(cache_path.parent().unwrap())
+            .and_then(|()| std::fs::write(cache_path, bitcode::encode(&config)))
+            .ok();
+
+        return config;
+    }
+
+    Config::default()
 }
 
 fn default_entries(locale: Locale) -> Vec<Entry<'static>> {
