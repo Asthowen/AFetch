@@ -41,31 +41,26 @@ pub fn get_networks(
             None if config.parameters.networks.assigned_only => continue,
             None => None,
         };
-        let first_ipv4 = network
-            .ip_networks()
-            .iter()
-            .find(|ip| ip.addr.is_ipv4())
-            .map(|ip| ip.addr);
+        let first_ipv4 = network.ip_networks().iter().find_map(|ip| match ip.addr {
+            IpAddr::V4(v4) => Some((v4.is_private(), v4.to_string())),
+            _ => None,
+        });
         let first_ipv6 = network.ip_networks().iter().find(|ip| ip.addr.is_ipv6());
 
-        if config.parameters.networks.private_only
-            && let Some(IpAddr::V4(ip)) = first_ipv4
-            && !ip.is_private()
-        {
+        if config.parameters.networks.private_only && matches!(first_ipv4, Some((false, _))) {
             continue;
         }
 
+        let first_ipv4: Option<String> = first_ipv4.map(|tuple| tuple.1);
         networks_info.push(InfoGroup {
             values: filtered_values!(
                 fields,
                 [
-                    (InfoField::NetworkName, name.clone()),
-                    (InfoField::NetworkFirstIp, first_ip.clone()),
+                    (InfoField::NetworkName, name.as_str()),
+                    (InfoField::NetworkFirstIp, first_ipv4.as_deref()),
                     (
                         InfoField::NetworkPreferFirstIpv4,
-                        first_ipv4
-                            .map(|ip| ip.to_string())
-                            .or_else(|| first_ip.clone())
+                        first_ipv4.as_deref().or(first_ip.as_deref())
                     ),
                     (
                         InfoField::NetworkPreferFirstIpv6,
