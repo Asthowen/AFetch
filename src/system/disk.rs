@@ -43,7 +43,7 @@ pub fn get_disk(
                         InfoField::DiskTotalSpace,
                         convert_to_readable_unity(disk.total_space() as f64)
                     ),
-                    (InfoField::DiskMountPoint, mount_point.to_owned()),
+                    (InfoField::DiskMountPoint, mount_point),
                     (
                         InfoField::DiskFileSystem,
                         disk.file_system().to_string_lossy().to_string()
