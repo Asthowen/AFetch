@@ -1,12 +1,13 @@
-use crate::config::Config;
-use crate::error::FetchInfoError;
-use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
-use crate::util::ToOptionString;
 use std::collections::HashSet;
+
 use sysinfo::{CpuRefreshKind, RefreshKind, System};
 
-pub fn get_cpu(
+use crate::config::Config;
+use crate::error::FetchInfoError;
+use crate::system::{InfoField, InfoGroup, InfoResult};
+use crate::util::{ToOptionString, filtered_values};
+
+pub fn cpu_info(
     _languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     _config: &Config,

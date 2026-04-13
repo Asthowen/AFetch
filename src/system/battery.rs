@@ -1,11 +1,11 @@
-use crate::config::Config;
-use crate::error::FetchInfoError;
-use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
-use crate::util::{ToOptionString, format_time};
 use starship_battery::units::time::second;
 
-pub fn get_battery(
+use crate::config::Config;
+use crate::error::FetchInfoError;
+use crate::system::{InfoField, InfoGroup, InfoResult};
+use crate::util::{ToOptionString, filtered_values, format_time};
+
+pub fn battery_info(
     languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     _config: &Config,

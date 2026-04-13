@@ -1,12 +1,12 @@
-use crate::config::Config;
-use crate::error::FetchInfoError;
-use crate::filtered_values;
-use crate::system::disks::ignore_disk;
-use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
-use crate::util::{ToOptionString, convert_to_readable_unity};
 use sysinfo::Disks;
 
-pub fn get_disk(
+use crate::config::Config;
+use crate::error::FetchInfoError;
+use crate::system::disks::ignore_disk;
+use crate::system::{InfoField, InfoGroup, InfoResult};
+use crate::util::{ToOptionString, convert_to_readable_unity, filtered_values};
+
+pub fn disk_info(
     _languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     config: &Config,

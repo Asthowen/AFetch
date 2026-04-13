@@ -1,11 +1,11 @@
-use crate::config::Config;
-use crate::error::FetchInfoError;
-use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
-use crate::util::ToOptionString;
 use sysinfo::Product;
 
-pub fn get_product(
+use crate::config::Config;
+use crate::error::FetchInfoError;
+use crate::system::{InfoField, InfoGroup, InfoResult};
+use crate::util::{ToOptionString, filtered_values};
+
+pub fn product_info(
     _languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     _config: &Config,
@@ -19,9 +19,7 @@ pub fn get_product(
                     #[cfg(target_os = "macos")]
                     {
                         Product::name().map(|name| {
-                            product_name_from_module_name(&name)
-                                .map(str::to_owned)
-                                .unwrap_or_else(|| name)
+                            product_name_from_module_name(&name).map_or(name, str::to_owned)
                         })
                     }
                     #[cfg(not(target_os = "macos"))]
@@ -43,6 +41,7 @@ pub fn get_product(
 }
 
 #[cfg(target_os = "macos")]
+#[allow(clippy::too_many_lines)]
 // Based on:
 //   FastFetch: https://github.com/fastfetch-cli/fastfetch/blob/dev/src/detection/host/host_mac.c
 //   Macbook Pro: https://support.apple.com/en-us/HT201300
@@ -51,7 +50,7 @@ pub fn get_product(
 //   iMac: https://support.apple.com/en-us/HT201634
 //   Mac Pro: https://support.apple.com/en-us/HT202888
 //   Mac Studio: https://support.apple.com/en-us/HT213073
-pub(crate) fn product_name_from_module_name(model: &str) -> Option<&str> {
+pub(crate) fn product_name_from_module_name(model: &str) -> Option<&'static str> {
     if let Some(suffix) = model.strip_prefix("MacBookPro") {
         Some(match suffix {
             "18,3" | "18,4" => "MacBook Pro (14-inch, 2021)",

@@ -1,12 +1,14 @@
-use crate::config::Config;
-use crate::error::FetchInfoError;
-use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
-use crate::util::{ToOptionString, convert_to_readable_unity};
 use std::net::IpAddr;
+
 use sysinfo::Networks;
 
-pub fn get_networks(
+use crate::config::Config;
+use crate::error::FetchInfoError;
+use crate::system::{InfoField, InfoGroup, InfoResult};
+use crate::util::{ToOptionString, convert_to_readable_unity, filtered_values};
+
+#[allow(clippy::too_many_lines)]
+pub fn networks_info(
     _languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     config: &Config,
@@ -43,7 +45,7 @@ pub fn get_networks(
         };
         let first_ipv4 = network.ip_networks().iter().find_map(|ip| match ip.addr {
             IpAddr::V4(v4) => Some((v4.is_private(), v4.to_string())),
-            _ => None,
+            IpAddr::V6(_) => None,
         });
         let first_ipv6 = network.ip_networks().iter().find(|ip| ip.addr.is_ipv6());
 
@@ -64,7 +66,7 @@ pub fn get_networks(
                     ),
                     (
                         InfoField::NetworkPreferFirstIpv6,
-                        first_ipv6.map(|ip| ip.to_string()).or(first_ip)
+                        first_ipv6.map(ToString::to_string).or(first_ip)
                     ),
                     (
                         InfoField::NetworkAllIp,
@@ -75,7 +77,7 @@ pub fn get_networks(
                                 network
                                     .ip_networks()
                                     .iter()
-                                    .map(|ip| ip.to_string())
+                                    .map(ToString::to_string)
                                     .collect::<Vec<_>>()
                                     .join(" "),
                             )

@@ -1,11 +1,11 @@
-use crate::config::Config;
-use crate::error::FetchInfoError;
-use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
-use crate::util::ToOptionString;
 use sysinfo::Motherboard;
 
-pub fn get_motherboard(
+use crate::config::Config;
+use crate::error::FetchInfoError;
+use crate::system::{InfoField, InfoGroup, InfoResult};
+use crate::util::{ToOptionString, filtered_values};
+
+pub fn motherboard_info(
     _languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     _config: &Config,

@@ -1,18 +1,19 @@
-use crate::config::Config;
-use crate::error::FetchInfoError;
-use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
-use crate::util::{PROJECT_VERSION, ToOptionString};
-use socket2::{Domain, Protocol, Socket, Type};
 use std::io::{Read, Write};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::time::Duration;
 
-const IPV4: IpAddr = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
-const IPV6: IpAddr = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
+use socket2::{Domain, Protocol, Socket, Type};
+
+use crate::config::Config;
+use crate::error::FetchInfoError;
+use crate::system::{InfoField, InfoGroup, InfoResult};
+use crate::util::{PROJECT_VERSION, ToOptionString, filtered_values};
+
+const IPV4: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+const IPV6: IpAddr = IpAddr::V6(Ipv6Addr::UNSPECIFIED);
 const TIMEOUT: Duration = Duration::from_secs(5);
 
-pub fn get_public_ip(
+pub fn public_ip_info(
     _languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     config: &Config,
@@ -57,7 +58,7 @@ fn http_get_request(domain: &str, port: u16, path: &str, ip: IpAddr) -> Option<S
     let local_addr = SocketAddr::new(ip, 0);
     let addresses = (domain, port).to_socket_addrs().ok()?;
     for address in addresses {
-        let socket = match Socket::new(
+        let Ok(socket) = Socket::new(
             if address.is_ipv4() {
                 Domain::IPV4
             } else {
@@ -65,9 +66,8 @@ fn http_get_request(domain: &str, port: u16, path: &str, ip: IpAddr) -> Option<S
             },
             Type::STREAM,
             Some(Protocol::TCP),
-        ) {
-            Ok(socket) => socket,
-            Err(_) => continue,
+        ) else {
+            continue;
         };
 
         if socket.bind(&local_addr.into()).is_err() || socket.connect(&address.into()).is_err() {

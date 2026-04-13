@@ -1,34 +1,28 @@
-use afetch::config::deserialize::ColorWrapper;
-use afetch::config::{Config, Entry, LogoStyle, SeparatorSizing, load_config};
-use afetch::error::{ErrorType, FetchInfoError};
-use afetch::logos::get_logo;
-use afetch::system::battery::get_battery;
-use afetch::system::cpu::get_cpu;
-use afetch::system::disk::get_disk;
-use afetch::system::disks::get_disks;
-use afetch::system::host::get_hostname;
-use afetch::system::kernel::get_kernel;
-use afetch::system::loadavg::get_loadavg;
-use afetch::system::memory::get_memory;
-use afetch::system::motherboard::get_motherboard;
-use afetch::system::networks::get_networks;
-use afetch::system::product::get_product;
-use afetch::system::public_ip::get_public_ip;
-use afetch::system::uptime::get_uptime;
-use afetch::system::{InfoGroup, InfoKind, InfoResult};
-use afetch::translations::get_language;
-use afetch::util::count_str_length;
-#[cfg(feature = "image")]
-use afetch::util::print_picture;
-use owo_colors::{DynColors, OwoColorize, XtermColors};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::fmt::Write;
+
+use owo_colors::{DynColors, OwoColorize, XtermColors};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use supports_unicode::supports_unicode;
+
+use afetch::config::deserialize::ColorWrapper;
+use afetch::config::{Config, Entry, LogoStyle, SeparatorSizing};
+use afetch::error::{ErrorType, FetchInfoError};
+use afetch::logos::system_logo;
+use afetch::system::{
+    InfoGroup, InfoKind, InfoResult, battery_info, cpu_info, disk_info, disks_info, hostname_info,
+    kernel_info, loadavg_info, memory_info, motherboard_info, networks_info, product_info,
+    public_ip_info, uptime_info,
+};
+use afetch::translations::get_language;
+use afetch::util::count_str_length;
+
+#[cfg(feature = "image")]
+use afetch::util::pictures;
 
 fn main() -> Result<(), FetchInfoError> {
     let mut config_buffer: Vec<u8> = Vec::new();
-    let config: Config = load_config(&mut config_buffer);
+    let config: Config = Config::load(&mut config_buffer);
     let language_func = get_language(config.language);
 
     let results: HashMap<InfoKind, Result<InfoResult, FetchInfoError>> = config
@@ -38,19 +32,19 @@ fn main() -> Result<(), FetchInfoError> {
             (
                 *kind,
                 match kind {
-                    InfoKind::Battery => get_battery(language_func, fields, &config),
-                    InfoKind::Cpu => get_cpu(language_func, fields, &config),
-                    InfoKind::Disk => get_disk(language_func, fields, &config),
-                    InfoKind::Disks => get_disks(language_func, fields, &config),
-                    InfoKind::Host => get_hostname(language_func, fields, &config),
-                    InfoKind::Kernel => get_kernel(language_func, fields, &config),
-                    InfoKind::Loadavg => get_loadavg(language_func, fields, &config),
-                    InfoKind::Memory => get_memory(language_func, fields, &config),
-                    InfoKind::Motherboard => get_motherboard(language_func, fields, &config),
-                    InfoKind::Networks => get_networks(language_func, fields, &config),
-                    InfoKind::Product => get_product(language_func, fields, &config),
-                    InfoKind::PublicIp => get_public_ip(language_func, fields, &config),
-                    InfoKind::Uptime => get_uptime(language_func, fields, &config),
+                    InfoKind::Battery => battery_info(language_func, fields, &config),
+                    InfoKind::Cpu => cpu_info(language_func, fields, &config),
+                    InfoKind::Disk => disk_info(language_func, fields, &config),
+                    InfoKind::Disks => disks_info(language_func, fields, &config),
+                    InfoKind::Host => hostname_info(language_func, fields, &config),
+                    InfoKind::Kernel => kernel_info(language_func, fields, &config),
+                    InfoKind::Loadavg => loadavg_info(language_func, fields, &config),
+                    InfoKind::Memory => memory_info(language_func, fields, &config),
+                    InfoKind::Motherboard => motherboard_info(language_func, fields, &config),
+                    InfoKind::Networks => networks_info(language_func, fields, &config),
+                    InfoKind::Product => product_info(language_func, fields, &config),
+                    InfoKind::PublicIp => public_ip_info(language_func, fields, &config),
+                    InfoKind::Uptime => uptime_info(language_func, fields, &config),
                 },
             )
         })
@@ -59,7 +53,7 @@ fn main() -> Result<(), FetchInfoError> {
     let logo_buffer;
     let mut logo = if supports_unicode() {
         match config.logo {
-            LogoStyle::Braille { logo } => Some(get_logo(logo.map(str::to_owned)))
+            LogoStyle::Braille { logo } => Some(system_logo(logo.map(str::to_owned)))
                 .map(|(max_length, ansi, logo)| (max_length, ansi, logo.lines())),
             LogoStyle::File { location: path } => {
                 logo_buffer = Some(std::fs::read_to_string(path)?);
@@ -76,7 +70,7 @@ fn main() -> Result<(), FetchInfoError> {
 
     let header_color: DynColors = match config.colors.header {
         Some(color) => color.into(),
-        None => match logo.as_ref() {
+        None => match &logo {
             Some(color) => DynColors::Xterm(color.1.into()),
             None => DynColors::Xterm(XtermColors::Cyan),
         },
@@ -114,12 +108,18 @@ fn main() -> Result<(), FetchInfoError> {
         let mut write_entry = |entry: String| {
             #[cfg(feature = "image")]
             if matches!(config.logo, LogoStyle::Image { .. }) {
-                writeln!(output, "{}{}", " ".repeat(47), entry).ok();
+                writeln!(
+                    output,
+                    "{}{}",
+                    " ".repeat(afetch::util::constants::LOGO_LENGTH),
+                    entry
+                )
+                .ok();
             }
 
             if let Some((width, _, lines)) = logo.as_mut() {
                 if let Some(line) = lines.next() {
-                    writeln!(output, "   {}{}   {}", line, "".white(), entry).ok();
+                    writeln!(output, "   {}{}   {}", line, "".default_color(), entry).ok();
                 } else {
                     writeln!(output, "{}{}", " ".repeat(*width), entry).ok();
                 }
@@ -199,7 +199,7 @@ fn main() -> Result<(), FetchInfoError> {
                     write_entry(first_colors);
                 }
                 if display.show_bright() {
-                    let second_colors: String = (0..8).fold(String::new(), |mut acc, i| {
+                    let second_colors: String = (0..8).fold(String::default(), |mut acc, i| {
                         write!(&mut acc, "\x1b[9{i}m{content}\x1b[0m").unwrap();
                         acc
                     });
@@ -211,14 +211,15 @@ fn main() -> Result<(), FetchInfoError> {
 
     if let Some((_, _, lines)) = logo {
         for line in lines {
-            writeln!(output, "   {}{}", line, "".white()).ok();
+            writeln!(output, "   {}{}", line, "".default_color()).ok();
         }
     }
 
     #[cfg(feature = "image")]
     if let LogoStyle::Image { location } = config.logo {
         print!("\n{}\x1b[{}A", output, config.entries.len());
-        print_picture(location);
+        pictures::display(location);
+
         return Ok(());
     }
 
