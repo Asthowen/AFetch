@@ -22,24 +22,23 @@ impl ToOptionString for String {
 
 impl ToOptionString for &str {
     fn to_option_string(self) -> Option<String> {
-        Some(self.to_string())
+        Some(self.to_owned())
     }
 }
 
-#[macro_export]
 macro_rules! filtered_values {
     ($fields:expr, [ $( ($field:expr, $value_expr:expr) ),* $(,)? ]) => {{
-        let mut info: Vec<InfoValue> = Vec::new();
+        let mut info: Vec<$crate::system::InfoValue> = Vec::new();
         $(
-            if $fields.contains(&$field) {
-                if let Some(value) = $value_expr.to_option_string() {
-                    info.push(InfoValue {
-                        field: $field,
-                        value,
-                    });
-                }
+            if $fields.contains(&$field) && let Some(value) = $value_expr.to_option_string() {
+                info.push($crate::system::InfoValue {
+                    field: $field,
+                    value,
+                });
             }
         )*
         info
     }};
 }
+
+pub(crate) use filtered_values;

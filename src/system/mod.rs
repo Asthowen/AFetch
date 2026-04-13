@@ -1,26 +1,42 @@
-use crate::config::Config;
-use crate::error::FetchInfoError;
+mod battery;
+mod cpu;
+mod disk;
+mod disks;
+mod host;
+mod kernel;
+mod loadavg;
+mod memory;
+mod motherboard;
+mod networks;
+mod product;
+mod public_ip;
+mod uptime;
+
+pub use self::battery::battery_info;
+pub use self::cpu::cpu_info;
+pub use self::disk::disk_info;
+pub use self::disks::disks_info;
+pub use self::host::hostname_info;
+pub use self::kernel::kernel_info;
+pub use self::loadavg::loadavg_info;
+pub use self::memory::memory_info;
+pub use self::motherboard::motherboard_info;
+pub use self::networks::networks_info;
+pub use self::product::product_info;
+pub use self::public_ip::public_ip_info;
+pub use self::uptime::uptime_info;
+
 use bitcode::{Decode, Encode};
 use serde::Deserialize;
+use strum::IntoStaticStr;
 
-pub mod battery;
-pub mod cpu;
-pub mod disk;
-pub mod disks;
-pub mod host;
-pub mod kernel;
-pub mod loadavg;
-pub mod memory;
-pub mod motherboard;
-pub mod networks;
-pub mod product;
-pub mod public_ip;
-pub mod uptime;
+use crate::config::Config;
+use crate::error::FetchInfoError;
 
 pub type InfoFunction =
     fn(fn(&str) -> &str, &[InfoField], &Config) -> Result<InfoResult, FetchInfoError>;
 
-#[derive(Deserialize, Clone, Copy, Debug, Decode, Encode, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Decode, Deserialize, Encode)]
 #[serde(rename_all = "snake_case")]
 pub enum InfoKind {
     Battery,
@@ -39,7 +55,7 @@ pub enum InfoKind {
 }
 
 impl InfoKind {
-    pub const fn get_fields(&self) -> &[InfoField] {
+    pub const fn fields(&self) -> &[InfoField] {
         match self {
             Self::Battery => &[
                 InfoField::BatteryModel,
@@ -150,7 +166,7 @@ impl InfoKind {
             Self::Disks => "{disks_used_space} / {disks_total_space}",
             Self::Host => "{username}@{hostname}",
             Self::Kernel => "{kernel_long_version}",
-            Self::Loadavg => "{loadavg_one}, {loadavg_five}, {loadavg_fifteen}",
+            Self::Loadavg => "{load_avg_one}, {load_avg_five}, {load_avg_fifteen}",
             Self::Memory => "{memory_used} / {memory_total}",
             Self::Motherboard => "{motherboard_name} {motherboard_version}",
             Self::Networks => "{network_prefer_first_ipv4}",
@@ -166,20 +182,20 @@ impl InfoKind {
             Self::Battery => "battery",
             Self::Disk => "disk",
             Self::Disks => "disks",
-            Self::Host => "host",
+            Self::Host | Self::Product => "host",
             Self::Kernel => "kernel",
             Self::Loadavg => "loadavg",
             Self::Memory => "memory",
             Self::Motherboard => "motherboard",
             Self::Networks => "networks",
-            Self::Product => "host",
             Self::PublicIp => "public-ip",
             Self::Uptime => "uptime",
         }
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash, Decode, Encode)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Decode, Encode, IntoStaticStr)]
+#[strum(serialize_all = "snake_case")]
 pub enum InfoField {
     BatteryModel,
     BatteryCycleCount,
@@ -263,96 +279,10 @@ pub enum InfoField {
     Username,
 }
 
-impl InfoField {
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::BatteryModel => "battery_model",
-            Self::BatteryCycleCount => "battery_cycle_count",
-            Self::BatterySerialNumber => "battery_serial_number",
-            Self::BatteryVendor => "battery_vendor",
-            Self::BatteryTechnology => "battery_technology",
-            Self::BatteryState => "battery_state",
-            Self::BatteryTemperature => "battery_temperature",
-            Self::BatteryStateOfHealth => "battery_state_of_health",
-            Self::BatteryStateOfCharge => "battery_state_of_charge",
-            Self::BatteryEnergy => "battery_energy",
-            Self::BatteryEnergyFull => "battery_energy_full",
-            Self::BatteryEnergyFullDesign => "battery_energy_full_design",
-            Self::BatteryEnergyRate => "battery_energy_rate",
-            Self::BatteryVoltage => "battery_voltage",
-            Self::BatteryTimeToFull => "battery_time_to_full",
-            Self::BatteryTimeToEmpty => "battery_time_to_empty",
-            Self::CpuName => "cpu_name",
-            Self::CpuUsage => "cpu_usage",
-            Self::CpuFrequency => "cpu_frequency",
-            Self::CpuVendor => "cpu_vendor",
-            Self::CpuArch => "cpu_arch",
-            Self::DiskName => "disk_name",
-            Self::DiskAvailableSpace => "disk_available_space",
-            Self::DiskUsedSpace => "disk_used_space",
-            Self::DiskTotalSpace => "disk_total_space",
-            Self::DiskMountPoint => "disk_mount_point",
-            Self::DiskFileSystem => "disk_file_system",
-            Self::DiskIsRemovable => "disk_is_removable",
-            Self::DiskIsReadOnly => "disk_is_readonly",
-            Self::DiskKind => "disk_kind",
-            Self::DiskWrittenSinceBoot => "disk_written_since_boot",
-            Self::DiskReadSinceBoot => "disk_read_since_boot",
-            Self::DisksCount => "disks_count",
-            Self::DisksCountFiltered => "disks_count_filtered",
-            Self::DisksAvailableSpace => "disks_available_space",
-            Self::DisksUsedSpace => "disks_used_space",
-            Self::DisksTotalSpace => "disks_total_space",
-            Self::Hostname => "hostname",
-            Self::KernelVersion => "kernel_version",
-            Self::KernelLongVersion => "kernel_long_version",
-            Self::LoadAvgOne => "loadavg_one",
-            Self::LoadAvgFive => "loadavg_five",
-            Self::LoadAvgFifteen => "loadavg_fifteen",
-            Self::MemoryAvailable => "memory_available",
-            Self::MemoryFree => "memory_free",
-            Self::MemoryTotal => "memory_total",
-            Self::MemoryUsed => "memory_used",
-            Self::MemorySwapFree => "memory_swap_free",
-            Self::MemorySwapTotal => "memory_swap_total",
-            Self::MemorySwapUsage => "memory_swap_usage",
-            Self::MotherboardAssetTag => "motherboard_asset_tag",
-            Self::MotherboardName => "motherboard_name",
-            Self::MotherboardSerialNumber => "motherboard_serial_number",
-            Self::MotherboardVendorName => "motherboard_vendor_name",
-            Self::MotherboardVersion => "motherboard_version",
-            Self::NetworkName => "network_name",
-            Self::NetworkPreferFirstIpv4 => "network_prefer_first_ipv4",
-            Self::NetworkPreferFirstIpv6 => "network_prefer_first_ipv6",
-            Self::NetworkFirstIp => "network_first_ip",
-            Self::NetworkAllIp => "network_all_ip",
-            Self::NetworkMacAddress => "network_mac_address",
-            Self::NetworkMaximumTransferUnit => "network_maximum_transfer_unit",
-            Self::NetworkErrorsOnReceived => "network_errors_on_received",
-            Self::NetworkErrorsOnTransmitted => "network_errors_on_transmitted",
-            Self::NetworkPacketsReceived => "network_packets_received",
-            Self::NetworkPacketsTransmitted => "network_packets_transmitted",
-            Self::NetworkReceived => "network_received",
-            Self::NetworkTransmitted => "network_transmitted",
-            Self::ProductFamily => "product_family",
-            Self::ProductName => "product_name",
-            Self::ProductSerialNumber => "product_serial_number",
-            Self::ProductStockKeepingUnit => "product_stock_keeping_unit",
-            Self::ProductUuid => "product_uuid",
-            Self::ProductVendorName => "product_vendor_name",
-            Self::ProductVersion => "product_version",
-            Self::PublicIpAny => "public_ip_any",
-            Self::PublicIpv4 => "public_ipv4",
-            Self::PublicIpv6 => "public_ipv6",
-            Self::Uptime => "uptime",
-            Self::Username => "username",
-        }
-    }
-}
-
 impl std::fmt::Display for InfoField {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
+        let field: &'static str = self.into();
+        write!(f, "{field}")
     }
 }
 

@@ -1,8 +1,12 @@
-use crate::{
-    config::SeparatorSizing, logos::get_logo, system::InfoKind, translations::get_language,
-};
+use bitcode::{Decode, Encode};
 use owo_colors::DynColors;
 use serde::Deserialize;
+
+use super::{SeparatorSizing, constants};
+use crate::config::constants::DEFAULT_COLOR;
+use crate::logos::system_logo;
+use crate::system::InfoKind;
+use crate::translations::get_language;
 
 #[derive(Debug, Deserialize)]
 struct ConfigWrapper<'a> {
@@ -124,10 +128,16 @@ enum ColorRepr<'a> {
     Text(&'a str),
 }
 
-#[derive(Debug, Clone, Copy, bitcode::Decode, bitcode::Encode)]
+#[derive(Copy, Clone, Debug, Decode, Encode)]
 pub enum ColorWrapper {
     Rgb { r: u8, g: u8, b: u8 },
     Ansi(u8),
+}
+
+impl Default for ColorWrapper {
+    fn default() -> Self {
+        DEFAULT_COLOR
+    }
 }
 
 impl From<ColorWrapper> for DynColors {
@@ -136,12 +146,6 @@ impl From<ColorWrapper> for DynColors {
             ColorWrapper::Ansi(color) => Self::Xterm(color.into()),
             ColorWrapper::Rgb { r, g, b } => Self::Rgb(r, g, b),
         }
-    }
-}
-
-impl Default for ColorWrapper {
-    fn default() -> Self {
-        Self::Ansi(6)
     }
 }
 
@@ -168,18 +172,19 @@ fn color_repr_to_wrapper(
 }
 
 impl<'de> serde::Deserialize<'de> for super::Config<'de> {
+    #[allow(clippy::too_many_lines)]
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let config = ConfigWrapper::deserialize(deserializer)?;
         let language_func = get_language(config.language.into());
         let logo_color = if let super::LogoStyle::Braille { logo: Some(logo) } = config.logo {
-            Some(ColorWrapper::Ansi(get_logo(Some(logo.to_owned())).1))
+            Some(ColorWrapper::Ansi(system_logo(Some(logo.to_owned())).1))
         } else {
             None
         };
 
-        let entries = config
-            .info
-            .map(|info| {
+        let entries = config.info.map_or_else(
+            || super::default_entries(config.language),
+            |info| {
                 info.into_iter()
                     .map(|info| match info {
                         Entry::Info {
@@ -195,10 +200,10 @@ impl<'de> serde::Deserialize<'de> for super::Config<'de> {
                             super::Entry::Info {
                                 kind,
                                 fields: kind
-                                    .get_fields()
+                                    .fields()
                                     .iter()
                                     .filter(|field| {
-                                        let field_str = field.as_str();
+                                        let field_str: &'static str = (*field).into();
                                         header.contains(field_str) || format.contains(field_str)
                                     })
                                     .copied()
@@ -240,8 +245,8 @@ impl<'de> serde::Deserialize<'de> for super::Config<'de> {
                         },
                     })
                     .collect::<Vec<_>>()
-            })
-            .unwrap_or_else(|| super::default_entries(config.language));
+            },
+        );
 
         Ok(Self {
             info: super::group_fields_by_kind(&entries),
@@ -251,13 +256,17 @@ impl<'de> serde::Deserialize<'de> for super::Config<'de> {
                 header: color_repr_to_wrapper(config.colors.header, logo_color, logo_color),
                 header_separator: color_repr_to_wrapper(
                     config.colors.header_separator,
-                    super::FALLBACK_COLOR,
+                    constants::DEFAULT_COLOR_OPTION,
                     logo_color,
                 ),
-                info: color_repr_to_wrapper(config.colors.info, super::FALLBACK_COLOR, logo_color),
+                info: color_repr_to_wrapper(
+                    config.colors.info,
+                    constants::DEFAULT_COLOR_OPTION,
+                    logo_color,
+                ),
                 separator: color_repr_to_wrapper(
                     config.colors.separator,
-                    super::FALLBACK_COLOR,
+                    constants::DEFAULT_COLOR_OPTION,
                     logo_color,
                 ),
             },
@@ -287,14 +296,14 @@ impl<'de> serde::Deserialize<'de> for super::Config<'de> {
                         .map(|public_ip| super::PublicIpInfoConfig {
                             ipv4_domain: public_ip
                                 .ipv4_domain
-                                .unwrap_or(super::DEFAULT_IPV4_DOMAIN),
-                            ipv4_port: public_ip.ipv4_port.unwrap_or(super::DEFAULT_IPV4_PORT),
-                            ipv4_path: public_ip.ipv4_path.unwrap_or(super::DEFAULT_IPV4_PATH),
+                                .unwrap_or(constants::DEFAULT_IPV4_DOMAIN),
+                            ipv4_port: public_ip.ipv4_port.unwrap_or(constants::DEFAULT_IPV4_PORT),
+                            ipv4_path: public_ip.ipv4_path.unwrap_or(constants::DEFAULT_IPV4_PATH),
                             ipv6_domain: public_ip
                                 .ipv6_domain
-                                .unwrap_or(super::DEFAULT_IPV6_DOMAIN),
-                            ipv6_port: public_ip.ipv6_port.unwrap_or(super::DEFAULT_IPV6_PORT),
-                            ipv6_path: public_ip.ipv6_path.unwrap_or(super::DEFAULT_IPV6_PATH),
+                                .unwrap_or(constants::DEFAULT_IPV6_DOMAIN),
+                            ipv6_port: public_ip.ipv6_port.unwrap_or(constants::DEFAULT_IPV6_PORT),
+                            ipv6_path: public_ip.ipv6_path.unwrap_or(constants::DEFAULT_IPV6_PATH),
                         })
                         .unwrap_or_default(),
                 })

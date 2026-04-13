@@ -1,11 +1,11 @@
-use crate::config::Config;
-use crate::error::FetchInfoError;
-use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
-use crate::util::{ToOptionString, convert_to_readable_unity};
 use sysinfo::{MemoryRefreshKind, RefreshKind, System};
 
-pub fn get_memory(
+use crate::config::Config;
+use crate::error::FetchInfoError;
+use crate::system::{InfoField, InfoGroup, InfoResult};
+use crate::util::{ToOptionString, convert_to_readable_unity, filtered_values};
+
+pub fn memory_info(
     _languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     _config: &Config,

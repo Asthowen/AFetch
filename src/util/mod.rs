@@ -1,17 +1,17 @@
+pub mod constants;
+#[cfg(feature = "image")]
+pub mod pictures;
+
 mod filtered_values;
 
-pub use filtered_values::ToOptionString;
+pub(crate) use self::filtered_values::{ToOptionString, filtered_values};
 
-use crate::error::FetchInfoError;
-#[cfg(feature = "image")]
-use image::{GenericImageView, ImageReader};
 use std::fmt::Write;
 use std::process::Command;
-#[cfg(feature = "image")]
-use std::{fs::File, io::BufReader};
+
 use unicode_segmentation::UnicodeSegmentation;
-#[cfg(feature = "image")]
-use viuer::Config as ViuerConfig;
+
+use crate::error::FetchInfoError;
 
 pub const PROJECT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -19,12 +19,12 @@ const fn div_mod(dividend: u64, divisor: u64) -> (u64, u64) {
     (dividend / divisor, dividend % divisor)
 }
 
-pub fn env_exist(env_var: &str) -> bool {
+pub fn env_var_exists(env_var: &str) -> bool {
     std::env::var(env_var).is_ok()
 }
 
-pub fn command_exist(program: &str) -> bool {
-    which::which(program).is_ok()
+pub fn executable_exists(binary_name: &str) -> bool {
+    which::which(binary_name).is_ok()
 }
 
 pub fn str_from_command(command: &mut Command) -> Result<String, FetchInfoError> {
@@ -82,49 +82,4 @@ pub fn convert_to_readable_unity<T: Into<f64>>(size: T) -> String {
         SUFFIX[base.floor() as usize]
     )
     .replace(".0", "")
-}
-
-#[cfg(feature = "image")]
-pub fn print_picture(path: &str) {
-    let file = match File::open(path) {
-        Ok(f) => f,
-        Err(error) => FetchInfoError::error_exit(format!(
-            "An error occurred while reading the image: {error}"
-        )),
-    };
-    let reader: ImageReader<BufReader<File>> =
-        match ImageReader::new(BufReader::new(file)).with_guessed_format() {
-            Ok(r) => r,
-            Err(error) => FetchInfoError::error_exit(format!(
-                "An error occurred while guessing the image format: {error}"
-            )),
-        };
-    let image = match reader.decode() {
-        Ok(i) => i,
-        Err(error) => FetchInfoError::error_exit(format!(
-            "An error occurred while decoding the image: {error}"
-        )),
-    };
-
-    let dimensions: (u32, u32) = image.dimensions();
-    let (width_ratio, height_ratio): (f64, f64) = if dimensions.0 < 44 {
-        (1.0, 1.0)
-    } else {
-        (dimensions.0 as f64 / 44.0, dimensions.1 as f64 / 44.0)
-    };
-    let ratio: f64 = width_ratio.max(height_ratio);
-    let new_width: u32 = (dimensions.0 as f64 / ratio) as u32;
-
-    let config: ViuerConfig = ViuerConfig {
-        x: ((47 - new_width) / 2) as u16,
-        width: Some(new_width),
-        absolute_offset: false,
-        ..ViuerConfig::default()
-    };
-    if let Err(error) = viuer::print(&image, &config) {
-        FetchInfoError::error_exit(format!(
-            "An error occurred while printing the image: {error}",
-        ))
-    }
-    println!();
 }

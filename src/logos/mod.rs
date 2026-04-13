@@ -1,69 +1,66 @@
-#[cfg(any(target_os = "linux", target_os = "windows"))]
-use sysinfo::System;
+mod alma_linux;
+mod alpine;
+mod arch_linux;
+mod aurora;
+mod bazzite;
+mod black_arch;
+mod cachy;
+mod calculate_linux;
+mod cent_os;
+mod computer;
+mod debian;
+mod deepin;
+mod elementary_os;
+mod endeavour;
+mod fedora;
+mod freebsd;
+mod garuda;
+mod gentoo;
+mod ka_os;
+mod kali_linux;
+mod kde_neon;
+mod kubuntu;
+mod linux;
+mod linux_mint;
+mod lubuntu;
+mod mac_os;
+mod mageia;
+mod manjaro;
+mod mx_linux;
+mod nix_os;
+mod nobara;
+mod omv;
+mod open_suse;
+mod openbsd;
+mod pardus;
+mod parrot;
+mod pop_os;
+mod raspbian;
+mod rhel;
+mod rocky_linux;
+mod slackware;
+mod solaris;
+mod solus;
+mod steam_os;
+mod tails;
+mod true_nas;
+mod ubuntu;
+mod ubuntu_mate;
+mod venom_linux;
+mod void_linux;
+mod windows_10;
+mod windows_11;
+mod windows_7;
+mod xubuntu;
+mod zorin_os;
 
-pub mod alma_linux;
-pub mod alpine;
-pub mod arch_linux;
-pub mod aurora;
-pub mod bazzite;
-pub mod black_arch;
-pub mod cachy;
-pub mod calculate_linux;
-pub mod cent_os;
-pub mod computer;
-pub mod debian;
-pub mod deepin;
-pub mod elementary_os;
-pub mod endeavour;
-pub mod fedora;
-pub mod freebsd;
-pub mod garuda;
-pub mod gentoo;
-pub mod ka_os;
-pub mod kali_linux;
-pub mod kde_neon;
-pub mod kubuntu;
-pub mod linux;
-pub mod linux_mint;
-pub mod lubuntu;
-pub mod mac_os;
-pub mod mageia;
-pub mod manjaro;
-pub mod mx_linux;
-pub mod nix_os;
-pub mod nobara;
-pub mod omv;
-pub mod open_suse;
-pub mod openbsd;
-pub mod pardus;
-pub mod parrot;
-pub mod pop_os;
-pub mod raspbian;
-pub mod rhel;
-pub mod rocky_linux;
-pub mod slackware;
-pub mod solaris;
-pub mod solus;
-pub mod steam_os;
-pub mod tails;
-pub mod true_nas;
-pub mod ubuntu;
-pub mod ubuntu_mate;
-pub mod venom_linux;
-pub mod void_linux;
-pub mod windows_10;
-pub mod windows_11;
-pub mod windows_7;
-pub mod xubuntu;
-pub mod zorin_os;
-
-pub fn get_logo(force_os: Option<String>) -> (usize, u8, &'static str) {
+pub fn system_logo(force_os: Option<String>) -> (usize, u8, &'static str) {
     let os: String = if let Some(os) = force_os {
         os
     } else {
         #[cfg(target_os = "linux")]
         {
-            System::distribution_id()
+            sysinfo::System::distribution_id()
         }
 
         #[cfg(target_os = "freebsd")]
@@ -78,7 +75,7 @@ pub fn get_logo(force_os: Option<String>) -> (usize, u8, &'static str) {
 
         #[cfg(target_os = "windows")]
         {
-            let windows_version = System::os_version()
+            let windows_version = sysinfo::System::os_version()
                 .and_then(|v| v.split_whitespace().next().map(str::to_owned))
                 .filter(|v| !v.is_empty())
                 .unwrap_or_else(|| "11".to_owned());

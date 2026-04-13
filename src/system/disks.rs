@@ -1,11 +1,11 @@
-use crate::config::Config;
-use crate::error::FetchInfoError;
-use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
-use crate::util::{ToOptionString, convert_to_readable_unity};
 use sysinfo::{DiskRefreshKind, Disks};
 
-pub fn get_disks(
+use crate::config::Config;
+use crate::error::FetchInfoError;
+use crate::system::{InfoField, InfoGroup, InfoResult};
+use crate::util::{ToOptionString, convert_to_readable_unity, filtered_values};
+
+pub fn disks_info(
     _languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     config: &Config,

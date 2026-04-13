@@ -1,11 +1,11 @@
-use crate::config::Config;
-use crate::error::FetchInfoError;
-use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
-use crate::util::ToOptionString;
 use whoami::{hostname, username};
 
-pub fn get_hostname(
+use crate::config::Config;
+use crate::error::FetchInfoError;
+use crate::system::{InfoField, InfoGroup, InfoResult};
+use crate::util::{ToOptionString, filtered_values};
+
+pub fn hostname_info(
     _languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     _config: &Config,

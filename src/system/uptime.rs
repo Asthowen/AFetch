@@ -1,11 +1,11 @@
-use crate::config::Config;
-use crate::error::FetchInfoError;
-use crate::filtered_values;
-use crate::system::{InfoField, InfoGroup, InfoResult, InfoValue};
-use crate::util::{ToOptionString, format_time};
 use sysinfo::System;
 
-pub fn get_uptime(
+use crate::config::Config;
+use crate::error::FetchInfoError;
+use crate::system::{InfoField, InfoGroup, InfoResult};
+use crate::util::{ToOptionString, filtered_values, format_time};
+
+pub fn uptime_info(
     languages_func: fn(&str) -> &str,
     fields: &[InfoField],
     _config: &Config,
