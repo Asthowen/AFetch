@@ -19,13 +19,7 @@ jobs:
           - i686-pc-windows-msvc
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-
-#      - name: Install OpenSSL
-#        run: |
-#          echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
-#          vcpkg integrate install
-#          vcpkg install openssl:x64-windows-static-md
+        uses: actions/checkout@v7.0.1
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -41,7 +35,7 @@ jobs:
           echo "APP_VERSION=$version" >> $env:GITHUB_OUTPUT
 
       - name: Set up cargo cache
-        uses: actions/cache@v3
+        uses: actions/cache@v6.1.0
         continue-on-error: false
         with:
           path: |
@@ -58,15 +52,18 @@ jobs:
           cargo build --release --locked --target ${{ matrix.name }}
           mv ./target/${{ matrix.name }}/release/afetch.exe ./afetch-${{ steps.afetch_version.outputs.APP_VERSION }}-${{ matrix.name }}.exe
 
-      - name: Upload executable to release
-        uses: softprops/action-gh-release@v1
+      - name: Update Release
+        uses: softprops/action-gh-release@v3.0.3
+        if: env.previous_tag && env.current_tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: afetch-${{ steps.afetch_version.outputs.APP_VERSION }}-${{ matrix.name }}.exe
           tag_name: ${{ steps.afetch_version.outputs.APP_VERSION }}
 
   generate-linux-freebsd-executables:
     name: Build & publish for ${{ matrix.target }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         rust:
@@ -89,13 +86,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7.0.1
 
       - name: Install Rust
         run: rustup update ${{ matrix.rust }} && rustup default ${{ matrix.rust }}
 
       - name: Install cross-compilation tools
-        uses: taiki-e/setup-cross-toolchain-action@v1
+        uses: taiki-e/setup-cross-toolchain-action@v1.42.0
         with:
           target: ${{ matrix.target }}
         if: matrix.target != 'i686-unknown-linux-musl' && matrix.target != 'x86_64-unknown-linux-musl'
@@ -112,7 +109,7 @@ jobs:
         if: matrix.target == 'i686-unknown-linux-musl' || matrix.target == 'x86_64-unknown-linux-musl'
 
       - name: Set up cargo cache
-        uses: actions/cache@v3
+        uses: actions/cache@v6.1.0
         continue-on-error: false
         with:
           path: |
@@ -133,8 +130,11 @@ jobs:
           cargo build --release --locked --target ${{ matrix.target }}
           mv ./target/${{ matrix.target }}/release/afetch ./afetch-${{ steps.afetch_version.outputs.APP_VERSION }}-${{ matrix.target }}
 
-      - name: Upload executable to release
-        uses: softprops/action-gh-release@v1
+      - name: Update Release
+        uses: softprops/action-gh-release@v3.0.3
+        if: env.previous_tag && env.current_tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: afetch-${{ steps.afetch_version.outputs.APP_VERSION }}-${{ matrix.target }}
           tag_name: ${{ steps.afetch_version.outputs.APP_VERSION }}
@@ -149,7 +149,7 @@ jobs:
           - aarch64-apple-darwin
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7.0.1
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -162,7 +162,7 @@ jobs:
         run: echo "APP_VERSION=$(awk -F ' = ' '$1 ~ /version/ { gsub(/["]/, "", $2); printf("%s",$2) }' Cargo.toml)" >> $GITHUB_OUTPUT
 
       - name: Set up cargo cache
-        uses: actions/cache@v3
+        uses: actions/cache@v6.1.0
         continue-on-error: false
         with:
           path: |
@@ -178,8 +178,12 @@ jobs:
         run: |
           cargo build --release --locked --target ${{ matrix.name }}
           mv ./target/${{ matrix.name }}/release/afetch ./afetch-${{ steps.afetch_version.outputs.APP_VERSION }}-${{ matrix.name }}
-      - name: Upload executable to release
-        uses: softprops/action-gh-release@v1
+
+      - name: Update Release
+        uses: softprops/action-gh-release@v3.0.3
+        if: env.previous_tag && env.current_tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: afetch-${{ steps.afetch_version.outputs.APP_VERSION }}-${{ matrix.name }}
           tag_name: ${{ steps.afetch_version.outputs.APP_VERSION }}
