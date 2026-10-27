@@ -158,16 +158,14 @@ fn color_repr_to_wrapper(
     color.map_or(default, |c| match c {
         ColorRepr::Ansi(v) => Some(ColorWrapper::Ansi(v)),
         ColorRepr::Text("auto") => logo_color,
-        ColorRepr::Text(c) => csscolorparser::parse(c)
-            .map(|c| {
-                let rgb = c.to_rgba8();
-                Some(ColorWrapper::Rgb {
-                    r: rgb[0],
-                    g: rgb[1],
-                    b: rgb[2],
-                })
+        ColorRepr::Text(c) => csscolorparser::parse(c).map_or(default, |c| {
+            let rgb = c.to_rgba8();
+            Some(ColorWrapper::Rgb {
+                r: rgb[0],
+                g: rgb[1],
+                b: rgb[2],
             })
-            .unwrap_or(default),
+        }),
     })
 }
 

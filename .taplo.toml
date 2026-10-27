@@ -1,0 +1,21 @@
+include = [".taplo.toml", "Cargo.toml"]
+
+[formatting]
+indent_string = "    "
+reorder_arrays = true
+
+[[rule]]
+formatting = { reorder_keys = true }
+include = ["Cargo.toml"]
+keys = [
+    "*-dependencies",
+    "dependencies",
+    "target.*.*-dependencies",
+    "target.*.dependencies",
+    "workspace.*-dependencies",
+    "workspace.dependencies",
+]
+
+[[rule]]
+formatting = { reorder_keys = true }
+include = [".taplo.toml"]
